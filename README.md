@@ -1,1 +1,1 @@
-# CS422-BombIt
+# BombTHEM

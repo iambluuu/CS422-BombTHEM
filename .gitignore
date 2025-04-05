@@ -1,0 +1,11 @@
+.vscode/
+
+# Client
+Client/bin/
+Client/obj/
+Client/Content/bin/
+Client/Content/obj/
+
+# Server
+Server/bin/
+Server/obj/
