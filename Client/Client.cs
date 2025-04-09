@@ -7,12 +7,14 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 
-namespace Client
-{
-    public class ClientGame : Game
-    {
+using Shared;
+
+namespace Client {
+    public class ClientGame : Game {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
+
+        private const int TILE_SIZE = 48;
 
         private Texture2D _tileTexture;
         private Texture2D _gridLineTexture;
@@ -21,101 +23,62 @@ namespace Client
         private Texture2D _bombTexture;
         private Texture2D _explosionTexture;
 
-        private const int TileSize = 48;
-        private const int GridWidth = 15;
-        private const int GridHeight = 13;
-
-        private Point _playerGridPos = new(1, 1);
-        private KeyboardState _prevKeyState;
         private int _playerId = -1;
-        private Dictionary<int, Point> _otherPlayers = new Dictionary<int, Point>();
+        private Map _map = new Map(13, 15);
 
         private TcpClient _client;
         private NetworkStream _stream;
         private Thread _receiveThread;
         private bool _connected = false;
 
-        // For hit animation
-        private Dictionary<int, bool> _isHit = new Dictionary<int, bool>();
-        private Dictionary<int, double> _hitAnimationTime = new Dictionary<int, double>();
-        private const double HitAnimationDuration = 1.0; // 1 second for hit animation
+        private KeyboardState _prevKeyState;
 
-        private class Bomb
-        {
-            public Point Position;
-            public double PlacedTime;
-        }
-
-        private class Explosion
-        {
-            public Point Position;
-            public double TriggerTime;
-        }
-
-        private List<Bomb> _bombs = new();
-        private List<Explosion> _explosions = new();
-
-        public ClientGame()
-        {
+        public ClientGame() {
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
-            _graphics.PreferredBackBufferWidth = TileSize * GridWidth;
-            _graphics.PreferredBackBufferHeight = TileSize * GridHeight;
+            _graphics.PreferredBackBufferHeight = _map.Height * TILE_SIZE;
+            _graphics.PreferredBackBufferWidth = _map.Width * TILE_SIZE;
         }
 
-        protected override void Initialize()
-        {
+        protected override void Initialize() {
             ConnectToServer();
             base.Initialize();
         }
 
-        private void ConnectToServer()
-        {
-            try
-            {
+        private void ConnectToServer() {
+            try {
                 _client = new TcpClient("localhost", 5000);
                 _stream = _client.GetStream();
                 _connected = true;
 
-                // Start a thread to receive messages from the server
                 _receiveThread = new Thread(ReceiveMessages);
                 _receiveThread.IsBackground = true;
                 _receiveThread.Start();
                 Console.WriteLine("Connected to server.");
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 Console.WriteLine($"Connection failed: {ex.Message}");
                 _connected = false;
             }
         }
 
-        private void ReceiveMessages()
-        {
+        private void ReceiveMessages() {
             byte[] buffer = new byte[1024];
 
-            while (_connected)
-            {
-                try
-                {
+            while (_connected) {
+                try {
                     int bytesRead = _stream.Read(buffer, 0, buffer.Length);
-                    if (bytesRead > 0)
-                    {
+                    if (bytesRead > 0) {
                         string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                        string[] messages = message.Split(new[] { '\n', '\r', '|' }, StringSplitOptions.RemoveEmptyEntries);
+                        string[] messages = message.Split(['\n', '\r', '|'], StringSplitOptions.RemoveEmptyEntries);
 
-                        foreach (var msg in messages)
-                        {
-                            if (!string.IsNullOrEmpty(msg))
-                            {
-                                ProcessServerMessage(msg);
+                        foreach (var msg in messages) {
+                            if (!string.IsNullOrEmpty(msg)) {
+                                ProcessServerMessage(NetworkMessage.FromJson(msg));
                             }
                         }
                     }
-                }
-                catch (Exception ex)
-                {
+                } catch (Exception ex) {
                     Console.WriteLine($"Error receiving message: {ex.Message}");
                     _connected = false;
                     break;
@@ -123,301 +86,177 @@ namespace Client
             }
         }
 
-        private void ProcessServerMessage(string message)
-        {
-            try
-            {
-                string[] parts = message.Split(':');
-
-                if (parts.Length < 2) return;
-
-                string command = parts[0];
-                string data = parts[1];
-
-                switch (command)
-                {
-                    case "playerId":
-                        _playerId = int.Parse(data);
-                        Console.WriteLine($"Assigned player ID: {_playerId}");
-                        break;
-
-                    case "playerPositions":
-                        string[] positions = data.Split(';');
-                        _otherPlayers.Clear();
-
-                        foreach (string pos in positions)
-                        {
-                            if (string.IsNullOrEmpty(pos)) continue;
-
-                            string[] playerData = pos.Split(',');
-                            if (playerData.Length < 3) continue;
-
-                            int playerId = int.Parse(playerData[0]);
-                            int x = int.Parse(playerData[1]);
-                            int y = int.Parse(playerData[2]);
-
-                            if (playerId == _playerId)
-                            {
-                                // Update our own position (for synchronization)
-                                _playerGridPos = new Point(x, y);
-                                continue;
-                            }
-
-                            _otherPlayers[playerId] = new Point(x, y);
-                        }
-                        break;
-
-                    case "bomb":
-                        string[] bombPosition = data.Split(',');
-                        if (bombPosition.Length < 2) break;
-
-                        int bombX = int.Parse(bombPosition[0]);
-                        int bombY = int.Parse(bombPosition[1]);
-
-                        Point bombPos = new Point(bombX, bombY);
-                        bool bombExists = false;
-
-                        // Check if this bomb already exists
-                        foreach (var bomb in _bombs)
-                        {
-                            if (bomb.Position == bombPos)
-                            {
-                                bombExists = true;
-                                break;
-                            }
-                        }
-
-                        if (!bombExists)
-                        {
-                            double currentTime = gameTime.TotalGameTime.TotalSeconds;
-                            _bombs.Add(new Bomb
-                            {
-                                Position = bombPos,
-                                PlacedTime = currentTime
-                            });
-                            Console.WriteLine($"Added bomb at {bombX},{bombY}");
-                        }
-                        break;
-
-                    case "explosion":
-                        Console.WriteLine($"Data: {data}");
-
-                        string[] explosionPosition = data.Split(',');
-                        if (explosionPosition.Length < 2) break;
-
-                        int explosionX = int.Parse(explosionPosition[0]);
-                        int explosionY = int.Parse(explosionPosition[1]);
-                        Point explosionPos = new Point(explosionX, explosionY);
-
-                        double explosionTime = gameTime.TotalGameTime.TotalSeconds;
-
-                        // Add explosion at the specified position if not already there
-                        // if (!_explosions.Exists(e => e.Position == explosionPos))
-                        {
-                            _explosions.Add(new Explosion { Position = explosionPos, TriggerTime = explosionTime });
-                            Console.WriteLine($"Added explosion at {explosionX},{explosionY}");
-                        }
-
-                        // Remove any bomb at this position
-                        _bombs.RemoveAll(b => b.Position == explosionPos);
-                        break;
-
-                    case "hit":
-                        // Player was hit by an explosion
-                        int hitPlayerId = int.Parse(data);
-                        _isHit[hitPlayerId] = true;
-                        _hitAnimationTime[hitPlayerId] = gameTime.TotalGameTime.TotalSeconds;
-                        Console.WriteLine($"Player {hitPlayerId} was hit!");
-                        break;
+        private void ProcessServerMessage(NetworkMessage message) {
+            if (message.Type == MessageType.PlayerId) {
+                _playerId = int.Parse(message.Data["playerId"]);
+            } else if (message.Type == MessageType.MovePlayer) {
+                int playerId = int.Parse(message.Data["playerId"]);
+                int x = int.Parse(message.Data["x"]);
+                int y = int.Parse(message.Data["y"]);
+                _map.SetPlayerPosition(playerId, x, y);
+            } else if (message.Type == MessageType.RemovePlayer) {
+                int playerId = int.Parse(message.Data["playerId"]);
+                _map.PlayerPositions.Remove(playerId);
+            } else if (message.Type == MessageType.PlaceBomb) {
+                int x = int.Parse(message.Data["x"]);
+                int y = int.Parse(message.Data["y"]);
+                BombType type = Enum.Parse<BombType>(message.Data["type"]);
+                _map.AddBomb(x, y, type);
+            } else if (message.Type == MessageType.ExplodeBomb) {
+                int x = int.Parse(message.Data["x"]);
+                int y = int.Parse(message.Data["y"]);
+                string[] positions = message.Data["positions"].Split(';');
+                int bombId = _map.Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
+                foreach (var pos in positions) {
+                    _map.Bombs[bombId].ExplosionPositions.Add(Position.FromString(pos));
                 }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error processing message '{message}': {ex.Message}");
+                _map.Bombs[bombId].ExplodeTime = DateTime.Now;
+            } else if (message.Type == MessageType.RespawnPlayer) {
+                int playerId = int.Parse(message.Data["playerId"]);
+                int x = int.Parse(message.Data["x"]);
+                int y = int.Parse(message.Data["y"]);
+                _map.SetPlayerPosition(playerId, x, y);
             }
         }
 
-        private GameTime gameTime;
+        private void SendMessage(NetworkMessage message) {
+            if (!_connected) {
+                return;
+            }
 
-        private void SendMessage(string message)
-        {
-            if (!_connected) return;
-
-            try
-            {
-                byte[] data = Encoding.UTF8.GetBytes(message);
+            try {
+                byte[] data = Encoding.UTF8.GetBytes(message.ToJson() + "|");
                 _stream.Write(data, 0, data.Length);
                 _stream.Flush();
-            }
-            catch (Exception ex)
-            {
+            } catch (Exception ex) {
                 Console.WriteLine($"Error sending message: {ex.Message}");
                 _connected = false;
             }
         }
 
-        protected override void LoadContent()
-        {
+        protected override void LoadContent() {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
             _tileTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _tileTexture.SetData(new[] { Color.White });
+            _tileTexture.SetData([Color.White]);
 
             _gridLineTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _gridLineTexture.SetData(new[] { Color.Black });
+            _gridLineTexture.SetData([Color.Black]);
 
             _playerTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _playerTexture.SetData(new[] { Color.Blue });
+            _playerTexture.SetData([Color.Blue]);
 
             _otherPlayerTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _otherPlayerTexture.SetData(new[] { Color.Green });
+            _otherPlayerTexture.SetData([Color.Green]);
 
             _bombTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _bombTexture.SetData(new[] { Color.Red });
+            _bombTexture.SetData([Color.Red]);
 
             _explosionTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _explosionTexture.SetData(new[] { Color.Orange });
+            _explosionTexture.SetData([Color.Orange]);
         }
 
-        protected override void Update(GameTime gameTime)
-        {
+        private GameTime gameTime;
+
+        protected override void Update(GameTime gameTime) {
             this.gameTime = gameTime;
-
-            KeyboardState key = Keyboard.GetState();
-            double currentTime = gameTime.TotalGameTime.TotalSeconds;
-
-            // Process hit animation timeout
-            foreach (var playerId in _isHit.Keys)
-            {
-                if (_isHit[playerId])
-                {
-                    if (currentTime - _hitAnimationTime[playerId] >= HitAnimationDuration)
-                    {
-                        _isHit[playerId] = false;
-                    }
-                }
-            }
-
-            Point direction = Point.Zero;
-            bool hasMoved = false;
-
-            if (IsKeyPressed(key, Keys.Left)) direction.X = -1;
-            else if (IsKeyPressed(key, Keys.Right)) direction.X = 1;
-            else if (IsKeyPressed(key, Keys.Up)) direction.Y = -1;
-            else if (IsKeyPressed(key, Keys.Down)) direction.Y = 1;
-
-            if (direction != Point.Zero)
-            {
-                Point newPos = _playerGridPos + direction;
-
-                if (newPos.X >= 0 && newPos.X < GridWidth &&
-                    newPos.Y >= 0 && newPos.Y < GridHeight)
-                {
-                    _playerGridPos = newPos;
-                    hasMoved = true;
-
-                    // Send move to server
-                    SendMessage($"move:{_playerGridPos.X},{_playerGridPos.Y}");
-                }
-            }
-
-            if (IsKeyPressed(key, Keys.Space))
-            {
-                // Commented out local check to allow server to decide
-                // if (!_bombs.Exists(b => b.Position == _playerGridPos))
-                // {
-                // Send bomb placement to server
-                SendMessage($"bomb:{_playerGridPos.X},{_playerGridPos.Y}");
-                // }
-            }
-
-            // Remove expired explosions after 0.5 seconds
-            _explosions.RemoveAll(e => currentTime - e.TriggerTime >= 0.5);
-
-            _prevKeyState = key;
+            HandleUpdate();
             base.Update(gameTime);
         }
 
-        protected override void Draw(GameTime gameTime)
-        {
+        protected override void Draw(GameTime gameTime) {
             GraphicsDevice.Clear(Color.CornflowerBlue);
             _spriteBatch.Begin();
-
-            // Draw tiles with grid
-            for (int y = 0; y < GridHeight; y++)
-            {
-                for (int x = 0; x < GridWidth; x++)
-                {
-                    Rectangle cellRect = new Rectangle(x * TileSize, y * TileSize, TileSize, TileSize);
-                    _spriteBatch.Draw(_tileTexture, cellRect, Color.White);
-                    _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, TileSize, 1), Color.Black); // top
-                    _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, 1, TileSize), Color.Black); // left
-                }
-            }
-
-            // Draw bombs
-            foreach (var bomb in _bombs)
-            {
-                DrawCell(bomb.Position, _bombTexture);
-            }
-
-            // Draw explosions
-            foreach (var exp in _explosions)
-            {
-                if (IsInsideGrid(exp.Position))
-                    DrawCell(exp.Position, _explosionTexture);
-            }
-
-            // Draw other players
-            foreach (var player in _otherPlayers)
-            {
-                if (_isHit.ContainsKey(player.Key) && _isHit[player.Key] && Math.Sin(gameTime.TotalGameTime.TotalSeconds * 10) > 0)
-                {
-                    Rectangle rect = new Rectangle(player.Value.X * TileSize, player.Value.Y * TileSize, TileSize, TileSize);
-                    _spriteBatch.Draw(_otherPlayerTexture, rect, Color.Red); // Flashing red if hit
-                }
-                else
-                {
-                    DrawCell(player.Value, _otherPlayerTexture);
-                }
-
-            }
-
-            // Draw player (flashing red if hit)
-            if (_isHit.ContainsKey(_playerId) && _isHit[_playerId] && Math.Sin(gameTime.TotalGameTime.TotalSeconds * 10) > 0)
-            {
-                Rectangle rect = new Rectangle(_playerGridPos.X * TileSize, _playerGridPos.Y * TileSize, TileSize, TileSize);
-                _spriteBatch.Draw(_playerTexture, rect, Color.Red); // Flashing red if hit
-            }
-            else
-            {
-                DrawCell(_playerGridPos, _playerTexture);
-            }
-
+            HandleDraw();
             _spriteBatch.End();
             base.Draw(gameTime);
         }
 
-        private void DrawCell(Point pos, Texture2D texture)
-        {
-            Rectangle rect = new Rectangle(pos.X * TileSize, pos.Y * TileSize, TileSize, TileSize);
+        private void HandleUpdate() {
+            KeyboardState key = Keyboard.GetState();
+
+            if (true) {
+                Direction direction = Direction.None;
+                if (IsKeyPressed(key, Keys.Up)) {
+                    direction = Direction.Up;
+                } else if (IsKeyPressed(key, Keys.Down)) {
+                    direction = Direction.Down;
+                } else if (IsKeyPressed(key, Keys.Left)) {
+                    direction = Direction.Left;
+                } else if (IsKeyPressed(key, Keys.Right)) {
+                    direction = Direction.Right;
+                }
+
+                if (direction != Direction.None) {
+                    SendMessage(new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
+                        { "direction", direction.ToString() }
+                    }));
+                }
+            }
+
+            if (IsKeyPressed(key, Keys.Space)) {
+                SendMessage(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
+                    { "x", _map.GetPlayerPosition(_playerId).X.ToString() },
+                    { "y", _map.GetPlayerPosition(_playerId).Y.ToString() },
+                    { "type", BombType.Normal.ToString() },
+                }));
+            }
+
+            _prevKeyState = key;
+
+            for (int i = _map.Bombs.Count - 1; i >= 0; i--) {
+                if (_map.Bombs[i].ExplodeTime != DateTime.MinValue && (DateTime.Now - _map.Bombs[i].ExplodeTime).TotalSeconds >= 0.5) {
+                    _map.Bombs.RemoveAt(i);
+                }
+            }
+        }
+
+        private void HandleDraw() {
+            for (int x = 0; x < _map.Height; x++) {
+                for (int y = 0; y < _map.Width; y++) {
+                    Rectangle cellRect = new Rectangle(y * TILE_SIZE, x * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                    _spriteBatch.Draw(_tileTexture, cellRect, Color.White);
+                    _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, TILE_SIZE, 1), Color.Black);
+                    _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, 1, TILE_SIZE), Color.Black);
+                }
+            }
+
+            foreach (var bomb in _map.Bombs) {
+                if (bomb.ExplosionPositions.Count == 0) {
+                    DrawCell(bomb.Position.X, bomb.Position.Y, _bombTexture);
+                }
+            }
+
+            foreach (var bomb in _map.Bombs) {
+                if (bomb.ExplosionPositions.Count > 0) {
+                    foreach (var explosion in bomb.ExplosionPositions) {
+                        DrawCell(explosion.X, explosion.Y, _explosionTexture);
+                    }
+                }
+            }
+
+            foreach (var player in _map.PlayerPositions) {
+                if (player.Key != _playerId) {
+                    DrawCell(player.Value.X, player.Value.Y, _otherPlayerTexture);
+                }
+            }
+
+            if (_map.PlayerPositions.ContainsKey(_playerId)) {
+                DrawCell(_map.GetPlayerPosition(_playerId).X, _map.GetPlayerPosition(_playerId).Y, _playerTexture);
+            }
+        }
+
+        private void DrawCell(int x, int y, Texture2D texture) {
+            Rectangle rect = new Rectangle(y * TILE_SIZE, x * TILE_SIZE, TILE_SIZE, TILE_SIZE);
             _spriteBatch.Draw(texture, rect, Color.White);
         }
 
-        private bool IsKeyPressed(KeyboardState current, Keys key)
-        {
+        private bool IsKeyPressed(KeyboardState current, Keys key) {
             return current.IsKeyDown(key) && !_prevKeyState.IsKeyDown(key);
         }
 
-        private bool IsInsideGrid(Point p)
-        {
-            return p.X >= 0 && p.X < GridWidth && p.Y >= 0 && p.Y < GridHeight;
-        }
-
-        protected override void UnloadContent()
-        {
-            if (_connected)
-            {
+        protected override void UnloadContent() {
+            if (_connected) {
                 _connected = false;
                 _stream.Close();
                 _client.Close();

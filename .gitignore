@@ -1,4 +1,6 @@
+# Other
 .vscode/
+.editorconfig
 
 # Client
 Client/bin/
@@ -9,3 +11,7 @@ Client/Content/obj/
 # Server
 Server/bin/
 Server/obj/
+
+# Shared
+Shared/bin/
+Shared/obj/
