@@ -1,12 +1,6 @@
-﻿using System;
-
-namespace Server
-{
-    class Program
-    {
-        static void Main(string[] args)
-        {
-            // Start the server
+﻿namespace Server {
+    class Program {
+        static void Main(string[] args) {
             Console.WriteLine("Starting Server...");
             Server gameServer = new Server();
             gameServer.Start();

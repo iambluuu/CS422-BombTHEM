@@ -12,7 +12,7 @@ namespace Server {
         private TcpListener? _server;
         private List<ClientHandler> _clients = new List<ClientHandler>();
         private int _nextPlayerId = 0;
-        private Map _map = new Map(13, 15);
+        private Map _map = null!;
         private readonly object _lock = new object();
 
         public class ClientHandler {
@@ -22,6 +22,8 @@ namespace Server {
         }
 
         public void Start() {
+            generateRandomMap();
+
             _server = new TcpListener(IPAddress.Any, 5000);
             _server.Start();
             Console.WriteLine("Server is running on port 5000...");
@@ -49,8 +51,10 @@ namespace Server {
                     }
 
                     Console.WriteLine($"Client connected: Player {playerId}");
-                    SendToClient(playerId, new NetworkMessage(MessageType.PlayerId, new Dictionary<string, string> {
+
+                    SendToClient(playerId, new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
                         { "playerId", playerId.ToString() },
+                        { "map", _map.ToString() },
                     }));
 
                     foreach (var player in _map.PlayerPositions) {
@@ -75,6 +79,16 @@ namespace Server {
                 } catch (Exception ex) {
                     Console.WriteLine($"Error accepting client: {ex.Message}");
                 }
+            }
+        }
+
+        private void generateRandomMap() {
+            Random rand = new Random();
+            _map = new Map(20, 15);
+            for (int i = 100; i > 0; i--) {
+                int x = rand.Next(0, _map.Height);
+                int y = rand.Next(0, _map.Width);
+                _map.SetTile(x, y, TileType.Wall);
             }
         }
 

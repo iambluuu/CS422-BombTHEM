@@ -17,6 +17,7 @@ namespace Client {
         private const int TILE_SIZE = 48;
 
         private Texture2D _tileTexture;
+        private Texture2D _wallTexture;
         private Texture2D _gridLineTexture;
         private Texture2D _playerTexture;
         private Texture2D _otherPlayerTexture;
@@ -24,7 +25,7 @@ namespace Client {
         private Texture2D _explosionTexture;
 
         private int _playerId = -1;
-        private Map _map = new Map(13, 15);
+        private Map _map = null;
 
         private TcpClient _client;
         private NetworkStream _stream;
@@ -37,8 +38,6 @@ namespace Client {
             _graphics = new GraphicsDeviceManager(this);
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
-            _graphics.PreferredBackBufferHeight = _map.Height * TILE_SIZE;
-            _graphics.PreferredBackBufferWidth = _map.Width * TILE_SIZE;
         }
 
         protected override void Initialize() {
@@ -87,8 +86,12 @@ namespace Client {
         }
 
         private void ProcessServerMessage(NetworkMessage message) {
-            if (message.Type == MessageType.PlayerId) {
+            if (message.Type == MessageType.InitPlayer) {
                 _playerId = int.Parse(message.Data["playerId"]);
+                _map = Map.FromString(message.Data["map"]);
+                _graphics.PreferredBackBufferHeight = _map.Height * TILE_SIZE;
+                _graphics.PreferredBackBufferWidth = _map.Width * TILE_SIZE;
+                _graphics.ApplyChanges();
             } else if (message.Type == MessageType.MovePlayer) {
                 int playerId = int.Parse(message.Data["playerId"]);
                 int x = int.Parse(message.Data["x"]);
@@ -140,6 +143,9 @@ namespace Client {
             _tileTexture = new Texture2D(GraphicsDevice, 1, 1);
             _tileTexture.SetData([Color.White]);
 
+            _wallTexture = new Texture2D(GraphicsDevice, 1, 1);
+            _wallTexture.SetData([Color.Black]);
+
             _gridLineTexture = new Texture2D(GraphicsDevice, 1, 1);
             _gridLineTexture.SetData([Color.Black]);
 
@@ -156,10 +162,7 @@ namespace Client {
             _explosionTexture.SetData([Color.Orange]);
         }
 
-        private GameTime gameTime;
-
         protected override void Update(GameTime gameTime) {
-            this.gameTime = gameTime;
             HandleUpdate();
             base.Update(gameTime);
         }
@@ -173,6 +176,10 @@ namespace Client {
         }
 
         private void HandleUpdate() {
+            if (_map == null) {
+                return;
+            }
+
             KeyboardState key = Keyboard.GetState();
 
             if (true) {
@@ -194,12 +201,20 @@ namespace Client {
                 }
             }
 
-            if (IsKeyPressed(key, Keys.Space)) {
-                SendMessage(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
-                    { "x", _map.GetPlayerPosition(_playerId).X.ToString() },
-                    { "y", _map.GetPlayerPosition(_playerId).Y.ToString() },
-                    { "type", BombType.Normal.ToString() },
-                }));
+            if (true) {
+                if (IsKeyPressed(key, Keys.Space)) {
+                    SendMessage(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
+                        { "x", _map.GetPlayerPosition(_playerId).X.ToString() },
+                        { "y", _map.GetPlayerPosition(_playerId).Y.ToString() },
+                        { "type", BombType.Normal.ToString() },
+                    }));
+                } else if (IsKeyPressed(key, Keys.Enter)) {
+                    SendMessage(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
+                        { "x", _map.GetPlayerPosition(_playerId).X.ToString() },
+                        { "y", _map.GetPlayerPosition(_playerId).Y.ToString() },
+                        { "type", BombType.Special.ToString() },
+                    }));
+                }
             }
 
             _prevKeyState = key;
@@ -212,12 +227,20 @@ namespace Client {
         }
 
         private void HandleDraw() {
+            if (_map == null) {
+                return;
+            }
+
             for (int x = 0; x < _map.Height; x++) {
                 for (int y = 0; y < _map.Width; y++) {
                     Rectangle cellRect = new Rectangle(y * TILE_SIZE, x * TILE_SIZE, TILE_SIZE, TILE_SIZE);
                     _spriteBatch.Draw(_tileTexture, cellRect, Color.White);
                     _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, TILE_SIZE, 1), Color.Black);
                     _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, 1, TILE_SIZE), Color.Black);
+
+                    if (_map.Tiles[x, y] == TileType.Wall) {
+                        DrawCell(x, y, _wallTexture);
+                    }
                 }
             }
 

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Shared {
     public enum MessageType {
-        PlayerId,
+        InitPlayer,
         MovePlayer,
         RemovePlayer,
         PlaceBomb,
