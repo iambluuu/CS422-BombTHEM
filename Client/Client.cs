@@ -86,39 +86,55 @@ namespace Client {
         }
 
         private void ProcessServerMessage(NetworkMessage message) {
-            if (message.Type == MessageType.InitPlayer) {
-                _playerId = int.Parse(message.Data["playerId"]);
-                _map = Map.FromString(message.Data["map"]);
-                _graphics.PreferredBackBufferHeight = _map.Height * TILE_SIZE;
-                _graphics.PreferredBackBufferWidth = _map.Width * TILE_SIZE;
-                _graphics.ApplyChanges();
-            } else if (message.Type == MessageType.MovePlayer) {
-                int playerId = int.Parse(message.Data["playerId"]);
-                int x = int.Parse(message.Data["x"]);
-                int y = int.Parse(message.Data["y"]);
-                _map.SetPlayerPosition(playerId, x, y);
-            } else if (message.Type == MessageType.RemovePlayer) {
-                int playerId = int.Parse(message.Data["playerId"]);
-                _map.PlayerPositions.Remove(playerId);
-            } else if (message.Type == MessageType.PlaceBomb) {
-                int x = int.Parse(message.Data["x"]);
-                int y = int.Parse(message.Data["y"]);
-                BombType type = Enum.Parse<BombType>(message.Data["type"]);
-                _map.AddBomb(x, y, type);
-            } else if (message.Type == MessageType.ExplodeBomb) {
-                int x = int.Parse(message.Data["x"]);
-                int y = int.Parse(message.Data["y"]);
-                string[] positions = message.Data["positions"].Split(';');
-                int bombId = _map.Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
-                foreach (var pos in positions) {
-                    _map.Bombs[bombId].ExplosionPositions.Add(Position.FromString(pos));
-                }
-                _map.Bombs[bombId].ExplodeTime = DateTime.Now;
-            } else if (message.Type == MessageType.RespawnPlayer) {
-                int playerId = int.Parse(message.Data["playerId"]);
-                int x = int.Parse(message.Data["x"]);
-                int y = int.Parse(message.Data["y"]);
-                _map.SetPlayerPosition(playerId, x, y);
+            switch (message.Type) {
+                case MessageType.InitPlayer: {
+                        _playerId = int.Parse(message.Data["playerId"]);
+                        _map = Map.FromString(message.Data["map"]);
+                        _graphics.PreferredBackBufferHeight = _map.Height * TILE_SIZE;
+                        _graphics.PreferredBackBufferWidth = _map.Width * TILE_SIZE;
+                        _graphics.ApplyChanges();
+                        break;
+                    }
+                case MessageType.MovePlayer: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        _map.SetPlayerPosition(playerId, x, y);
+                        break;
+                    }
+                case MessageType.RemovePlayer: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        _map.PlayerPositions.Remove(playerId);
+                        break;
+                    }
+                case MessageType.PlaceBomb: {
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        BombType type = Enum.Parse<BombType>(message.Data["type"]);
+                        _map.AddBomb(x, y, type);
+                        break;
+                    }
+                case MessageType.ExplodeBomb: {
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        string[] positions = message.Data["positions"].Split(';');
+                        int bombId = _map.Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
+                        foreach (var pos in positions) {
+                            _map.Bombs[bombId].ExplosionPositions.Add(Position.FromString(pos));
+                        }
+                        _map.Bombs[bombId].ExplodeTime = DateTime.Now;
+                        break;
+                    }
+                case MessageType.RespawnPlayer: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        _map.SetPlayerPosition(playerId, x, y);
+                        break;
+                    }
+                default:
+                    Console.WriteLine($"Unknown message type: {message.Type}");
+                    break;
             }
         }
 

@@ -188,26 +188,29 @@ namespace Server {
 
         private void ProcessClientMessage(int playerId, NetworkMessage message) {
             switch (message.Type) {
-                case MessageType.MovePlayer:
-                    Direction direction = Enum.Parse<Direction>(message.Data["direction"]);
-                    _map.MovePlayer(playerId, direction);
-                    BroadcastToAll(new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
-                        { "playerId", playerId.ToString() },
-                        { "x", _map.GetPlayerPosition(playerId).X.ToString() },
-                        { "y", _map.GetPlayerPosition(playerId).Y.ToString() }
-                    }));
-                    break;
-                case MessageType.PlaceBomb:
-                    int x = int.Parse(message.Data["x"]);
-                    int y = int.Parse(message.Data["y"]);
-                    BombType type = Enum.Parse<BombType>(message.Data["type"]);
-                    _map.AddBomb(x, y, type);
-                    BroadcastToAll(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
-                        { "x", x.ToString() },
-                        { "y", y.ToString() },
-                        { "type", type.ToString() }
-                    }));
-                    break;
+                case MessageType.MovePlayer: {
+                        Direction direction = Enum.Parse<Direction>(message.Data["direction"]);
+                        _map.MovePlayer(playerId, direction);
+                        BroadcastToAll(new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
+                            { "playerId", playerId.ToString() },
+                            { "x", _map.GetPlayerPosition(playerId).X.ToString() },
+                            { "y", _map.GetPlayerPosition(playerId).Y.ToString() }
+                        }));
+                        break;
+                    }
+
+                case MessageType.PlaceBomb: {
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        BombType type = Enum.Parse<BombType>(message.Data["type"]);
+                        _map.AddBomb(x, y, type);
+                        BroadcastToAll(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
+                            { "x", x.ToString() },
+                            { "y", y.ToString() },
+                            { "type", type.ToString() }
+                        }));
+                        break;
+                    }
             }
         }
 
