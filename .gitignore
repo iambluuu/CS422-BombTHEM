@@ -3,6 +3,7 @@
 .editorconfig
 
 # Client
+Client/.config/
 Client/bin/
 Client/obj/
 Client/Content/bin/

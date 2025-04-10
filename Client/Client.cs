@@ -156,6 +156,8 @@ namespace Client {
         protected override void LoadContent() {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+            // _tileTexture = Content.Load<Texture2D>("TilesetField");
+
             _tileTexture = new Texture2D(GraphicsDevice, 1, 1);
             _tileTexture.SetData([Color.White]);
 
@@ -250,12 +252,12 @@ namespace Client {
             for (int x = 0; x < _map.Height; x++) {
                 for (int y = 0; y < _map.Width; y++) {
                     Rectangle cellRect = new Rectangle(y * TILE_SIZE, x * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    _spriteBatch.Draw(_tileTexture, cellRect, Color.White);
                     _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, TILE_SIZE, 1), Color.Black);
                     _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, 1, TILE_SIZE), Color.Black);
-
                     if (_map.Tiles[x, y] == TileType.Wall) {
                         DrawCell(x, y, _wallTexture);
+                    } else {
+                        DrawCell(x, y, _tileTexture);
                     }
                 }
             }

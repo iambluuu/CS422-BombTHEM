@@ -83,37 +83,103 @@ namespace Server {
         }
 
         private void generateRandomMap() {
-            Random rand = new Random();
-            _map = new Map(20, 15);
-            for (int i = 100; i > 0; i--) {
-                int x = rand.Next(0, _map.Height);
-                int y = rand.Next(0, _map.Width);
-                _map.SetTile(x, y, TileType.Wall);
+            int height = 19;
+            int width = 19;
+            _map = new Map(height, width);
+
+            if (Utils.RandomInt(0, 2) == 0) {
+                for (int i = 0; i < height; i++) {
+                    _map.SetTile(i, 0, TileType.Wall);
+                    _map.SetTile(i, width - 1, TileType.Wall);
+                }
+
+                for (int j = 1; j < width - 1; j++) {
+                    _map.SetTile(0, j, TileType.Wall);
+                    _map.SetTile(height - 1, j, TileType.Wall);
+                }
+
+                for (int i = 0; i < 100; i++) {
+                    int x = Utils.RandomInt(1, height - 1);
+                    int y = Utils.RandomInt(1, width - 1);
+                    _map.SetTile(x, y, TileType.Wall);
+                }
+            } else {
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++) {
+                        _map.SetTile(i, j, TileType.Wall);
+                    }
+                }
+
+                bool[,] visited = new bool[height, width];
+                List<(int x, int y, int fromX, int fromY)> walls = [];
+
+                int startX = Utils.RandomInt(height / 2) * 2 + 1;
+                int startY = Utils.RandomInt(width / 2) * 2 + 1;
+
+                visited[startX, startY] = true;
+                _map.SetTile(startX, startY, TileType.Empty);
+
+                foreach (var (dx, dy) in new[] { (2, 0), (-2, 0), (0, 2), (0, -2) }) {
+                    int nx = startX + dx;
+                    int ny = startY + dy;
+                    if (_map.IsInBounds(nx, ny)) {
+                        walls.Add((nx, ny, startX, startY));
+                    }
+                }
+
+                while (walls.Count > 0) {
+                    int index = Utils.RandomInt(walls.Count);
+                    var (x, y, fromX, fromY) = walls[index];
+                    walls.RemoveAt(index);
+
+                    if (!_map.IsInBounds(x, y) || visited[x, y]) continue;
+
+                    visited[x, y] = true;
+                    _map.SetTile(x, y, TileType.Empty);
+
+                    int wallX = (x + fromX) / 2;
+                    int wallY = (y + fromY) / 2;
+                    _map.SetTile(wallX, wallY, TileType.Empty);
+
+                    foreach (var (dx, dy) in new[] { (2, 0), (-2, 0), (0, 2), (0, -2) }) {
+                        int nx = x + dx;
+                        int ny = y + dy;
+                        if (_map.IsInBounds(nx, ny) && !visited[nx, ny]) {
+                            walls.Add((nx, ny, x, y));
+                        }
+                    }
+                }
             }
         }
 
         private void ProcessBombs() {
             while (true) {
                 lock (_lock) {
-                    List<Bomb> explodedBombs = [];
-                    foreach (var bomb in _map.Bombs) {
-                        if ((DateTime.Now - bomb.PlaceTime).TotalSeconds >= 2.0) {
+                    try {
+                        List<Bomb> explodedBombs = [];
+                        var bombsSnapshot = _map.Bombs.ToList();
+                        foreach (var bomb in bombsSnapshot) {
+                            if ((DateTime.Now - bomb.PlaceTime).TotalSeconds >= 2.0) {
+                                explodedBombs.Add(bomb);
+                            }
+                        }
+
+                        foreach (var bomb in explodedBombs) {
                             _map.ExplodeBomb(bomb.Position.X, bomb.Position.Y);
                             BroadcastToAll(new NetworkMessage(MessageType.ExplodeBomb, new Dictionary<string, string> {
                                 { "x", bomb.Position.X.ToString() },
                                 { "y", bomb.Position.Y.ToString() },
                                 { "positions", string.Join(";", bomb.ExplosionPositions) }
                             }));
-                            explodedBombs.Add(bomb);
-                        }
-                    }
 
-                    foreach (var bomb in explodedBombs) {
-                        foreach (var pos in bomb.ExplosionPositions) {
-                            CheckForPlayersInExplosion(pos.X, pos.Y);
-                        }
+                            foreach (var pos in bomb.ExplosionPositions) {
+                                CheckForPlayersInExplosion(pos.X, pos.Y);
+                            }
 
-                        _map.Bombs.Remove(bomb);
+                            _map.Bombs.Remove(bomb);
+                        }
+                    } catch (Exception ex) {
+                        Console.WriteLine($"Error processing bombs: {ex.Message}");
                     }
                 }
 
@@ -137,11 +203,10 @@ namespace Server {
         }
 
         private Position GenerateInitialPosition() {
-            Random rand = new();
             int x, y;
             do {
-                x = rand.Next(0, _map.Height);
-                y = rand.Next(0, _map.Width);
+                x = Utils.RandomInt(0, _map.Height);
+                y = Utils.RandomInt(0, _map.Width);
             } while (_map.GetTile(x, y) != TileType.Empty);
 
             return new Position(x, y);
