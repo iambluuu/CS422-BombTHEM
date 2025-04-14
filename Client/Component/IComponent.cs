@@ -18,10 +18,20 @@ namespace Client.Component {
     public abstract class IComponent {
         public bool IsVisible { get; set; } = true;
         public bool IsEnabled { get; set; } = true;
+        public bool IsFocused { get; set; } = false;
         public float Opacity { get; set; } = 1f; // for fade in/out
 
         public Vector2 Position { get; set; } = Vector2.Zero;
         public Vector2 Size { get; set; } = new Vector2(100, 100);
+        public void Center(Rectangle parentRect) {
+            if (parentRect == Rectangle.Empty) return;
+            if (parentRect.Width == 0 || parentRect.Height == 0) return;
+            if (Size == Vector2.Zero) return; // Avoid division by zero
+            if (parentRect.Width < Size.X || parentRect.Height < Size.Y) return; // Avoid negative position
+
+            Position = new Vector2(parentRect.X + (parentRect.Width - Size.X) / 2, parentRect.Y + (parentRect.Height - Size.Y) / 2);
+        }
+
         public virtual void Update(GameTime gameTime) { }
         public virtual void Draw(SpriteBatch spriteBatch) { }
         public virtual bool HitTest(Point mousePos) {
@@ -29,10 +39,15 @@ namespace Client.Component {
                    mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + Size.Y;
         }
 
+        public virtual void HandleInput(UIEvent uiEvent) { }
+
         public Action OnClick { get; set; } // Action to be invoked on click
-        public Action OnMouseOver { get; set; } // Action to be invoked on mouse over
-        public Action OnMouseOut { get; set; } // Action to be invoked on mouse out
         public Action OnMouseDown { get; set; } // Action to be invoked on mouse down
         public Action OnMouseUp { get; set; } // Action to be invoked on mouse up
+        public Action OnMouseEnter { get; set; } // Action to be invoked on mouse enter
+        public Action OnMouseLeave { get; set; } // Action to be invoked on mouse leave
+
+        public virtual void OnFocus() { }
+        public virtual void OnUnfocus() { }
     }
 }

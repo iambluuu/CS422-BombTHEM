@@ -1,11 +1,13 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System;
 using System.Collections.Generic;
 
 namespace Client.Component {
     public class UIManager {
         private List<List<IComponent>> _components = new();
+        private IComponent _focusedComponent = null!;
 
         public void AddComponent(IComponent component, int layer = 0) {
             while (_components.Count <= layer) {
@@ -30,11 +32,7 @@ namespace Client.Component {
                 var layer = _components[i];
                 foreach (var component in layer) {
                     if (component.IsVisible && component.IsEnabled) {
-                        if (component.HitTest(mousePos)) {
-                            component.OnMouseOver?.Invoke();
-                        } else {
-                            component.OnMouseOut?.Invoke();
-                        }
+                        component.Update(gameTime);
                     }
                 }
             }
@@ -51,16 +49,36 @@ namespace Client.Component {
             }
         }
 
-        public void HandleMouseClick(Point mousePos) {
-            for (int i = _components.Count - 1; i >= 0; i--) {
-                var layer = _components[i];
-                foreach (var component in layer) {
-                    if (component.IsVisible && component.IsEnabled && component.HitTest(mousePos)) {
-                        component.OnClick?.Invoke();
-                        return;
+        public void DispatchEvent(UIEvent e) {
+            if (e.Type == UIEventType.MouseClick) {
+                for (int i = _components.Count - 1; i >= 0; i--) {
+                    var layer = _components[i];
+                    foreach (var component in layer) {
+                        if (component.IsVisible && component.IsEnabled && component.HitTest(e.MousePosition)) {
+                            SetFocus(component);
+                            component.HandleInput(e);
+                            return;
+                        }
                     }
                 }
+
+                ClearFocus();
+            } else if (e.Type == UIEventType.KeyPress) {
+                _focusedComponent?.HandleInput(e);
             }
+        }
+
+        private void ClearFocus() {
+            SetFocus(null);
+        }
+
+        private void SetFocus(IComponent component) {
+            if (_focusedComponent != null && _focusedComponent != component) {
+                _focusedComponent?.OnUnfocus();
+            }
+
+            _focusedComponent = component;
+            _focusedComponent?.OnFocus();
         }
     }
 }

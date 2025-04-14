@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using SharpDX.Direct3D;
 using System;
 
 namespace Client.Component {
@@ -10,20 +11,22 @@ namespace Client.Component {
         public Texture2D? Icon { get; set; }
         public string? Text { get; set; } = string.Empty;
 
-        public SpriteFont? Font { get; set; } = null;
+        public SpriteFont? Font { get; set; } = null!;
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleCenter;
         public ContentAlignment IconAlignment { get; set; } = ContentAlignment.MiddleLeft;
 
         public int Padding { get; set; } = 5;
 
         public Color TextColor { get; set; } = Color.White;
+        public Vector2 TextSize { get; set; } = Vector2.Zero;
         public Color BackgroundColor { get; set; } = Color.White;
 
         public Button(
-            Texture2D texture,
-            SpriteFont font,
-            Vector2 position,
-            Vector2 size,
+            Vector2? position,
+            Vector2? size,
+            Action? onClick = null,
+            Texture2D? texture = null,
+            SpriteFont? font = default,
             string? text = null,
             Texture2D? icon = null,
             ContentAlignment textAlignment = ContentAlignment.MiddleCenter,
@@ -34,8 +37,10 @@ namespace Client.Component {
         ) {
             Texture = texture;
             Font = font;
-            Position = position;
-            Size = size;
+            Position = position ?? Vector2.Zero;
+            Size = size ?? new Vector2(100, 50);
+
+            OnClick = onClick;
 
             Text = text;
             Icon = icon;
@@ -51,6 +56,16 @@ namespace Client.Component {
         public override void Draw(SpriteBatch spriteBatch) {
             if (!IsVisible) return;
 
+            if (Texture == null) {
+                // Draw a default rectangle if no texture is provided
+                Texture = new Texture2D(spriteBatch.GraphicsDevice, (int)Size.X, (int)Size.Y);
+                Color[] data = new Color[(int)(Size.X * Size.Y)];
+                for (int i = 0; i < data.Length; ++i) {
+                    data[i] = BackgroundColor;
+                }
+                Texture.SetData(data);
+            }
+
             spriteBatch.Draw(Texture, Position, BackgroundColor);
 
             if (Icon != null) {
@@ -60,28 +75,37 @@ namespace Client.Component {
 
             if (!string.IsNullOrEmpty(Text) && Font != null) {
                 Vector2 textSize = Font.MeasureString(Text);
+                if (TextSize == Vector2.Zero) {
+                    TextSize = textSize;
+                }
+                float scale = Math.Min((Size.X - Padding * 2) / textSize.X, (Size.Y - Padding * 2) / textSize.Y);
+                if (scale < 0.1f) scale = 0.1f; // Prevent too small scale
+                if (scale > 1f) scale = 1f; // Prevent too large scale
+                textSize *= scale;
+                // Adjust text size based on icon size and padding
                 Vector2 textPosition = GetAlignedPosition(TextAlignment, textSize, Size);
-                spriteBatch.DrawString(Font, Text, textPosition, TextColor);
+                spriteBatch.DrawString(Font, Text, textPosition, TextColor, scale: scale, origin: Vector2.Zero, rotation: 0f, effects: SpriteEffects.None, layerDepth: 0f);
             }
         }
 
         public override void Update(GameTime gameTime) {
             if (!IsVisible) return;
+        }
 
-            MouseState mouseState = Mouse.GetState();
-            Point mousePos = new(mouseState.X, mouseState.Y);
+        public override void HandleInput(UIEvent uIEvent) {
+            if (!IsEnabled) return;
 
-            if (HitTest(mousePos)) {
-                if (mouseState.LeftButton == ButtonState.Pressed) {
+            if (HitTest(Mouse.GetState().Position)) {
+                if (Mouse.GetState().LeftButton == ButtonState.Pressed) {
                     OnMouseDown?.Invoke();
-                } else if (mouseState.LeftButton == ButtonState.Released) {
+                } else if (Mouse.GetState().LeftButton == ButtonState.Released) {
                     OnMouseUp?.Invoke();
                     OnClick?.Invoke();
                 } else {
-                    OnMouseOver?.Invoke();
+                    OnMouseEnter?.Invoke();
                 }
             } else {
-                OnMouseOut?.Invoke();
+                OnMouseLeave?.Invoke();
             }
         }
 
