@@ -1,5 +1,27 @@
+using System.Runtime.InteropServices;
+
+
 namespace Shared {
     public static class Utils {
+        [DllImport("User32.dll")]
+        private static extern uint GetDpiForWindow(IntPtr hWnd);
+
+        public static float GetDPI(IntPtr windowHandle) {
+            return GetDpiForWindow(windowHandle);
+        }
+
+        public static float GetDPI() {
+            return GetDPI(IntPtr.Zero);
+        }
+
+        public static float ToPixels(float points) {
+            return points * GetDPI() / 72f;
+        }
+
+        public static float ToPixels(float points, IntPtr windowHandle) {
+            return points * 72f / GetDPI(windowHandle);
+        }
+
         private static readonly Random rng = new(DateTime.Now.Millisecond);
 
         public static int RandomInt(int max) {
