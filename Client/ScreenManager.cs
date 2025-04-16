@@ -6,10 +6,13 @@ using Microsoft.Xna.Framework.Input;
 
 using System;
 using System.Collections.Generic;
+using System.Security.Principal;
 
 namespace Client {
     public enum ScreenName {
         MainMenu,
+        LobbyScreen,
+        JoinGameScreen,
         GameScreen,
         PauseMenu,
         SettingsMenu
@@ -81,16 +84,12 @@ namespace Client {
             switch (screenType) {
                 case ScreenName.MainMenu:
                     return new MainMenuScreen();
-                // case ScreenName.Options:
-                //     return new OptionsScreen();
-                // case ScreenName.Gameplay:
-                //     return new GameplayScreen();
-                // case ScreenName.Pause:
-                //     return new PauseScreen();
-                // case ScreenName.GameOver:
-                //     return new GameOverScreen();
-                // case ScreenName.Credits:
-                //     return new CreditsScreen();
+                // case ScreenName.LobbyScreen:
+                //     return new LobbyScreen();
+                case ScreenName.JoinGameScreen:
+                    return new JoinGameScreen();
+                // case ScreenName.GameScreen:
+                //     return new GameScreen();
                 default:
                     throw new ArgumentException($"Unknown screen type: {screenType}");
             }
@@ -110,21 +109,22 @@ namespace Client {
 
         private void PushScreen(GameScreen screen) {
             // Optionally deactivate the current top screen
-            if (screenStack.Count > 0 && screen.IsExclusive) {
+            if (screenStack.Count > 0) {
                 var currentScreen = screenStack.Peek();
-                currentScreen.IsActive = false;
-                currentScreen.IsVisible = false;
+                if (screen.IsExclusive) {
+                    currentScreen.IsVisible = false;
+                    currentScreen.Deactivate();
+                }
             }
-
-            screen.ScreenManager = this;
 
             // Only initialize if it's a new screen
             if (!screen.IsInitialized) {
+                screen.ScreenManager = this;
                 screen.LoadContent();
                 screen.Initialize();
                 screen.IsInitialized = true;
             }
-
+            screen.Activate();
             screenStack.Push(screen);
         }
 
@@ -138,8 +138,7 @@ namespace Client {
                 // Reactivate the new top screen if there is one
                 if (screenStack.Count > 0) {
                     var currentScreen = screenStack.Peek();
-                    currentScreen.IsActive = true;
-                    currentScreen.IsVisible = true;
+                    currentScreen.Activate();
                 }
             }
         }
@@ -179,6 +178,17 @@ namespace Client {
 
         public virtual void Initialize() { }
 
+        public virtual void Activate() {
+            IsActive = true;
+            IsVisible = true;
+            MainGame.Instance.Window.TextInput += DispatchTextInput;
+        }
+
+        public virtual void Deactivate() {
+            IsActive = false;
+            MainGame.Instance.Window.TextInput -= DispatchTextInput;
+        }
+
         public virtual void LoadContent() {
             content = new ContentManager(ScreenManager.Content.ServiceProvider, "Content");
         }
@@ -212,6 +222,12 @@ namespace Client {
             // Update previous states
             previousMouseState = mouseState;
             previousKeyboardState = keyboardState;
+        }
+
+        private void DispatchTextInput(object sender, TextInputEventArgs e) {
+            // Handle text input event
+            UIEvent textInputEvent = new(UIEventType.TextInput, character: e.Character);
+            uiManager.DispatchEvent(textInputEvent);
         }
 
         public virtual void Draw(GameTime gameTime, SpriteBatch spriteBatch) {

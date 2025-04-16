@@ -79,8 +79,7 @@ namespace Client.Component {
                     TextSize = textSize;
                 }
                 float scale = Math.Min((Size.X - Padding * 2) / textSize.X, (Size.Y - Padding * 2) / textSize.Y);
-                if (scale < 0.1f) scale = 0.1f; // Prevent too small scale
-                if (scale > 1f) scale = 1f; // Prevent too large scale
+                scale = Math.Clamp(scale, 0.2f, 1f); // Ensure scale is within a reasonable range
                 textSize *= scale;
                 // Adjust text size based on icon size and padding
                 Vector2 textPosition = GetAlignedPosition(TextAlignment, textSize, Size);

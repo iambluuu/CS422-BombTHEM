@@ -16,28 +16,39 @@ namespace Client {
                 Padding = 20,
             };
             layout.Center(new Rectangle(0, 0, MainGame.Instance.GraphicsDevice.Viewport.Width, MainGame.Instance.GraphicsDevice.Viewport.Height));
-            var startButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: StartGame) {
-                Text = "Start Game",
+            var createGameButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: CreateGame) {
+                Text = "Create Game",
                 Font = content.Load<SpriteFont>("Font/DefaultFont"),
             };
-            var exitButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: ExitGame) {
+            var exitButton = new Button(position: new Vector2(0, 0), size: new Vector2(0, 0), onClick: ExitGame) {
                 Text = "Exit",
                 Font = content.Load<SpriteFont>("Font/DefaultFont"),
             };
+            var joinGameButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: JoinGame) {
+                Text = "Join Game",
+                Font = content.Load<SpriteFont>("Font/DefaultFont"),
+            };
 
-            layout.AddComponent(startButton);
+            layout.AddComponent(createGameButton);
+            layout.AddComponent(joinGameButton);
             layout.AddComponent(exitButton);
             uiManager.AddComponent(layout, 0);
         }
 
-        private void StartGame() {
+        private void CreateGame() {
             // Logic to start the game
-            Console.WriteLine("Starting game...");
+            Console.WriteLine("Creating game...");
         }
 
         private void ExitGame() {
             // Logic to exit the game
             Console.WriteLine("Exiting game...");
+        }
+
+        private void JoinGame() {
+            // Logic to join a game
+            Console.WriteLine("Joining game...");
+            ScreenManager.Instance.NavigateTo(ScreenName.JoinGameScreen);
         }
 
         public override void Update(GameTime gameTime) {

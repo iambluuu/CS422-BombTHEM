@@ -18,6 +18,7 @@ namespace Client.Component {
         Drag,
         Drop,
         Scroll,
+        TextInput,
     }
 
     public class UIEvent {

@@ -1,5 +1,8 @@
+using Client.Component;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Shared;
+using SharpDX.DXGI;
 
 namespace Client {
     public class MainGame : Game {
@@ -8,11 +11,6 @@ namespace Client {
         private ScreenManager _screenManager;
 
         public static MainGame Instance { get; private set; }
-
-        public const int ScreenWidth = 1280;
-        public const int ScreenHeight = 720;
-        public const int ScreenWidthHalf = ScreenWidth / 2;
-        public const int ScreenHeightHalf = ScreenHeight / 2;
 
         public MainGame() {
             _graphics = new GraphicsDeviceManager(this);
@@ -25,6 +23,7 @@ namespace Client {
             Instance = this;
             _screenManager = new ScreenManager(this);
             _screenManager.NavigateTo(ScreenName.MainMenu);
+
         }
 
         protected override void Update(GameTime gameTime) {

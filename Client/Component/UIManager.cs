@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using System.Security.Principal;
 
 namespace Client.Component {
     public class UIManager {
@@ -56,6 +57,7 @@ namespace Client.Component {
                     foreach (var component in layer) {
                         if (component.IsVisible && component.IsEnabled && component.HitTest(e.MousePosition)) {
                             SetFocus(component);
+
                             component.HandleInput(e);
                             return;
                         }
@@ -63,7 +65,7 @@ namespace Client.Component {
                 }
 
                 ClearFocus();
-            } else if (e.Type == UIEventType.KeyPress) {
+            } else if (e.Type == UIEventType.TextInput || e.Type == UIEventType.KeyPress) {
                 _focusedComponent?.HandleInput(e);
             }
         }

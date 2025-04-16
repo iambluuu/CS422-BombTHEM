@@ -109,7 +109,7 @@ namespace Client.Component {
                     }
                 }
                 ClearFocus();
-            } else if (uiEvent.Type == UIEventType.KeyPress) {
+            } else if (uiEvent.Type == UIEventType.KeyPress || uiEvent.Type == UIEventType.TextInput) {
                 _focusedComponent?.HandleInput(uiEvent);
             }
         }
@@ -125,6 +125,17 @@ namespace Client.Component {
 
             _focusedComponent = component;
             _focusedComponent?.OnFocus();
+        }
+
+        public override void OnFocus() {
+            IsFocused = true;
+        }
+
+        public override void OnUnfocus() {
+            IsFocused = false;
+            foreach (var component in Components) {
+                component.OnUnfocus();
+            }
         }
     }
 }

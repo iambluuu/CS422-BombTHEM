@@ -47,7 +47,7 @@ namespace Client.Component {
         public Action OnMouseEnter { get; set; } // Action to be invoked on mouse enter
         public Action OnMouseLeave { get; set; } // Action to be invoked on mouse leave
 
-        public virtual void OnFocus() { }
-        public virtual void OnUnfocus() { }
+        public virtual void OnFocus() { IsFocused = true; }
+        public virtual void OnUnfocus() { IsFocused = false; }
     }
 }
