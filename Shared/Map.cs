@@ -11,8 +11,8 @@ namespace Shared {
     }
 
     public enum Direction {
-        Up,
         Down,
+        Up,
         Left,
         Right,
         None,
@@ -30,11 +30,11 @@ namespace Shared {
         public Position Move(Direction direction) {
             Position newPosition = new Position(X, Y);
             switch (direction) {
-                case Direction.Up:
-                    newPosition.X--;
-                    break;
                 case Direction.Down:
                     newPosition.X++;
+                    break;
+                case Direction.Up:
+                    newPosition.X--;
                     break;
                 case Direction.Left:
                     newPosition.Y--;
@@ -98,7 +98,7 @@ namespace Shared {
 
         public void SetTile(int x, int y, TileType tileType) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.SetTile: Coordinate ({x}, {y}) is out of bounds");
             }
 
             Tiles[x, y] = tileType;
@@ -106,15 +106,16 @@ namespace Shared {
 
         public TileType GetTile(int x, int y) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.GetTile: Coordinate ({x}, {y}) is out of bounds");
             }
 
             return Tiles[x, y];
         }
 
+
         public void SetPlayerPosition(int playerId, int x, int y) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.SetPlayerPosition: Coordinate ({x}, {y}) is out of bounds");
             }
 
             PlayerPositions[playerId] = new Position(x, y);
@@ -122,7 +123,7 @@ namespace Shared {
 
         public Position GetPlayerPosition(int playerId) {
             if (!PlayerPositions.ContainsKey(playerId)) {
-                throw new KeyNotFoundException($"Player ID {playerId} not found");
+                throw new KeyNotFoundException($"Map.GetPlayerPosition: Player ID {playerId} not found");
             }
 
             return PlayerPositions[playerId];
@@ -130,7 +131,7 @@ namespace Shared {
 
         public void MovePlayer(int playerId, Direction direction) {
             if (!PlayerPositions.ContainsKey(playerId)) {
-                throw new KeyNotFoundException($"Player ID {playerId} not found");
+                throw new KeyNotFoundException($"Map.MovePlayer: Player ID {playerId} not found");
             }
 
             Position newPosition = PlayerPositions[playerId].Move(direction);
@@ -139,7 +140,7 @@ namespace Shared {
 
         public void MovePlayer(int playerId, int newX, int newY) {
             if (!PlayerPositions.ContainsKey(playerId)) {
-                throw new KeyNotFoundException($"Player ID {playerId} not found");
+                throw new KeyNotFoundException($"Map.MovePlayer: Player ID {playerId} not found");
             }
 
             if (!IsInBounds(newX, newY)) {
@@ -155,7 +156,7 @@ namespace Shared {
 
         public bool HasBomb(int x, int y) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.HasBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
             foreach (var bomb in Bombs) {
@@ -169,7 +170,7 @@ namespace Shared {
 
         public void AddBomb(int x, int y, BombType bombType) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.AddBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
             if (HasBomb(x, y)) {
@@ -181,12 +182,12 @@ namespace Shared {
 
         public void RemoveBomb(int x, int y) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.RemoveBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
             int bombId = Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
             if (bombId < 0) {
-                throw new KeyNotFoundException($"No bomb found at ({x}, {y})");
+                throw new KeyNotFoundException($"Map.RemoveBomb: No bomb found at ({x}, {y})");
             }
 
             RemoveBomb(bombId);
@@ -194,7 +195,7 @@ namespace Shared {
 
         public void RemoveBomb(int bombId) {
             if (bombId < 0 || bombId >= Bombs.Count) {
-                throw new ArgumentOutOfRangeException($"Bomb ID {bombId} is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.RemoveBomb: Bomb ID {bombId} is out of bounds");
             }
 
             Bombs.RemoveAt(bombId);
@@ -202,12 +203,12 @@ namespace Shared {
 
         public void ExplodeBomb(int x, int y) {
             if (!IsInBounds(x, y)) {
-                throw new ArgumentOutOfRangeException($"Coordinate ({x}, {y}) is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.ExplodeBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
             int bombId = Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
             if (bombId < 0) {
-                throw new KeyNotFoundException($"No bomb found at ({x}, {y})");
+                throw new KeyNotFoundException($"Map.ExplodeBomb: No bomb found at ({x}, {y})");
             }
 
             ExplodeBomb(bombId);
@@ -215,12 +216,12 @@ namespace Shared {
 
         public void ExplodeBomb(int bombId) {
             if (bombId < 0 || bombId >= Bombs.Count) {
-                throw new ArgumentOutOfRangeException($"Bomb ID {bombId} is out of bounds");
+                throw new ArgumentOutOfRangeException($"Map.ExplodeBomb: Bomb ID {bombId} is out of bounds");
             }
 
             var bomb = Bombs[bombId];
             if (bomb.ExplosionPositions.Count > 0) {
-                throw new InvalidOperationException($"Bomb {bombId} has already exploded");
+                throw new InvalidOperationException($"Map.ExplodeBomb: Bomb {bombId} has already exploded");
             }
 
             List<Position> directions = [
