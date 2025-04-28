@@ -10,6 +10,13 @@ namespace Shared {
         Special,
     }
 
+    public enum PlayerSkin {
+        NinjaBlue,
+        NinjaGreen,
+        NinjaRed,
+        NinjaYellow,
+    }
+
     public enum Direction {
         Down,
         Up,

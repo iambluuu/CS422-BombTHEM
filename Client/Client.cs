@@ -56,7 +56,7 @@ namespace Client {
                 _receiveThread = new Thread(ReceiveMessages);
                 _receiveThread.IsBackground = true;
                 _receiveThread.Start();
-                Console.WriteLine("Connected to server.");
+                Console.WriteLine("Connected to server");
             } catch (Exception ex) {
                 Console.WriteLine($"Connection failed: {ex.Message}");
                 _connected = false;
@@ -89,7 +89,7 @@ namespace Client {
 
         private void ProcessServerMessage(NetworkMessage message) {
             switch (message.Type) {
-                case MessageType.InitPlayer: {
+                case MessageType.InitMap: {
                         _playerId = int.Parse(message.Data["playerId"]);
                         _map = Map.FromString(message.Data["map"]);
 
@@ -136,6 +136,20 @@ namespace Client {
                         }
                     }
                     break;
+                case MessageType.InitPlayer: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        int skinId = int.Parse(message.Data["skinId"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        _map.SetPlayerPosition(playerId, x, y);
+
+                        PlayerNode playerNode = new(TextureHolder.Get($"Texture/Character/{(PlayerSkin)skinId}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
+                        };
+                        _playerLayer.AttachChild(playerNode);
+                        _playerNodes.Add(playerId, playerNode);
+                    }
+                    break;
                 case MessageType.MovePlayer: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         int x = int.Parse(message.Data["x"]);
@@ -143,15 +157,7 @@ namespace Client {
                         Direction direction = Enum.Parse<Direction>(message.Data["d"]);
                         _map.SetPlayerPosition(playerId, x, y);
 
-                        if (_playerNodes.ContainsKey(playerId)) {
-                            _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction, 0.2f);
-                        } else {
-                            PlayerNode playerNode = new(TextureHolder.Get("Texture/Character/NinjaBomb"), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                                Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
-                            };
-                            _playerLayer.AttachChild(playerNode);
-                            _playerNodes.Add(playerId, playerNode);
-                        }
+                        _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction, 0.2f);
                     }
                     break;
                 case MessageType.RemovePlayer: {

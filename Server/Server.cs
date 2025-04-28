@@ -52,15 +52,16 @@ namespace Server {
 
                     Console.WriteLine($"Client connected: Player {playerId}");
 
-                    SendToClient(playerId, new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
+                    SendToClient(playerId, new NetworkMessage(MessageType.InitMap, new Dictionary<string, string> {
                         { "playerId", playerId.ToString() },
                         { "map", _map.ToString() },
                     }));
 
                     foreach (var player in _map.PlayerPositions) {
                         if (player.Key != playerId) {
-                            SendToClient(playerId, new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
+                            SendToClient(playerId, new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
                                 { "playerId", player.Key.ToString() },
+                                { "skinId", (player.Key % Enum.GetNames<PlayerSkin>().Length).ToString() },
                                 { "x", _map.GetPlayerPosition(player.Key).X.ToString() },
                                 { "y", _map.GetPlayerPosition(player.Key).Y.ToString() },
                                 { "d", Direction.Down.ToString() }
@@ -68,8 +69,9 @@ namespace Server {
                         }
                     }
 
-                    BroadcastToAll(new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
+                    BroadcastToAll(new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
                         { "playerId", playerId.ToString() },
+                        { "skinId", (playerId % Enum.GetNames<PlayerSkin>().Length).ToString() },
                         { "x", _map.GetPlayerPosition(playerId).X.ToString() },
                         { "y", _map.GetPlayerPosition(playerId).Y.ToString() },
                         { "d", Direction.Down.ToString() }
