@@ -13,26 +13,20 @@ namespace Client {
     public class ClientGame : Game {
         private GraphicsDeviceManager _graphics;
         private SpriteBatch _spriteBatch;
+        private SceneNode _sceneGraph;
+        private SceneNode _mapLayer, _bombLayer, _playerLayer;
 
         private const int TILE_SIZE = 48;
 
-        private Texture2D _tileTexture;
-        private Texture2D _wallTexture;
-        private Texture2D _gridLineTexture;
-        private Texture2D _playerTexture;
-        private Texture2D _otherPlayerTexture;
-        private Texture2D _bombTexture;
-        private Texture2D _explosionTexture;
-
         private int _playerId = -1;
         private Map _map = null;
+        private readonly Dictionary<int, PlayerNode> _playerNodes = [];
+        private readonly Dictionary<(int, int), SpriteNode> _bombSprites = [];
 
         private TcpClient _client;
         private NetworkStream _stream;
         private Thread _receiveThread;
         private bool _connected = false;
-
-        private KeyboardState _prevKeyState;
 
         public ClientGame() {
             _graphics = new GraphicsDeviceManager(this);
@@ -41,6 +35,14 @@ namespace Client {
         }
 
         protected override void Initialize() {
+            _sceneGraph = new SceneNode();
+            _mapLayer = new SceneNode();
+            _bombLayer = new SceneNode();
+            _playerLayer = new SceneNode();
+            _sceneGraph.AttachChild(_mapLayer);
+            _sceneGraph.AttachChild(_bombLayer);
+            _sceneGraph.AttachChild(_playerLayer);
+
             ConnectToServer();
             base.Initialize();
         }
@@ -54,7 +56,7 @@ namespace Client {
                 _receiveThread = new Thread(ReceiveMessages);
                 _receiveThread.IsBackground = true;
                 _receiveThread.Start();
-                Console.WriteLine("Connected to server.");
+                Console.WriteLine("Connected to server");
             } catch (Exception ex) {
                 Console.WriteLine($"Connection failed: {ex.Message}");
                 _connected = false;
@@ -87,51 +89,117 @@ namespace Client {
 
         private void ProcessServerMessage(NetworkMessage message) {
             switch (message.Type) {
-                case MessageType.InitPlayer: {
+                case MessageType.InitMap: {
                         _playerId = int.Parse(message.Data["playerId"]);
                         _map = Map.FromString(message.Data["map"]);
+
                         _graphics.PreferredBackBufferHeight = _map.Height * TILE_SIZE;
                         _graphics.PreferredBackBufferWidth = _map.Width * TILE_SIZE;
                         _graphics.ApplyChanges();
-                        break;
+
+                        (int, int)[] directions = [
+                            new(-1, 0),
+                            new(1, 0),
+                            new(0, -1),
+                            new(0, 1),
+                        ];
+                        for (int i = 0; i < _map.Height; i++) {
+                            for (int j = 0; j < _map.Width; j++) {
+                                SpriteNode cellSprite = new(TextureHolder.Get("Texture/Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                                    Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
+                                };
+                                _mapLayer.AttachChild(cellSprite);
+
+                                if (_map.GetTile(i, j) != TileType.Wall) {
+                                    continue;
+                                }
+
+                                bool[,] localArea = new bool[3, 3];
+                                for (int x = -1; x <= 1; x++) {
+                                    for (int y = -1; y <= 1; y++) {
+                                        int newX = i + x;
+                                        int newY = j + y;
+                                        if (_map.IsInBounds(newX, newY)) {
+                                            localArea[x + 1, y + 1] = _map.GetTile(newX, newY) == TileType.Wall;
+                                        } else {
+                                            localArea[x + 1, y + 1] = false;
+                                        }
+                                    }
+                                }
+
+                                (int, int) p = BitmaskReferences.GetPosition(localArea);
+                                SpriteNode wallSprite = new(TextureHolder.Get("Texture/Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                                    Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
+                                };
+                                _mapLayer.AttachChild(wallSprite);
+                            }
+                        }
                     }
+                    break;
+                case MessageType.InitPlayer: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        int skinId = int.Parse(message.Data["skinId"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        _map.SetPlayerPosition(playerId, x, y);
+
+                        PlayerNode playerNode = new(TextureHolder.Get($"Texture/Character/{(PlayerSkin)skinId}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
+                        };
+                        _playerLayer.AttachChild(playerNode);
+                        _playerNodes.Add(playerId, playerNode);
+                    }
+                    break;
                 case MessageType.MovePlayer: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
+                        Direction direction = Enum.Parse<Direction>(message.Data["d"]);
                         _map.SetPlayerPosition(playerId, x, y);
-                        break;
+
+                        _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction, 0.2f);
                     }
+                    break;
                 case MessageType.RemovePlayer: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         _map.PlayerPositions.Remove(playerId);
-                        break;
                     }
+                    break;
                 case MessageType.PlaceBomb: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         BombType type = Enum.Parse<BombType>(message.Data["type"]);
                         _map.AddBomb(x, y, type);
-                        break;
+                        _bombSprites.Add((x, y), new(TextureHolder.Get("Texture/Item/Dynamite"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
+                        });
+                        _bombLayer.AttachChild(_bombSprites[(x, y)]);
                     }
+                    break;
                 case MessageType.ExplodeBomb: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         string[] positions = message.Data["positions"].Split(';');
                         int bombId = _map.Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
                         foreach (var pos in positions) {
-                            _map.Bombs[bombId].ExplosionPositions.Add(Position.FromString(pos));
+                            _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Texture/Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                                Position = new Vector2(Position.FromString(pos).Y * TILE_SIZE, Position.FromString(pos).X * TILE_SIZE)
+                            });
                         }
-                        _map.Bombs[bombId].ExplodeTime = DateTime.Now;
-                        break;
+                        _map.RemoveBomb(x, y);
+                        _bombLayer.DetachChild(_bombSprites[(x, y)]);
+                        _bombSprites.Remove((x, y));
                     }
+                    break;
                 case MessageType.RespawnPlayer: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
+                        Direction direction = Enum.Parse<Direction>(message.Data["d"]);
                         _map.SetPlayerPosition(playerId, x, y);
-                        break;
+                        _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction, 0.2f);
                     }
+                    break;
                 default:
                     Console.WriteLine($"Unknown message type: {message.Type}");
                     break;
@@ -155,45 +223,29 @@ namespace Client {
 
         protected override void LoadContent() {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-
-            // _tileTexture = Content.Load<Texture2D>("TilesetField");
-
-            _tileTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _tileTexture.SetData([Color.White]);
-
-            _wallTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _wallTexture.SetData([Color.Black]);
-
-            _gridLineTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _gridLineTexture.SetData([Color.Black]);
-
-            _playerTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _playerTexture.SetData([Color.Blue]);
-
-            _otherPlayerTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _otherPlayerTexture.SetData([Color.Green]);
-
-            _bombTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _bombTexture.SetData([Color.Red]);
-
-            _explosionTexture = new Texture2D(GraphicsDevice, 1, 1);
-            _explosionTexture.SetData([Color.Orange]);
+            TextureHolder.SetContentManager(Content);
         }
 
         protected override void Update(GameTime gameTime) {
-            HandleUpdate();
+            HandleUpdate(gameTime);
             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime) {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
-            _spriteBatch.Begin();
-            HandleDraw();
+            GraphicsDevice.Clear(Color.White);
+            _spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            try {
+                HandleDraw();
+            } catch (Exception ex) {
+                Console.WriteLine($"Error during draw: {ex.Message}");
+            }
             _spriteBatch.End();
             base.Draw(gameTime);
         }
 
-        private void HandleUpdate() {
+        private void HandleUpdate(GameTime gameTime) {
+            _sceneGraph.UpdateTree(gameTime);
+
             if (_map == null) {
                 return;
             }
@@ -202,14 +254,16 @@ namespace Client {
 
             if (true) {
                 Direction direction = Direction.None;
-                if (IsKeyPressed(key, Keys.Up)) {
-                    direction = Direction.Up;
-                } else if (IsKeyPressed(key, Keys.Down)) {
-                    direction = Direction.Down;
-                } else if (IsKeyPressed(key, Keys.Left)) {
-                    direction = Direction.Left;
-                } else if (IsKeyPressed(key, Keys.Right)) {
-                    direction = Direction.Right;
+                if (_playerNodes.ContainsKey(_playerId) && !_playerNodes[_playerId].Moving) {
+                    if (key.IsKeyDown(Keys.Up)) {
+                        direction = Direction.Up;
+                    } else if (key.IsKeyDown(Keys.Down)) {
+                        direction = Direction.Down;
+                    } else if (key.IsKeyDown(Keys.Left)) {
+                        direction = Direction.Left;
+                    } else if (key.IsKeyDown(Keys.Right)) {
+                        direction = Direction.Right;
+                    }
                 }
 
                 if (direction != Direction.None) {
@@ -220,13 +274,13 @@ namespace Client {
             }
 
             if (true) {
-                if (IsKeyPressed(key, Keys.Space)) {
+                if (key.IsKeyDown(Keys.Space)) {
                     SendMessage(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
                         { "x", _map.GetPlayerPosition(_playerId).X.ToString() },
                         { "y", _map.GetPlayerPosition(_playerId).Y.ToString() },
                         { "type", BombType.Normal.ToString() },
                     }));
-                } else if (IsKeyPressed(key, Keys.Enter)) {
+                } else if (key.IsKeyDown(Keys.Enter)) {
                     SendMessage(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
                         { "x", _map.GetPlayerPosition(_playerId).X.ToString() },
                         { "y", _map.GetPlayerPosition(_playerId).Y.ToString() },
@@ -234,66 +288,10 @@ namespace Client {
                     }));
                 }
             }
-
-            _prevKeyState = key;
-
-            for (int i = _map.Bombs.Count - 1; i >= 0; i--) {
-                if (_map.Bombs[i].ExplodeTime != DateTime.MinValue && (DateTime.Now - _map.Bombs[i].ExplodeTime).TotalSeconds >= 0.5) {
-                    _map.Bombs.RemoveAt(i);
-                }
-            }
         }
 
         private void HandleDraw() {
-            if (_map == null) {
-                return;
-            }
-
-            for (int x = 0; x < _map.Height; x++) {
-                for (int y = 0; y < _map.Width; y++) {
-                    Rectangle cellRect = new Rectangle(y * TILE_SIZE, x * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                    _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, TILE_SIZE, 1), Color.Black);
-                    _spriteBatch.Draw(_gridLineTexture, new Rectangle(cellRect.X, cellRect.Y, 1, TILE_SIZE), Color.Black);
-                    if (_map.Tiles[x, y] == TileType.Wall) {
-                        DrawCell(x, y, _wallTexture);
-                    } else {
-                        DrawCell(x, y, _tileTexture);
-                    }
-                }
-            }
-
-            foreach (var bomb in _map.Bombs) {
-                if (bomb.ExplosionPositions.Count == 0) {
-                    DrawCell(bomb.Position.X, bomb.Position.Y, _bombTexture);
-                }
-            }
-
-            foreach (var bomb in _map.Bombs) {
-                if (bomb.ExplosionPositions.Count > 0) {
-                    foreach (var explosion in bomb.ExplosionPositions) {
-                        DrawCell(explosion.X, explosion.Y, _explosionTexture);
-                    }
-                }
-            }
-
-            foreach (var player in _map.PlayerPositions) {
-                if (player.Key != _playerId) {
-                    DrawCell(player.Value.X, player.Value.Y, _otherPlayerTexture);
-                }
-            }
-
-            if (_map.PlayerPositions.ContainsKey(_playerId)) {
-                DrawCell(_map.GetPlayerPosition(_playerId).X, _map.GetPlayerPosition(_playerId).Y, _playerTexture);
-            }
-        }
-
-        private void DrawCell(int x, int y, Texture2D texture) {
-            Rectangle rect = new Rectangle(y * TILE_SIZE, x * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-            _spriteBatch.Draw(texture, rect, Color.White);
-        }
-
-        private bool IsKeyPressed(KeyboardState current, Keys key) {
-            return current.IsKeyDown(key) && !_prevKeyState.IsKeyDown(key);
+            _sceneGraph.DrawTree(_spriteBatch, Matrix.Identity);
         }
 
         protected override void UnloadContent() {
@@ -303,6 +301,7 @@ namespace Client {
                 _client.Close();
             }
 
+            TextureHolder.UnloadAll();
             base.UnloadContent();
         }
     }

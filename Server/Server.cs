@@ -52,25 +52,29 @@ namespace Server {
 
                     Console.WriteLine($"Client connected: Player {playerId}");
 
-                    SendToClient(playerId, new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
+                    SendToClient(playerId, new NetworkMessage(MessageType.InitMap, new Dictionary<string, string> {
                         { "playerId", playerId.ToString() },
                         { "map", _map.ToString() },
                     }));
 
                     foreach (var player in _map.PlayerPositions) {
                         if (player.Key != playerId) {
-                            SendToClient(playerId, new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
+                            SendToClient(playerId, new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
                                 { "playerId", player.Key.ToString() },
+                                { "skinId", (player.Key % Enum.GetNames<PlayerSkin>().Length).ToString() },
                                 { "x", _map.GetPlayerPosition(player.Key).X.ToString() },
-                                { "y", _map.GetPlayerPosition(player.Key).Y.ToString() }
+                                { "y", _map.GetPlayerPosition(player.Key).Y.ToString() },
+                                { "d", Direction.Down.ToString() }
                             }));
                         }
                     }
 
-                    BroadcastToAll(new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
+                    BroadcastToAll(new NetworkMessage(MessageType.InitPlayer, new Dictionary<string, string> {
                         { "playerId", playerId.ToString() },
+                        { "skinId", (playerId % Enum.GetNames<PlayerSkin>().Length).ToString() },
                         { "x", _map.GetPlayerPosition(playerId).X.ToString() },
-                        { "y", _map.GetPlayerPosition(playerId).Y.ToString() }
+                        { "y", _map.GetPlayerPosition(playerId).Y.ToString() },
+                        { "d", Direction.Down.ToString() }
                     }));
 
                     Thread clientThread = new Thread(HandleClient);
@@ -87,7 +91,7 @@ namespace Server {
             int width = 19;
             _map = new Map(height, width);
 
-            if (Utils.RandomInt(0, 2) == 0) {
+            if (Utils.RandomInt(0, 2) < 0) {
                 for (int i = 0; i < height; i++) {
                     _map.SetTile(i, 0, TileType.Wall);
                     _map.SetTile(i, width - 1, TileType.Wall);
@@ -196,7 +200,8 @@ namespace Server {
                     BroadcastToAll(new NetworkMessage(MessageType.RespawnPlayer, new Dictionary<string, string> {
                         { "playerId", player.Key.ToString() },
                         { "x", respawnPosition.X.ToString() },
-                        { "y", respawnPosition.Y.ToString() }
+                        { "y", respawnPosition.Y.ToString() },
+                        { "d", Direction.Down.ToString() }
                     }));
                 }
             }
@@ -259,23 +264,25 @@ namespace Server {
                         BroadcastToAll(new NetworkMessage(MessageType.MovePlayer, new Dictionary<string, string> {
                             { "playerId", playerId.ToString() },
                             { "x", _map.GetPlayerPosition(playerId).X.ToString() },
-                            { "y", _map.GetPlayerPosition(playerId).Y.ToString() }
+                            { "y", _map.GetPlayerPosition(playerId).Y.ToString() },
+                            { "d", direction.ToString() }
                         }));
-                        break;
                     }
-
+                    break;
                 case MessageType.PlaceBomb: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         BombType type = Enum.Parse<BombType>(message.Data["type"]);
-                        _map.AddBomb(x, y, type);
-                        BroadcastToAll(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
-                            { "x", x.ToString() },
-                            { "y", y.ToString() },
-                            { "type", type.ToString() }
-                        }));
-                        break;
+                        if (!_map.HasBomb(x, y)) {
+                            _map.AddBomb(x, y, type);
+                            BroadcastToAll(new NetworkMessage(MessageType.PlaceBomb, new Dictionary<string, string> {
+                                { "x", x.ToString() },
+                                { "y", y.ToString() },
+                                { "type", type.ToString() }
+                            }));
+                        }
                     }
+                    break;
             }
         }
 
