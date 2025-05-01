@@ -41,7 +41,7 @@ namespace Client {
                 OnClick = () => ScreenManager.Instance.NavigateBack(),
             };
 
-            layout.Center(new Rectangle(0, 0, MainGame.Instance.GraphicsDevice.Viewport.Width, MainGame.Instance.GraphicsDevice.Viewport.Height));
+            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
             layout.AddComponent(roomIdTextBox);
             layout.AddComponent(connectButton);
             layout.AddComponent(backButton);
@@ -51,7 +51,7 @@ namespace Client {
         private void Connect() {
             string roomId = roomIdTextBox.Text.ToUpperInvariant();
             if (ValidateRoomCode(roomId)) {
-                ConnectionManager.Instance.Send(new NetworkMessage(MessageType.JoinRoom, new Dictionary<string, string> {
+                NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.JoinRoom, new() {
                     {"roomId", roomId }
                 }));
             } else {
@@ -64,13 +64,13 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
-            switch (message.Type) {
-                case MessageType.RoomJoined: {
+            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+                case ServerMessageType.RoomJoined: {
                         Console.WriteLine($"Joined room: {message.Data["roomId"]}");
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;
-                case MessageType.Error: {
+                case ServerMessageType.Error: {
                         Console.WriteLine($"Error joining room: {message.Data["message"]}");
                     }
                     break;

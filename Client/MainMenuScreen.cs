@@ -16,7 +16,8 @@ namespace Client {
                 Size = new Vector2(300, 400),
                 Padding = 20,
             };
-            layout.Center(new Rectangle(0, 0, MainGame.Instance.GraphicsDevice.Viewport.Width, MainGame.Instance.GraphicsDevice.Viewport.Height));
+
+            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
             var createGameButton = new Button() {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(100, 200),
@@ -40,6 +41,8 @@ namespace Client {
             layout.AddComponent(joinGameButton);
             layout.AddComponent(exitButton);
             uiManager.AddComponent(layout, 0);
+
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetClientId));
         }
 
         private string GenerateRoomId() {
@@ -63,7 +66,7 @@ namespace Client {
                 return;
             }
 
-            ConnectionManager.Instance.Send(new NetworkMessage(MessageType.CreateRoom, new Dictionary<string, string> {
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.CreateRoom, new() {
                 { "roomId", GenerateRoomId() }
             }));
             _waitingForResponse = true;
@@ -71,13 +74,17 @@ namespace Client {
 
         public override void HandleResponse(NetworkMessage message) {
             _waitingForResponse = false;
-            switch (message.Type) {
-                case MessageType.RoomCreated: {
+            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+                case ServerMessageType.ClientId: {
+                        NetworkManager.Instance.ClientId = int.Parse(message.Data["clientId"]);
+                    }
+                    break;
+                case ServerMessageType.RoomCreated: {
                         Console.WriteLine($"Room created with ID: {message.Data["roomId"]}");
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;
-                case MessageType.Error: {
+                case ServerMessageType.Error: {
                         Console.WriteLine($"Error creating room: {message.Data["message"]}");
                     }
                     break;
@@ -86,13 +93,12 @@ namespace Client {
         }
 
         private void ExitGame() {
-            // Logic to exit the game
-            Console.WriteLine("Exiting game...");
+            UnloadContent();
+            Client.Instance.Exit();
+            Environment.Exit(0);
         }
 
         private void JoinGame() {
-            // Logic to join a game
-            Console.WriteLine("Joining game...");
             ScreenManager.Instance.NavigateTo(ScreenName.JoinGameScreen);
         }
 
@@ -102,7 +108,7 @@ namespace Client {
 
         public override void UnloadContent() {
             base.UnloadContent();
-            ConnectionManager.Instance.Disconnect();
+            NetworkManager.Instance.Disconnect();
         }
 
         public override void Update(GameTime gameTime) {

@@ -14,7 +14,7 @@ namespace Client {
         MainMenu,
         LobbyScreen,
         JoinGameScreen,
-        GameScreen,
+        MainGameScreen,
         PauseMenu,
         SettingsMenu
     }
@@ -89,8 +89,8 @@ namespace Client {
                     return new LobbyScreen();
                 case ScreenName.JoinGameScreen:
                     return new JoinGameScreen();
-                // case ScreenName.GameScreen:
-                //     return new GameScreen();
+                case ScreenName.MainGameScreen:
+                    return new MainGameScreen();
                 default:
                     throw new ArgumentException($"Unknown screen type: {screenType}");
             }
@@ -182,24 +182,21 @@ namespace Client {
         public virtual void Activate() {
             IsActive = true;
             IsVisible = true;
-            MainGame.Instance.Window.TextInput += DispatchTextInput;
-            ConnectionManager.Instance.InsertHandler(HandleResponse);
+            Client.Instance.Window.TextInput += DispatchTextInput;
+            NetworkManager.Instance.InsertHandler(HandleResponse);
         }
 
         public virtual void Deactivate() {
             IsActive = false;
-            MainGame.Instance.Window.TextInput -= DispatchTextInput;
-            ConnectionManager.Instance.RemoveHandler(HandleResponse);
+            Client.Instance.Window.TextInput -= DispatchTextInput;
+            NetworkManager.Instance.RemoveHandler(HandleResponse);
         }
 
         public virtual void HandleResponse(NetworkMessage message) { }
 
-        public virtual void LoadContent() {
-        }
+        public virtual void LoadContent() { }
 
-        public virtual void UnloadContent() {
-        }
-
+        public virtual void UnloadContent() { }
 
         public virtual void Update(GameTime gameTime) {
             if (!IsActive) return;

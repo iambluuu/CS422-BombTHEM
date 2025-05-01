@@ -132,7 +132,7 @@ namespace Client.Component {
         }
 
         private static float ToPixels(float value) {
-            IntPtr Handle = MainGame.Instance.Window.Handle;
+            IntPtr Handle = Client.Instance.Window.Handle;
             return Utils.ToPixels(value, Handle);
         }
 

@@ -11,6 +11,7 @@ namespace Client {
         private TextBox[] playerTextBoxes;
         private TextBox roomIdTextBox;
         private Button leaveButton;
+        private Button startButton;
         private LinearLayout mainLayout;
         private LinearLayout leftLayout;
         private LinearLayout rightLayout;
@@ -22,7 +23,7 @@ namespace Client {
                 Size = new Vector2(1000, 600),
                 Padding = 20,
             };
-            mainLayout.Center(new Rectangle(0, 0, MainGame.Instance.GraphicsDevice.Viewport.Width, MainGame.Instance.GraphicsDevice.Viewport.Height));
+            mainLayout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
 
             leftLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15) {
                 Position = Vector2.Zero, // Will be set by parent layout
@@ -85,6 +86,15 @@ namespace Client {
                 TextAlignment = ContentAlignment.MiddleCenter,
             };
 
+            startButton = new Button() {
+                Position = Vector2.Zero, // Will be set by parent layout
+                Size = Vector2.Zero,     // Will be set by parent layout
+                OnClick = StartGame,
+                Text = "Start Game",
+                TextColor = Color.White,
+                BackgroundColor = Color.Green,
+            };
+
             leaveButton = new Button() {
                 Position = Vector2.Zero, // Will be set by parent layout
                 Size = Vector2.Zero,     // Will be set by parent layout
@@ -95,6 +105,7 @@ namespace Client {
             };
 
             rightLayout.AddComponent(roomIdTextBox);
+            rightLayout.AddComponent(startButton);
             rightLayout.AddComponent(leaveButton);
             mainLayout.AddComponent(leftLayout);
             mainLayout.AddComponent(rightLayout);
@@ -103,20 +114,25 @@ namespace Client {
 
         public override void Activate() {
             base.Activate();
-            ConnectionManager.Instance.Send(new NetworkMessage(MessageType.RoomInfo, []));
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetRoomInfo));
         }
 
-        void LeaveLobby() {
-            ConnectionManager.Instance.Send(new NetworkMessage(MessageType.LeaveRoom, []));
+        private void StartGame() {
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.StartGame));
+        }
+
+        private void LeaveLobby() {
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
             ScreenManager.Instance.NavigateBack();
         }
 
         public override void HandleResponse(NetworkMessage message) {
-            switch (message.Type) {
-                case MessageType.RoomInfo: {
+            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+                case ServerMessageType.RoomInfo: {
                         roomIdTextBox.Text = $"Room ID: {message.Data["roomId"]}";
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
                         int hostId = int.Parse(message.Data["hostId"]);
+                        bool isHost = bool.Parse(message.Data["isHost"]);
                         for (int i = 0; i < playerTextBoxes.Length; i++) {
                             if (i < playerIds.Length) {
                                 playerTextBoxes[i].Text = playerIds[i].ToString();
@@ -128,9 +144,9 @@ namespace Client {
                                 playerTextBoxes[i].PlaceholderText = $"Player {i + 1} (Waiting...)";
                             }
                         }
-                        break;
                     }
-                case MessageType.PlayerJoined: {
+                    break;
+                case ServerMessageType.PlayerJoined: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         for (int i = 0; i < playerTextBoxes.Length; i++) {
                             if (string.IsNullOrEmpty(playerTextBoxes[i].Text)) {
@@ -138,9 +154,9 @@ namespace Client {
                                 break;
                             }
                         }
-                        break;
                     }
-                case MessageType.PlayerLeft: {
+                    break;
+                case ServerMessageType.PlayerLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         for (int i = 0; i < playerTextBoxes.Length; i++) {
                             if (playerTextBoxes[i].Text == playerId.ToString()) {
@@ -157,10 +173,9 @@ namespace Client {
                                 playerTextBoxes[i + 1].PlaceholderText = $"Player {i + 2} (Waiting...)";
                             }
                         }
-
-                        break;
                     }
-                case MessageType.NewHost: {
+                    break;
+                case ServerMessageType.NewHost: {
                         int newHostId = int.Parse(message.Data["hostId"]);
                         for (int i = 0; i < playerTextBoxes.Length; i++) {
                             if (playerTextBoxes[i].Text == newHostId.ToString()) {
@@ -169,30 +184,18 @@ namespace Client {
                                 playerTextBoxes[i].Text = playerTextBoxes[i].Text.Replace(" (Host)", "");
                             }
                         }
-                        break;
                     }
+                    break;
+                case ServerMessageType.GameStarted: {
+                        ScreenManager.Instance.NavigateTo(ScreenName.MainGameScreen);
+                    }
+                    break;
+                case ServerMessageType.Error: {
+                        string errorMessage = message.Data["message"];
+                        Console.WriteLine($"Error: {errorMessage}");
+                    }
+                    break;
             }
-        }
-
-        public override void LoadContent() {
-            base.LoadContent();
-        }
-
-        public override void UnloadContent() {
-            base.UnloadContent();
-        }
-
-        public override void Update(GameTime gameTime) {
-            base.Update(gameTime);
-        }
-
-        public override void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
-            base.Draw(gameTime, spriteBatch);
-        }
-
-        // Public method to update player information from outside
-        public void UpdatePlayerInfo(int playerIndex, string playerId, bool isPlayerReady = false) {
-            // Method stub - will be implemented later
         }
     }
 }
