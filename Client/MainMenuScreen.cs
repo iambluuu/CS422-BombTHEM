@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 using Client.Component;
+using Shared;
 using System;
 
 namespace Client {
@@ -16,17 +17,23 @@ namespace Client {
                 Padding = 20,
             };
             layout.Center(new Rectangle(0, 0, MainGame.Instance.GraphicsDevice.Viewport.Width, MainGame.Instance.GraphicsDevice.Viewport.Height));
-            var createGameButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: CreateGame) {
+            var createGameButton = new Button() {
+                Position = new Vector2(0, 0),
+                Size = new Vector2(100, 200),
+                OnClick = CreateGame,
                 Text = "Create Game",
-                Font = content.Load<SpriteFont>("Font/DefaultFont"),
             };
-            var exitButton = new Button(position: new Vector2(0, 0), size: new Vector2(0, 0), onClick: ExitGame) {
+            var exitButton = new Button() {
+                Position = new Vector2(0, 0),
+                Size = new Vector2(100, 200),
+                OnClick = ExitGame,
                 Text = "Exit",
-                Font = content.Load<SpriteFont>("Font/DefaultFont"),
             };
-            var joinGameButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: JoinGame) {
+            var joinGameButton = new Button() {
+                Position = new Vector2(0, 0),
+                Size = new Vector2(100, 200),
+                OnClick = JoinGame,
                 Text = "Join Game",
-                Font = content.Load<SpriteFont>("Font/DefaultFont"),
             };
 
             layout.AddComponent(createGameButton);
@@ -35,9 +42,47 @@ namespace Client {
             uiManager.AddComponent(layout, 0);
         }
 
+        private string GenerateRoomId() {
+            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+            string roomId = string.Empty;
+            for (int i = 0; i < 6; i++) {
+                roomId += chars[Utils.RandomInt(chars.Length)];
+            }
+
+            return roomId;
+        }
+
         private void CreateGame() {
-            // Logic to start the game
-            Console.WriteLine("Creating game...");
+            TryCreateGame();
+        }
+
+        private bool _waitingForResponse = false;
+
+        private void TryCreateGame() {
+            if (_waitingForResponse) {
+                return;
+            }
+
+            ConnectionManager.Instance.Send(new NetworkMessage(MessageType.CreateRoom, new Dictionary<string, string> {
+                { "roomId", GenerateRoomId() }
+            }));
+            _waitingForResponse = true;
+        }
+
+        public override void HandleResponse(NetworkMessage message) {
+            _waitingForResponse = false;
+            switch (message.Type) {
+                case MessageType.RoomCreated: {
+                        Console.WriteLine($"Room created with ID: {message.Data["roomId"]}");
+                        ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
+                    }
+                    break;
+                case MessageType.Error: {
+                        Console.WriteLine($"Error creating room: {message.Data["message"]}");
+                    }
+                    break;
+            }
+
         }
 
         private void ExitGame() {
@@ -49,6 +94,15 @@ namespace Client {
             // Logic to join a game
             Console.WriteLine("Joining game...");
             ScreenManager.Instance.NavigateTo(ScreenName.JoinGameScreen);
+        }
+
+        public override void LoadContent() {
+            base.LoadContent();
+        }
+
+        public override void UnloadContent() {
+            base.UnloadContent();
+            ConnectionManager.Instance.Disconnect();
         }
 
         public override void Update(GameTime gameTime) {

@@ -7,6 +7,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Security.Principal;
+using Shared;
 
 namespace Client {
     public enum ScreenName {
@@ -65,13 +66,13 @@ namespace Client {
             GameScreen screen;
 
             // Check if screen exists in cache
-            if (screenCache.ContainsKey(screenType)) {
-                screen = screenCache[screenType];
-            } else {
-                // Create new screen based on enum type
-                screen = CreateScreen(screenType);
-                screenCache[screenType] = screen;
-            }
+            // if (screenCache.ContainsKey(screenType)) {
+            //     screen = screenCache[screenType];
+            // } else {
+            // Create new screen based on enum type
+            screen = CreateScreen(screenType);
+            screenCache[screenType] = screen;
+            // }
 
             // Set whether this screen should overlay or replace current screens
             screen.IsExclusive = !isOverlay;
@@ -84,8 +85,8 @@ namespace Client {
             switch (screenType) {
                 case ScreenName.MainMenu:
                     return new MainMenuScreen();
-                // case ScreenName.LobbyScreen:
-                //     return new LobbyScreen();
+                case ScreenName.LobbyScreen:
+                    return new LobbyScreen();
                 case ScreenName.JoinGameScreen:
                     return new JoinGameScreen();
                 // case ScreenName.GameScreen:
@@ -131,6 +132,7 @@ namespace Client {
         private void PopScreen() {
             if (screenStack.Count > 0) {
                 var screen = screenStack.Pop();
+                screen.Deactivate();
 
                 // Don't unload content if the screen is cached
                 // Content will be unloaded when the game exits or explicitly
@@ -164,7 +166,6 @@ namespace Client {
     }
 
     public abstract class GameScreen {
-        protected ContentManager content;
         protected UIManager uiManager = new();
 
         private KeyboardState previousKeyboardState;
@@ -182,20 +183,23 @@ namespace Client {
             IsActive = true;
             IsVisible = true;
             MainGame.Instance.Window.TextInput += DispatchTextInput;
+            ConnectionManager.Instance.InsertHandler(HandleResponse);
         }
 
         public virtual void Deactivate() {
             IsActive = false;
             MainGame.Instance.Window.TextInput -= DispatchTextInput;
+            ConnectionManager.Instance.RemoveHandler(HandleResponse);
         }
 
+        public virtual void HandleResponse(NetworkMessage message) { }
+
         public virtual void LoadContent() {
-            content = new ContentManager(ScreenManager.Content.ServiceProvider, "Content");
         }
 
         public virtual void UnloadContent() {
-            content?.Unload();
         }
+
 
         public virtual void Update(GameTime gameTime) {
             if (!IsActive) return;

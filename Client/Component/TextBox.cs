@@ -11,7 +11,7 @@ namespace Client.Component {
         public int MaxLength { get; set; } = 100;
         public bool IsMultiline { get; set; } = false;
         public bool IsPassword { get; set; } = false;
-        public readonly bool IsReadOnly = false;
+        public bool IsReadOnly { get; set; } = false;
         public bool IsUppercase { get; set; } = false;
         public Color TextColor { get; set; } = Color.Black;
         public Color BackgroundColor { get; set; } = Color.White;
@@ -24,7 +24,7 @@ namespace Client.Component {
         private double _caretBlinkTimer = 0;
 
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleLeft;
-        public SpriteFont Font { get; set; } = null!;
+        public SpriteFont Font { get; set; } = FontHolder.Get("Font/DefaultFont");
         public Texture2D Texture { get; set; } = null!;
 
         public TextBox() {
@@ -79,13 +79,15 @@ namespace Client.Component {
 
             // Draw background
             if (Texture == null) {
-                // Draw a default rectangle with border if no texture is provided
-                Texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-                Texture.SetData(new[] { BackgroundColor });
-                spriteBatch.Draw(Texture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BackgroundColor);
-            } else {
-                spriteBatch.Draw(Texture, Position, BackgroundColor);
+                Texture = new Texture2D(spriteBatch.GraphicsDevice, (int)Size.X, (int)Size.Y);
+                Color[] data = new Color[(int)(Size.X * Size.Y)];
+                for (int i = 0; i < data.Length; ++i) {
+                    data[i] = BackgroundColor;
+                }
+                Texture.SetData(data);
             }
+
+            spriteBatch.Draw(Texture, Position, BackgroundColor);
 
             // Draw border
             if (BorderWidth > 0) {

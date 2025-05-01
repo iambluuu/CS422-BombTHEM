@@ -3,13 +3,27 @@ using System.Text.Json.Serialization;
 
 namespace Shared {
     public enum MessageType {
+        RoomList,
+        CreateRoom,
+        RoomCreated,
+        RoomInfo,
+        JoinRoom,
+        RoomJoined,
+        PlayerJoined,
+        LeaveRoom,
+        StartGame,
+        GameStarted,
         InitMap,
+        NewHost,
+        PlayerLeft,
+        RefreshRooms,
         InitPlayer,
         MovePlayer,
         RemovePlayer,
         PlaceBomb,
         ExplodeBomb,
         RespawnPlayer,
+        Error,
     }
 
     public class NetworkMessage {

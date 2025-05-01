@@ -14,6 +14,9 @@ namespace Client {
 
         public MainGame() {
             _graphics = new GraphicsDeviceManager(this);
+            _graphics.PreferredBackBufferHeight = 800;
+            _graphics.PreferredBackBufferWidth = 1200;
+            _graphics.ApplyChanges();
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }
@@ -39,7 +42,15 @@ namespace Client {
 
         protected override void LoadContent() {
             _spriteBatch = new SpriteBatch(GraphicsDevice);
-            // Load your game content here
+            TextureHolder.SetContentManager(Content);
+            FontHolder.SetContentManager(Content);
+            ConnectionManager.Instance.Connect("localhost", 5000);
+        }
+
+        protected override void UnloadContent() {
+            TextureHolder.UnloadAll();
+            FontHolder.UnloadAll();
+            ConnectionManager.Instance.Disconnect();
         }
     }
 }
