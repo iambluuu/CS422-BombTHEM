@@ -15,6 +15,7 @@ namespace Shared {
         GetRoomInfo,
         GetRoomList,
         RefreshRooms,
+        AddBot,
         JoinRoom,
         LeaveRoom,
         StartGame,

@@ -136,6 +136,15 @@ namespace Shared {
             return PlayerPositions[playerId];
         }
 
+        public bool IsPlayerMovable(int playerId, Direction direction) {
+            if (!PlayerPositions.ContainsKey(playerId)) {
+                throw new KeyNotFoundException($"Map.IsPlayerMovable: Player ID {playerId} not found");
+            }
+
+            Position newPosition = PlayerPositions[playerId].Move(direction);
+            return IsInBounds(newPosition.X, newPosition.Y) && GetTile(newPosition.X, newPosition.Y) == TileType.Empty;
+        }
+
         public void MovePlayer(int playerId, Direction direction) {
             if (!PlayerPositions.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.MovePlayer: Player ID {playerId} not found");

@@ -150,9 +150,8 @@ namespace Client {
                         int playerId = int.Parse(message.Data["playerId"]);
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
-                        Direction direction = Enum.Parse<Direction>(message.Data["d"]);
                         _map.SetPlayerPosition(playerId, x, y);
-                        _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction, 0.2f);
+                        _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), Direction.Down, 0.2f);
                     }
                     break;
                 default:

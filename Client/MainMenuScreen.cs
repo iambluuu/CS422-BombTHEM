@@ -80,7 +80,6 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.RoomCreated: {
-                        Console.WriteLine($"Room created with ID: {message.Data["roomId"]}");
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;

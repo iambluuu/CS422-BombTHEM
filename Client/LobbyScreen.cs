@@ -10,6 +10,7 @@ namespace Client {
     public class LobbyScreen : GameScreen {
         private TextBox[] playerTextBoxes;
         private TextBox roomIdTextBox;
+        private Button addBotButton;
         private Button leaveButton;
         private Button startButton;
         private LinearLayout mainLayout;
@@ -86,6 +87,15 @@ namespace Client {
                 TextAlignment = ContentAlignment.MiddleCenter,
             };
 
+            addBotButton = new Button() {
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
+                OnClick = () => NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.AddBot)),
+                Text = "Add Bot",
+                TextColor = Color.White,
+                BackgroundColor = Color.Blue,
+            };
+
             startButton = new Button() {
                 Position = Vector2.Zero, // Will be set by parent layout
                 Size = Vector2.Zero,     // Will be set by parent layout
@@ -105,6 +115,7 @@ namespace Client {
             };
 
             rightLayout.AddComponent(roomIdTextBox);
+            rightLayout.AddComponent(addBotButton);
             rightLayout.AddComponent(startButton);
             rightLayout.AddComponent(leaveButton);
             mainLayout.AddComponent(leftLayout);

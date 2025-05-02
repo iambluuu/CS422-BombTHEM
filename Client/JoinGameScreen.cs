@@ -55,7 +55,7 @@ namespace Client {
                     {"roomId", roomId }
                 }));
             } else {
-                Console.WriteLine("Invalid room code. Please enter a 6-character code.");
+                Console.WriteLine("Invalid room code. Please enter a 6-character code");
             }
         }
 
@@ -66,7 +66,6 @@ namespace Client {
         public override void HandleResponse(NetworkMessage message) {
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
-                        Console.WriteLine($"Joined room: {message.Data["roomId"]}");
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;
