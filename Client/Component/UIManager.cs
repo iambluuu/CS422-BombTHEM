@@ -50,23 +50,33 @@ namespace Client.Component {
             }
         }
 
-        public void DispatchEvent(UIEvent e) {
-            if (e.Type == UIEventType.MouseClick) {
-                for (int i = _components.Count - 1; i >= 0; i--) {
-                    var layer = _components[i];
-                    foreach (var component in layer) {
-                        if (component.IsVisible && component.IsEnabled && component.HitTest(e.MousePosition)) {
-                            SetFocus(component);
+        public void DispatchEvent(UIEvent uiEvent) {
+            if (uiEvent.Type == UIEventType.KeyPress || uiEvent.Type == UIEventType.TextInput) {
+                _focusedComponent?.HandleInput(uiEvent);
+                return;
+            }
 
-                            component.HandleInput(e);
+            if (uiEvent.Type == UIEventType.MouseDown) {
+                for (int i = _components.Count - 1; i >= 0; i--) {
+                    foreach (var component in _components[i]) {
+                        if (component.IsVisible && component.IsEnabled && component.HitTest(uiEvent.MousePosition)) {
+                            component.HandleInput(uiEvent);
+                            SetFocus(component);
                             return;
                         }
                     }
                 }
-
                 ClearFocus();
-            } else if (e.Type == UIEventType.TextInput || e.Type == UIEventType.KeyPress) {
-                _focusedComponent?.HandleInput(e);
+                return;
+            }
+
+            for (int i = _components.Count - 1; i >= 0; i--) {
+                var layer = _components[i];
+                foreach (var component in layer) {
+                    if (component.IsVisible && component.IsEnabled) {
+                        component.HandleInput(uiEvent);
+                    }
+                }
             }
         }
 
