@@ -131,6 +131,8 @@ namespace Client {
         private void PopScreen() {
             if (screenStack.Count > 0) {
                 var screen = screenStack.Pop();
+                screen.Deactivate();
+                screen.IsVisible = false;
 
                 // Don't unload content if the screen is cached
                 // Content will be unloaded when the game exits or explicitly
