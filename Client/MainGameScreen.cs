@@ -14,7 +14,7 @@ namespace Client {
         private SceneNode _sceneGraph;
         private SceneNode _mapLayer, _bombLayer, _playerLayer;
 
-        private const int TILE_SIZE = 40;
+        private const int TILE_SIZE = 48;
 
         private Map _map = null;
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];

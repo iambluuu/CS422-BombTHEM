@@ -15,6 +15,7 @@ namespace Client {
             _graphics = new GraphicsDeviceManager(this);
             _graphics.PreferredBackBufferHeight = 800;
             _graphics.PreferredBackBufferWidth = 1200;
+            _graphics.PreferMultiSampling = false;
             _graphics.ApplyChanges();
             Content.RootDirectory = "Content";
             IsMouseVisible = true;

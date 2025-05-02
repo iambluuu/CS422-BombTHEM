@@ -52,7 +52,7 @@ namespace Client {
 
         public override void Draw(GameTime gameTime) {
             var screens = screenStack.ToArray();
-            spriteBatch.Begin();
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             for (int i = screens.Length - 1; i >= 0; i--) {
                 var screen = screens[i];
                 if (screen.IsVisible)

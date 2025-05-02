@@ -89,8 +89,8 @@ namespace Server {
         }
 
         private Map GenerateRandomMap() {
-            int height = 19;
-            int width = 19;
+            int height = 15;
+            int width = 15;
             Map map = new Map(height, width);
 
             if (Utils.RandomInt(0, 2) < 0) {
@@ -381,11 +381,18 @@ namespace Server {
 
                         string roomId = message.Data["roomId"];
 
-                        lock (_roomLocks[roomId]) {
-                            if (!_rooms.TryGetValue(roomId, out GameRoom? room)) {
+                        lock (_lock) {
+                            if (!_rooms.ContainsKey(roomId)) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.Error, new() {
                                     { "message", "Room not found" }
                                 }));
+                                return;
+                            }
+                        }
+
+                        lock (_roomLocks[roomId]) {
+                            _rooms.TryGetValue(roomId, out GameRoom? room);
+                            if (room == null) {
                                 return;
                             }
 
