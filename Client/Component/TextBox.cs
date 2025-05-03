@@ -103,7 +103,7 @@ namespace Client.Component {
             }
 
             // Draw text
-            string rawText = string.IsNullOrEmpty(Text) && !IsFocused ? PlaceholderText : Text;
+            string rawText = string.IsNullOrEmpty(Text) && (!IsFocused || IsReadOnly) ? PlaceholderText : Text;
             Color colorToDraw = string.IsNullOrEmpty(Text) && !IsFocused ? TextColor * 0.5f : TextColor;
             float scale = ToPixels(FontSize) / Font.LineSpacing;
             string textToDraw = TruncateText(rawText, Font, Size.X - Padding * 2, scale);
@@ -128,7 +128,7 @@ namespace Client.Component {
             spriteBatch.DrawString(Font, textToDraw, textPosition, colorToDraw, scale: scale, origin: Vector2.Zero, rotation: 0f, effects: SpriteEffects.None, layerDepth: 0f);
 
             // Draw caret
-            if (IsFocused && _caretBlinkTimer < CaretBlinkRate / 2) {
+            if (!IsReadOnly && IsFocused && _caretBlinkTimer < CaretBlinkRate / 2) {
                 Vector2 caretPosition = new(textPosition.X + textSize.X + Padding / 2, textPosition.Y);
                 var blackTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
                 blackTexture.SetData(new[] { Color.Black });
