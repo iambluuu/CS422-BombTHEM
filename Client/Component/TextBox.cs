@@ -28,7 +28,7 @@ namespace Client.Component {
         private double _caretBlinkTimer = 0;
 
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleLeft;
-        public SpriteFont Font { get; set; } = FontHolder.Get("Font/DefaultFont");
+        public SpriteFont Font { get; set; } = FontHolder.Get("Font/NormalFont");
         public Texture2D Texture { get; set; } = null!;
 
         public TextBox() {
@@ -90,7 +90,7 @@ namespace Client.Component {
                 texture.SetData(new[] { Color.White });
                 spriteBatch.Draw(texture, Position, Color.White);
             }
-          
+
             // Draw border
             if (BorderWidth > 0) {
                 var borderTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);

@@ -23,16 +23,16 @@ namespace Client.Component {
         public Texture2D? Icon { get; set; }
         public string? Text { get; set; } = string.Empty;
 
-        public SpriteFont? Font { get; set; } = FontHolder.Get("Font/DefaultFont");
+        public SpriteFont? Font { get; set; } = FontHolder.Get("Font/NormalFont");
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleCenter;
         public ContentAlignment IconAlignment { get; set; } = ContentAlignment.MiddleLeft;
 
         public int Padding { get; set; } = 5;
 
-        public Color TextColor { get; set; } = Color.Black;
+        public Color TextColor { get; set; } = Color.White;
         public Vector2 TextSize { get; set; } = Vector2.Zero;
         public Color BackgroundColor { get; set; } = Color.White;
-      
+
         private StateOfButton _state = StateOfButton.Normal;
 
         public Button() {

@@ -5,8 +5,9 @@ namespace Server {
         private int _botId;
         private string _roomId;
         private Map _map = null!;
-        private readonly ReaderWriterLockSlim _lock = new();
         private Action<int, NetworkMessage>? _sendToSerer;
+        private Thread _thread;
+        private CancellationTokenSource _cts;
         bool _isGameStarted = false;
 
         public int BotId {
@@ -25,27 +26,32 @@ namespace Server {
             _roomId = roomId;
             _sendToSerer = sendToServer;
 
-            new Thread(Run) {
+            _cts = new CancellationTokenSource();
+            _thread = new Thread(Run) {
                 IsBackground = true,
-            }.Start();
+            };
+            _thread.Start();
+        }
+
+        public void Dispose() {
+            _cts.Cancel();
+            _thread.Join();
         }
 
         private void Run() {
-            while (true) {
+            while (!_cts.Token.IsCancellationRequested) {
+                if (_botId == -1 || !_isGameStarted) {
+                    Thread.Sleep(1000);
+                    continue;
+                }
 
-                lock (_lock) {
-                    if (_botId == -1 || !_isGameStarted) {
-                        continue;
-                    }
-
-                    while (true) {
-                        Direction direction = (Direction)Utils.RandomInt(4);
-                        if (_map.IsPlayerMovable(_botId, direction)) {
-                            SendToServer(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
-                                { "direction", Enum.GetName(typeof(Direction), Utils.RandomInt(4))! },
-                            }));
-                            break;
-                        }
+                while (!_cts.Token.IsCancellationRequested) {
+                    Direction direction = (Direction)Utils.RandomInt(4);
+                    if (_map.IsPlayerMovable(_botId, direction)) {
+                        SendToServer(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
+                            { "direction", direction.ToString() },
+                        }));
+                        break;
                     }
                 }
 

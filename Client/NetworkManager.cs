@@ -1,8 +1,10 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Shared;
 
 namespace Client {
@@ -13,6 +15,8 @@ namespace Client {
         private int _clientId = -1;
         private TcpClient _client;
         private NetworkStream _stream;
+        private Thread _listenThread;
+        private CancellationTokenSource _listenCts;
         private bool _connected = false;
         private event Action<NetworkMessage> Handlers;
 
@@ -44,44 +48,51 @@ namespace Client {
                 return;
             }
 
-            new Thread(StartListening) { IsBackground = true }.Start();
+            _listenCts = new CancellationTokenSource();
+            _listenThread = new Thread(() => StartListening(_listenCts.Token)) {
+                IsBackground = true,
+            };
+            _listenThread.Start();
         }
 
-        private void StartListening() {
+        private async void StartListening(CancellationToken ct) {
             byte[] buffer = new byte[1024];
 
             try {
-                while (true) {
-                    int bytesRead = _stream.Read(buffer, 0, buffer.Length);
-                    if (bytesRead <= 0) {
+                while (!ct.IsCancellationRequested) {
+                    int bytesRead = 0;
+
+                    try {
+                        var readTask = _stream.ReadAsync(buffer, 0, buffer.Length, ct);
+                        bytesRead = await readTask;
+                    } catch {
                         break;
                     }
+
+                    if (bytesRead <= 0) break;
 
                     string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                     string[] messages = message.Split(['\n', '\r', '|'], StringSplitOptions.RemoveEmptyEntries);
 
                     foreach (var msg in messages) {
-                        if (string.IsNullOrEmpty(msg)) {
-                            continue;
-                        }
-
-                        // Console.WriteLine($"Received message from server: {msg}");
-
-                        NetworkMessage messageObj = NetworkMessage.FromJson(msg);
-                        if (messageObj.Type.Direction != MessageDirection.Server) {
-                            Console.WriteLine("The received message must be from the server side");
-                            continue;
-                        }
+                        if (string.IsNullOrEmpty(msg)) continue;
 
                         try {
+                            NetworkMessage messageObj = NetworkMessage.FromJson(msg);
+
+                            if (messageObj.Type.Direction != MessageDirection.Server) {
+                                Console.WriteLine("The received message must be from the server side");
+                                continue;
+                            }
+
                             Handlers?.Invoke(messageObj);
                         } catch (Exception ex) {
-                            Console.WriteLine($"Error invoking handler: {ex.Message}");
+                            Console.WriteLine($"Error invoking handler: {ex.StackTrace}");
                         }
                     }
                 }
             } catch (Exception ex) {
-                Console.WriteLine($"Error receiving message: {ex.Message}");
+                Console.WriteLine($"Unexpected error in listener: {ex.Message}");
             } finally {
                 Disconnect();
             }
@@ -127,9 +138,14 @@ namespace Client {
                 return;
             }
 
-            _client = null;
+            if (_listenThread.IsAlive == true) {
+                _listenCts.Cancel();
+                _listenThread.Join();
+            }
+
             _stream?.Close();
             _client?.Close();
+            _client = null;
             _connected = false;
 
             Console.WriteLine("Disconnected from server");

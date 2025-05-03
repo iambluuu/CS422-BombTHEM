@@ -24,16 +24,20 @@ namespace Server {
             public int PlayerId { get; set; }
             public required TcpClient Client { get; set; }
             public required NetworkStream Stream { get; set; }
+            public Thread Thread { get; set; } = null!;
+            public CancellationTokenSource Cts { get; set; } = null!;
+            public bool connected { get; set; } = true;
             public string? RoomId { get; set; }
         }
 
         public class GameRoom {
             public string RoomId { get; set; }
             public int HostPlayerId { get; set; }
-            public List<int> PlayerIds { get; set; } = new List<int>();
+            public List<int> PlayerIds { get; set; } = [];
             public Map Map { get; set; }
             public bool GameStarted { get; set; } = false;
-            public Thread? BombThread { get; set; }
+            public Thread? BombThread { get; set; } = null;
+            public CancellationTokenSource? BombCts { get; set; } = null;
 
             public GameRoom(string roomId, int hostPlayerId, Map map) {
                 RoomId = roomId;
@@ -53,7 +57,7 @@ namespace Server {
                     TcpClient client = _server.AcceptTcpClient();
                     int playerId = _nextPlayerId++;
 
-                    ClientHandler clientHandler = new ClientHandler {
+                    ClientHandler clientHandler = new() {
                         PlayerId = playerId,
                         Client = client,
                         Stream = client.GetStream()
@@ -65,12 +69,11 @@ namespace Server {
 
                     Console.WriteLine($"Client connected: Player {playerId}");
 
-                    // Send available rooms to the client
-                    // SendRoomListToClient(playerId);
-
-                    Thread clientThread = new Thread(HandleClient);
-                    clientThread.IsBackground = true;
-                    clientThread.Start(clientHandler);
+                    clientHandler.Cts = new CancellationTokenSource();
+                    clientHandler.Thread = new(() => HandleClient(clientHandler)) {
+                        IsBackground = true
+                    };
+                    clientHandler.Thread.Start();
                 } catch (Exception ex) {
                     Console.WriteLine($"Error accepting client: {ex.Message}");
                 }
@@ -167,14 +170,16 @@ namespace Server {
         }
 
         private void ProcessBombs(string roomId) {
-            while (true) {
-                GameRoom? room;
-                lock (_roomLocks[roomId]) {
-                    if (!_rooms.TryGetValue(roomId, out room) || !room.GameStarted) {
-                        return;
-                    }
+            GameRoom? room;
+            lock (_roomLocks[roomId]) {
+                if (!_rooms.TryGetValue(roomId, out room) || !room.GameStarted) {
+                    return;
+                }
+            }
 
-                    try {
+            while (room.BombCts != null && !room.BombCts.Token.IsCancellationRequested) {
+                try {
+                    lock (_roomLocks[roomId]) {
                         List<Bomb> explodedBombs = [];
                         foreach (var bomb in room.Map.Bombs) {
                             if ((DateTime.Now - bomb.PlaceTime).TotalSeconds >= 2.0) {
@@ -197,9 +202,9 @@ namespace Server {
 
                             room.Map.Bombs.Remove(bomb);
                         }
-                    } catch (Exception ex) {
-                        Console.WriteLine($"Error processing bombs for room {roomId}: {ex.Message}");
                     }
+                } catch (Exception ex) {
+                    Console.WriteLine($"Error processing bombs for room {roomId}: {ex.Message}");
                 }
 
                 Thread.Sleep(100);
@@ -232,25 +237,29 @@ namespace Server {
             return new Position(x, y);
         }
 
-        private void HandleClient(object? obj) {
-            if (obj is not ClientHandler handler)
-                throw new ArgumentNullException(nameof(obj), "Expected a non-null ClientHandler object");
-
+        private async void HandleClient(ClientHandler handler) {
             NetworkStream stream = handler.Stream;
             byte[] buffer = new byte[1024];
 
             try {
-                while (true) {
-                    int bytesRead = stream.Read(buffer, 0, buffer.Length);
+                while (!handler.Cts.Token.IsCancellationRequested) {
+                    int bytesRead;
+                    try {
+                        var readTask = handler.Stream.ReadAsync(buffer, 0, buffer.Length, handler.Cts.Token);
+                        bytesRead = await readTask;
+                    } catch {
+                        break;
+                    }
+
                     if (bytesRead <= 0) {
                         break;
                     }
 
                     string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
                     string[] messages = message.Split(['\n', '\r', '|'], StringSplitOptions.RemoveEmptyEntries);
+
                     foreach (var msg in messages) {
                         if (!string.IsNullOrEmpty(msg)) {
-                            // Console.WriteLine($"Received message from player {handler.PlayerId}: {msg}");
                             ProcessClientMessage(handler.PlayerId, NetworkMessage.FromJson(msg));
                         }
                     }
@@ -265,52 +274,94 @@ namespace Server {
         private void DisconnectClient(ClientHandler handler) {
             lock (_lock) {
                 _clients.Remove(handler);
+            }
 
-                if (handler.RoomId != null && _rooms.TryGetValue(handler.RoomId, out GameRoom? room)) {
-                    room.PlayerIds.Remove(handler.PlayerId);
+            RemoveClientFromRoom(handler);
 
-                    // If the host disconnected, assign a new host or close the room
-                    if (room.HostPlayerId == handler.PlayerId) {
-                        if (room.PlayerIds.Count > 0) {
-                            room.HostPlayerId = room.PlayerIds[0];
-                            BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.NewHost, new() {
-                                { "hostId", room.HostPlayerId.ToString() }
-                            }));
-                        } else {
-                            _rooms.Remove(room.RoomId);
-                            if (room.BombThread != null) {
-                                // Thread will exit on its own as the room is removed
-                            }
-
-                            // Broadcast room list update to all clients in lobby
-                            BroadcastRoomListToLobby();
-                        }
-                    }
-
-                    // Remove player from the game
-                    if (room.GameStarted) {
-                        room.Map.PlayerPositions.Remove(handler.PlayerId);
-                        BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.PlayerLeft, new() {
-                            { "playerId", handler.PlayerId.ToString() }
-                        }));
-                    } else {
-                        // If game hasn't started, notify other players in room
-                        BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.PlayerLeft, new() {
-                            { "playerId", handler.PlayerId.ToString() }
-                        }));
-
-                        // Update room list for players in lobby
-                        BroadcastRoomListToLobby();
-                    }
-                }
+            try {
+                handler.Cts.Cancel();
+                handler.Thread.Join();
+                handler.Stream.Close();
+                handler.Client.Close();
+                handler.connected = false;
+            } catch (Exception ex) {
+                Console.WriteLine($"Error disconnecting client {handler.PlayerId}: {ex.Message}");
             }
 
             Console.WriteLine($"Player {handler.PlayerId} disconnected");
+        }
 
-            try {
-                handler.Stream.Close();
-                handler.Client.Close();
-            } catch { }
+        private void RemoveClientFromRoom(ClientHandler handler) {
+            if (handler.RoomId == null) {
+                return;
+            }
+
+            GameRoom? room = null;
+            lock (_lock) {
+                if (!_rooms.TryGetValue(handler.RoomId, out room)) {
+                    return;
+                }
+            }
+
+            bool closeRoom = false;
+            lock (_roomLocks[handler.RoomId]) {
+                room.PlayerIds.Remove(handler.PlayerId);
+
+                if (room.HostPlayerId == handler.PlayerId) {
+                    room.HostPlayerId = -1;
+                    for (int i = 0; i < room.PlayerIds.Count; i++) {
+                        if (!isBot(room.PlayerIds[i])) {
+                            room.HostPlayerId = room.PlayerIds[i];
+                            break;
+                        }
+                    }
+
+                    if (room.HostPlayerId != -1) {
+                        BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.NewHost, new() {
+                                { "hostId", room.HostPlayerId.ToString() }
+                            }));
+                    } else {
+                        closeRoom = true;
+                        if (room.BombThread != null) {
+                            if (room.BombThread.IsAlive) {
+                                room.BombCts?.Cancel();
+                                room.BombThread.Join();
+                            }
+                        }
+                    }
+                }
+
+                if (room.GameStarted) {
+                    room.Map.PlayerPositions.Remove(handler.PlayerId);
+                    BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.PlayerLeft, new() {
+                        { "playerId", handler.PlayerId.ToString() }
+                    }));
+                } else {
+                    BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.PlayerLeft, new() {
+                        { "playerId", handler.PlayerId.ToString() }
+                    }));
+                }
+            }
+
+            if (closeRoom) {
+                foreach (var playerId in room.PlayerIds) {
+                    if (isBot(playerId)) {
+                        GameBot? bot = _bots.Find(b => b.BotId == playerId);
+                        if (bot == null) continue;
+                        bot.Dispose();
+                        lock (_lock) {
+                            _bots.Remove(bot);
+                        }
+                    }
+                }
+
+                lock (_lock) {
+                    _rooms.Remove(room.RoomId);
+                    _roomLocks.Remove(room.RoomId);
+                }
+            }
+
+            handler.RoomId = null;
         }
 
         private void BroadcastRoomListToLobby() {
@@ -359,7 +410,7 @@ namespace Server {
                             _rooms.Add(newRoomId, newRoom);
                             _roomLocks.Add(newRoomId, new ReaderWriterLockSlim());
 
-                            client.RoomId = newRoomId;
+                            client!.RoomId = newRoomId;
 
                             SendToClient(playerId, NetworkMessage.From(ServerMessageType.RoomCreated));
 
@@ -369,10 +420,10 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.GetRoomInfo: {
-                        lock (_roomLocks[roomId]) {
-                            if (_rooms.TryGetValue(roomId, out GameRoom? room)) {
+                        lock (_roomLocks[roomId!]) {
+                            if (_rooms.TryGetValue(roomId!, out GameRoom? room)) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.RoomInfo, new() {
-                                    { "roomId", roomId },
+                                    { "roomId", roomId! },
                                     { "hostId", room.HostPlayerId.ToString() },
                                     { "isHost", (playerId == room.HostPlayerId).ToString().ToLower() },
                                     { "playerIds", string.Join(";", room.PlayerIds) },
@@ -382,8 +433,8 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.AddBot: {
-                        lock (_roomLocks[roomId]) {
-                            if (!_rooms.TryGetValue(roomId, out GameRoom? room)) return;
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
 
                             if (room.HostPlayerId != playerId) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.Error, new() {
@@ -400,7 +451,7 @@ namespace Server {
                             }
 
                             int botId = _nextBotId++;
-                            _bots.Add(new GameBot(botId, roomId, ProcessClientMessage));
+                            _bots.Add(new GameBot(botId, roomId!, ProcessClientMessage));
                             room.PlayerIds.Add(botId);
 
                             foreach (var existingPlayerId in room.PlayerIds) {
@@ -448,7 +499,7 @@ namespace Server {
                             }
 
                             room.PlayerIds.Add(playerId);
-                            client.RoomId = joinRoomId;
+                            client!.RoomId = joinRoomId;
 
                             // Notify the player that they joined the room
                             SendToClient(playerId, NetworkMessage.From(ServerMessageType.RoomJoined));
@@ -468,52 +519,14 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.LeaveRoom: {
-                        lock (_roomLocks[roomId]) {
-                            if (_rooms.TryGetValue(roomId, out GameRoom? room)) {
-                                room.PlayerIds.Remove(playerId);
-
-                                // If the host left, assign a new host or close the room
-                                if (room.HostPlayerId == playerId) {
-                                    room.HostPlayerId = -1;
-                                    for (int i = 0; i < room.PlayerIds.Count; i++) {
-                                        if (!isBot(room.PlayerIds[i])) {
-                                            room.HostPlayerId = room.PlayerIds[i];
-                                            break;
-                                        }
-                                    }
-
-                                    if (room.HostPlayerId != -1) {
-                                        BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.NewHost, new() {
-                                            { "hostId", room.HostPlayerId.ToString() }
-                                        }));
-                                    } else {
-                                        _rooms.Remove(roomId);
-                                        _roomLocks.Remove(roomId);
-                                        if (room.BombThread != null) {
-                                            // Thread will exit on its own as the room is removed
-                                        }
-                                    }
-                                }
-
-                                // Notify other players that this player left
-                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PlayerLeft, new() {
-                                    { "playerId", playerId.ToString() }
-                                }));
-                            }
-
-                            client.RoomId = null;
-
-                            // Send room list to the player who left
-                            // SendRoomListToClient(playerId);
-
-                            // Update room list for all clients in lobby
-                            // BroadcastRoomListToLobby();
+                        lock (_roomLocks[roomId!]) {
+                            RemoveClientFromRoom(client!);
                         }
                     }
                     break;
                 case ClientMessageType.StartGame: {
-                        lock (_roomLocks[roomId]) {
-                            if (!_rooms.TryGetValue(roomId, out GameRoom? room)) return;
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
 
                             // Only the host can start the game
                             if (room.HostPlayerId != playerId) {
@@ -524,11 +537,12 @@ namespace Server {
                             }
 
                             // Start the game
-                            room.BombThread = new Thread(() => ProcessBombs(roomId)) {
+                            room.BombCts = new CancellationTokenSource();
+                            room.BombThread = new Thread(() => ProcessBombs(roomId!)) {
                                 IsBackground = true
                             };
-
                             room.BombThread.Start();
+
                             for (int i = 0; i < room.PlayerIds.Count; i++) {
                                 Position initialPosition = GenerateInitialPosition(room.Map);
                                 room.Map.SetPlayerPosition(room.PlayerIds[i], initialPosition.X, initialPosition.Y);
@@ -543,7 +557,7 @@ namespace Server {
                             }
 
                             // Send map to all players
-                            BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.GameStarted));
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameStarted));
 
                             // Update room list for all clients in lobby since this room is no longer joinable
                             // BroadcastRoomListToLobby();
@@ -551,8 +565,8 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.GetGameInfo: {
-                        lock (_roomLocks[roomId]) {
-                            if (_rooms.TryGetValue(roomId, out GameRoom? room)) {
+                        lock (_roomLocks[roomId!]) {
+                            if (_rooms.TryGetValue(roomId!, out GameRoom? room)) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.GameInfo, new() {
                                     { "map", room.Map.ToString() },
                                     { "playerCount", room.PlayerIds.Count.ToString() },
@@ -564,13 +578,13 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.MovePlayer: {
-                        lock (_roomLocks[roomId]) {
-                            if (!_rooms.TryGetValue(roomId, out GameRoom? room) || !room.GameStarted) return;
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.GameStarted) return;
 
                             Direction direction = Enum.Parse<Direction>(message.Data["direction"]);
                             room.Map.MovePlayer(playerId, direction);
 
-                            BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PlayerMoved, new() {
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PlayerMoved, new() {
                                 { "playerId", playerId.ToString() },
                                 { "x", room.Map.GetPlayerPosition(playerId).X.ToString() },
                                 { "y", room.Map.GetPlayerPosition(playerId).Y.ToString() },
@@ -580,8 +594,8 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.PlaceBomb: {
-                        lock (_roomLocks[roomId]) {
-                            if (!_rooms.TryGetValue(roomId, out GameRoom? room) || !room.GameStarted) return;
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.GameStarted) return;
 
                             BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
@@ -590,7 +604,7 @@ namespace Server {
                             if (!room.Map.HasBomb(x, y)) {
                                 room.Map.AddBomb(x, y, type);
 
-                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
                                     { "x", x.ToString() },
                                     { "y", y.ToString() },
                                     { "type", type.ToString() }

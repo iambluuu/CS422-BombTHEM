@@ -13,7 +13,7 @@ namespace Client {
             // Initialize your main menu components here
             var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
                 Position = new Vector2(50, 50),
-                Size = new Vector2(300, 400),
+                Size = new Vector2(400, 500),
                 Padding = 30,
             };
 
@@ -23,21 +23,18 @@ namespace Client {
                 Size = new Vector2(100, 200),
                 OnClick = CreateGame,
                 Text = "Create Game",
-                Font = content.Load<SpriteFont>("Font/NormalFont"),
             };
             var exitButton = new Button() {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(100, 200),
                 OnClick = ExitGame,
                 Text = "Exit",
-                Font = content.Load<SpriteFont>("Font/NormalFont"),
             };
             var joinGameButton = new Button() {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(100, 200),
                 OnClick = JoinGame,
                 Text = "Join Game",
-                Font = content.Load<SpriteFont>("Font/NormalFont"),
             };
 
             layout.AddComponent(createGameButton);
@@ -121,11 +118,6 @@ namespace Client {
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             // Draw the main menu components
             base.Draw(gameTime, spriteBatch);
-        }
-
-        public override void LoadContent() {
-            base.LoadContent();
-            TextureHolder.SetContentManager(content);
         }
     }
 }
