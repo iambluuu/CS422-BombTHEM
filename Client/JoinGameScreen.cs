@@ -1,19 +1,15 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 
 using Client.Component;
-using System;
+using Shared;
 
 namespace Client {
     public class JoinGameScreen : GameScreen {
-        public int ServerPort { get; set; } = 0;
-        public bool IsConnecting { get; set; } = false;
-        public bool IsConnected { get; set; } = false;
-        public string ErrorMessage { get; set; } = string.Empty;
-
-        private TextBox roomCodeBox = null!;
+        private TextBox roomIdTextBox = null!;
 
         public override void Initialize() {
             base.Initialize();
@@ -23,56 +19,61 @@ namespace Client {
                 Size = new Vector2(300, 400),
                 Padding = 25,
             };
-            roomCodeBox = new TextBox() {
+            roomIdTextBox = new TextBox() {
                 PlaceholderText = "Enter Room Code",
-                Font = content.Load<SpriteFont>("Font/NormalFont"),
                 MaxLength = 6,
                 FontSize = 100,
                 TextAlignment = ContentAlignment.MiddleCenter,
                 IsUppercase = true,
             };
 
-            var connectButton = new Button(position: new Vector2(0, 0), size: new Vector2(100, 200), onClick: Connect) {
+            var connectButton = new Button() {
                 Text = "Join",
-                Font = content.Load<SpriteFont>("Font/NormalFont"),
+                Position = new Vector2(0, 0),
+                Size = new Vector2(100, 200),
+                OnClick = Connect,
             };
 
-            layout.Center(new Rectangle(0, 0, MainGame.Instance.GraphicsDevice.Viewport.Width, MainGame.Instance.GraphicsDevice.Viewport.Height));
-            layout.AddComponent(roomCodeBox);
+            var backButton = new Button() {
+                Text = "Back",
+                Position = new Vector2(0, 0),
+                Size = new Vector2(100, 200),
+                OnClick = () => ScreenManager.Instance.NavigateBack(),
+            };
+
+            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
+            layout.AddComponent(roomIdTextBox);
             layout.AddComponent(connectButton);
+            layout.AddComponent(backButton);
             uiManager.AddComponent(layout);
         }
 
-        public void Connect() {
-            if (IsConnecting) return;
-
-            string roomCode = roomCodeBox.Text.Trim();
-            if (!ValidateRoomCode(roomCode)) {
-                ErrorMessage = $"Invalid room code: {roomCode}. Please try again.";
-                Console.WriteLine(ErrorMessage);
-                return;
+        private void Connect() {
+            string roomId = roomIdTextBox.Text.ToUpperInvariant();
+            if (ValidateRoomCode(roomId)) {
+                NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.JoinRoom, new() {
+                    {"roomId", roomId }
+                }));
+            } else {
+                Console.WriteLine("Invalid room code. Please enter a 6-character code");
             }
-
-            Console.WriteLine($"Attempting to connect to room: {roomCode} on port {ServerPort}");
-            IsConnecting = true;
-            // Simulate connection logic here
-            // On success:
-            IsConnected = true;
-            // On failure:
-            ErrorMessage = "Failed to connect to server.";
-            IsConnecting = false;
         }
 
         private bool ValidateRoomCode(string roomCode) {
-            // Add your validation logic here (e.g., regex, length check, etc.)
             return !string.IsNullOrEmpty(roomCode) && roomCode.Length == 6;
         }
 
-        public void Disconnect() {
-            if (!IsConnected) return;
-
-            IsConnected = false;
-            // Simulate disconnection logic here
+        public override void HandleResponse(NetworkMessage message) {
+            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+                case ServerMessageType.RoomJoined: {
+                        ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
+                    }
+                    break;
+                case ServerMessageType.Error: {
+                        Console.WriteLine($"Error joining room: {message.Data["message"]}");
+                    }
+                    break;
+            }
         }
     }
 }

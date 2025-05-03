@@ -23,7 +23,7 @@ namespace Client.Component {
         public Texture2D? Icon { get; set; }
         public string? Text { get; set; } = string.Empty;
 
-        public SpriteFont? Font { get; set; } = null!;
+        public SpriteFont? Font { get; set; } = FontHolder.Get("Font/NormalFont");
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleCenter;
         public ContentAlignment IconAlignment { get; set; } = ContentAlignment.MiddleLeft;
 
@@ -35,36 +35,10 @@ namespace Client.Component {
 
         private StateOfButton _state = StateOfButton.Normal;
 
-        public Button(
-            Vector2? position,
-            Vector2? size,
-            Action? onClick = null,
-            Texture2D? texture = null,
-            SpriteFont? font = default,
-            string? text = null,
-            Texture2D? icon = null,
-            ContentAlignment textAlignment = ContentAlignment.MiddleCenter,
-            ContentAlignment iconAlignment = ContentAlignment.MiddleLeft,
-            int padding = 8,
-            Color? backgroundColor = null,
-            Color? textColor = null
-        ) {
-            // Texture = texture;
-            Font = font;
-            Position = position ?? Vector2.Zero;
-            Size = size ?? new Vector2(100, 50);
-
-            OnClick = onClick;
-
-            Text = text;
-            Icon = icon;
-
-            TextAlignment = textAlignment;
-            IconAlignment = iconAlignment;
-            Padding = padding;
-
-            BackgroundColor = backgroundColor ?? Color.White;
-            TextColor = textColor ?? Color.Black;
+        public Button() {
+            IsFocused = false;
+            IsVisible = true;
+            IsEnabled = true;
         }
 
         public override void Draw(SpriteBatch spriteBatch) {

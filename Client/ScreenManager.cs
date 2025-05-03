@@ -7,13 +7,14 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Security.Principal;
+using Shared;
 
 namespace Client {
     public enum ScreenName {
         MainMenu,
         LobbyScreen,
         JoinGameScreen,
-        GameScreen,
+        MainGameScreen,
         PauseMenu,
         SettingsMenu
     }
@@ -65,13 +66,13 @@ namespace Client {
             GameScreen screen;
 
             // Check if screen exists in cache
-            if (screenCache.ContainsKey(screenType)) {
-                screen = screenCache[screenType];
-            } else {
-                // Create new screen based on enum type
-                screen = CreateScreen(screenType);
-                screenCache[screenType] = screen;
-            }
+            // if (screenCache.ContainsKey(screenType)) {
+            //     screen = screenCache[screenType];
+            // } else {
+            // Create new screen based on enum type
+            screen = CreateScreen(screenType);
+            screenCache[screenType] = screen;
+            // }
 
             // Set whether this screen should overlay or replace current screens
             screen.IsExclusive = !isOverlay;
@@ -84,12 +85,12 @@ namespace Client {
             switch (screenType) {
                 case ScreenName.MainMenu:
                     return new MainMenuScreen();
-                // case ScreenName.LobbyScreen:
-                //     return new LobbyScreen();
+                case ScreenName.LobbyScreen:
+                    return new LobbyScreen();
                 case ScreenName.JoinGameScreen:
                     return new JoinGameScreen();
-                // case ScreenName.GameScreen:
-                //     return new GameScreen();
+                case ScreenName.MainGameScreen:
+                    return new MainGameScreen();
                 default:
                     throw new ArgumentException($"Unknown screen type: {screenType}");
             }
@@ -134,6 +135,7 @@ namespace Client {
                 screen.Deactivate();
                 screen.IsVisible = false;
 
+
                 // Don't unload content if the screen is cached
                 // Content will be unloaded when the game exits or explicitly
 
@@ -166,7 +168,6 @@ namespace Client {
     }
 
     public abstract class GameScreen {
-        protected ContentManager content;
         protected UIManager uiManager = new();
 
         private KeyboardState previousKeyboardState;
@@ -183,21 +184,21 @@ namespace Client {
         public virtual void Activate() {
             IsActive = true;
             IsVisible = true;
-            MainGame.Instance.Window.TextInput += DispatchTextInput;
+            Client.Instance.Window.TextInput += DispatchTextInput;
+            NetworkManager.Instance.InsertHandler(HandleResponse);
         }
 
         public virtual void Deactivate() {
             IsActive = false;
-            MainGame.Instance.Window.TextInput -= DispatchTextInput;
+            Client.Instance.Window.TextInput -= DispatchTextInput;
+            NetworkManager.Instance.RemoveHandler(HandleResponse);
         }
 
-        public virtual void LoadContent() {
-            content = new ContentManager(ScreenManager.Content.ServiceProvider, "Content");
-        }
+        public virtual void HandleResponse(NetworkMessage message) { }
 
-        public virtual void UnloadContent() {
-            content?.Unload();
-        }
+        public virtual void LoadContent() { }
+
+        public virtual void UnloadContent() { }
 
         public virtual void Update(GameTime gameTime) {
             if (!IsActive) return;

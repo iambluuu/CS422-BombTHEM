@@ -1,0 +1,31 @@
+using System.Collections.Generic;
+using Microsoft.Xna.Framework.Content;
+using Microsoft.Xna.Framework.Graphics;
+
+namespace Client {
+    public static class FontHolder {
+        private static readonly Dictionary<string, SpriteFont> _fonts = new();
+        private static ContentManager _content;
+
+        public static void SetContentManager(ContentManager content) {
+            _content = content;
+        }
+
+        public static SpriteFont Get(string name) {
+            if (_fonts.ContainsKey(name)) {
+                return _fonts[name];
+            } else {
+                if (_content == null)
+                    throw new System.Exception("ContentManager not set in FontHolder");
+
+                SpriteFont font = _content.Load<SpriteFont>(name);
+                _fonts[name] = font;
+                return font;
+            }
+        }
+
+        public static void UnloadAll() {
+            _fonts.Clear();
+        }
+    }
+}

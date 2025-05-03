@@ -15,7 +15,7 @@ namespace Client.Component {
         public int MaxLength { get; set; } = 100;
         public bool IsMultiline { get; set; } = false;
         public bool IsPassword { get; set; } = false;
-        public readonly bool IsReadOnly = false;
+        public bool IsReadOnly { get; set; } = false;
         public bool IsUppercase { get; set; } = false;
         public Color TextColor { get; set; } = Color.Black;
         public Color BackgroundColor { get; set; } = Color.White;
@@ -28,7 +28,7 @@ namespace Client.Component {
         private double _caretBlinkTimer = 0;
 
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleLeft;
-        public SpriteFont Font { get; set; } = null!;
+        public SpriteFont Font { get; set; } = FontHolder.Get("Font/NormalFont");
         public Texture2D Texture { get; set; } = null!;
 
         public TextBox() {
@@ -90,6 +90,7 @@ namespace Client.Component {
                 texture.SetData(new[] { Color.White });
                 spriteBatch.Draw(texture, Position, Color.White);
             }
+
             // Draw border
             if (BorderWidth > 0) {
                 var borderTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
@@ -136,7 +137,7 @@ namespace Client.Component {
         }
 
         private static float ToPixels(float value) {
-            IntPtr Handle = MainGame.Instance.Window.Handle;
+            IntPtr Handle = Client.Instance.Window.Handle;
             return Utils.ToPixels(value, Handle);
         }
 
