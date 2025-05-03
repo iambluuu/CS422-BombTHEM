@@ -51,7 +51,7 @@ namespace Client {
 
         public override void Draw(GameTime gameTime) {
             var screens = screenStack.ToArray();
-            spriteBatch.Begin();
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
             for (int i = screens.Length - 1; i >= 0; i--) {
                 var screen = screens[i];
                 if (screen.IsVisible)
@@ -131,6 +131,8 @@ namespace Client {
         private void PopScreen() {
             if (screenStack.Count > 0) {
                 var screen = screenStack.Pop();
+                screen.Deactivate();
+                screen.IsVisible = false;
 
                 // Don't unload content if the screen is cached
                 // Content will be unloaded when the game exits or explicitly
@@ -202,11 +204,24 @@ namespace Client {
             MouseState mouseState = Mouse.GetState();
             KeyboardState keyboardState = Keyboard.GetState();
 
+            if (mouseState.Position != previousMouseState.Position) {
+                // Handle mouse movement event
+                UIEvent mouseMoveEvent = new UIEvent(UIEventType.MouseMove, mousePosition: mouseState.Position);
+                uiManager.DispatchEvent(mouseMoveEvent);
+            }
+
             // Handle Click
-            if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed) {
+            if (mouseState.LeftButton == ButtonState.Released) {
                 // Handle click event
-                UIEvent clickEvent = new UIEvent(UIEventType.MouseClick, mousePosition: mouseState.Position);
+                UIEvent clickEvent = new UIEvent(UIEventType.MouseUp, mousePosition: mouseState.Position);
                 uiManager.DispatchEvent(clickEvent);
+            }
+
+            // Handle Mouse Down
+            if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released) {
+                // Handle mouse down event
+                UIEvent mouseDownEvent = new UIEvent(UIEventType.MouseDown, mousePosition: mouseState.Position);
+                uiManager.DispatchEvent(mouseDownEvent);
             }
 
             // Handle Key Press
