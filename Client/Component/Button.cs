@@ -5,9 +5,21 @@ using SharpDX.Direct3D;
 using System;
 
 namespace Client.Component {
+    enum StateOfButton {
+        Normal,
+        Hovered,
+        Pressed,
+        Disabled
+    }
+
     public class Button : IComponent {
-        public Texture2D Texture { get; set; }
+        // public Texture2D Texture { get; set; }
 #nullable enable
+        private readonly Vector2 CornerSize = new(3, 3);
+        private readonly Rectangle TextureSize = new(0, 0, 16, 8);
+        private const int PressedOffset = 5;
+        private const string TextureDir = "Texture/Theme/";
+
         public Texture2D? Icon { get; set; }
         public string? Text { get; set; } = string.Empty;
 
@@ -20,6 +32,8 @@ namespace Client.Component {
         public Color TextColor { get; set; } = Color.Black;
         public Vector2 TextSize { get; set; } = Vector2.Zero;
         public Color BackgroundColor { get; set; } = Color.White;
+      
+        private StateOfButton _state = StateOfButton.Normal;
 
         public Button() {
             IsFocused = false;
@@ -30,20 +44,18 @@ namespace Client.Component {
         public override void Draw(SpriteBatch spriteBatch) {
             if (!IsVisible) return;
 
-            if (Texture == null) {
-                // Draw a default rectangle if no texture is provided
-                Texture = new Texture2D(spriteBatch.GraphicsDevice, (int)Size.X, (int)Size.Y);
-                Color[] data = new Color[(int)(Size.X * Size.Y)];
-                for (int i = 0; i < data.Length; ++i) {
-                    data[i] = BackgroundColor;
-                }
-                Texture.SetData(data);
+            var texture = GetTexture();
+            if (texture.Width == 1 && texture.Height == 1) {
+                spriteBatch.Draw(texture, Position, BackgroundColor);
+            } else {
+                DrawNineSlice(spriteBatch, texture);
             }
-
-            spriteBatch.Draw(Texture, Position, BackgroundColor);
 
             if (Icon != null) {
                 Vector2 iconPosition = GetAlignedPosition(IconAlignment, Icon.Bounds.Size.ToVector2(), Size);
+                if (_state == StateOfButton.Pressed) {
+                    iconPosition.Y += PressedOffset;
+                }
                 spriteBatch.Draw(Icon, iconPosition, Color.White);
             }
 
@@ -57,6 +69,9 @@ namespace Client.Component {
                 textSize *= scale;
                 // Adjust text size based on icon size and padding
                 Vector2 textPosition = GetAlignedPosition(TextAlignment, textSize, Size);
+                if (_state == StateOfButton.Pressed) {
+                    textPosition.Y += PressedOffset;
+                }
                 spriteBatch.DrawString(Font, Text, textPosition, TextColor, scale: scale, origin: Vector2.Zero, rotation: 0f, effects: SpriteEffects.None, layerDepth: 0f);
             }
         }
@@ -65,20 +80,24 @@ namespace Client.Component {
             if (!IsVisible) return;
         }
 
-        public override void HandleInput(UIEvent uIEvent) {
+        public override void HandleInput(UIEvent uiEvent) {
             if (!IsEnabled) return;
 
             if (HitTest(Mouse.GetState().Position)) {
-                if (Mouse.GetState().LeftButton == ButtonState.Pressed) {
+                if (uiEvent.Type == UIEventType.MouseDown) {
                     OnMouseDown?.Invoke();
-                } else if (Mouse.GetState().LeftButton == ButtonState.Released) {
+                    _state = StateOfButton.Pressed;
+                } else if (uiEvent.Type == UIEventType.MouseUp && _state == StateOfButton.Pressed) {
                     OnMouseUp?.Invoke();
                     OnClick?.Invoke();
-                } else {
+                    _state = StateOfButton.Hovered;
+                } else if (_state != StateOfButton.Pressed) {
                     OnMouseEnter?.Invoke();
+                    _state = StateOfButton.Hovered;
                 }
             } else {
                 OnMouseLeave?.Invoke();
+                _state = StateOfButton.Normal;
             }
         }
 
@@ -116,6 +135,73 @@ namespace Client.Component {
             }
 
             return position;
+        }
+
+        private Texture2D GetTexture() {
+            Texture2D texture = new Texture2D(TextureHolder.Get($"{TextureDir}button_normal").GraphicsDevice, 1, 1);
+            texture.SetData(new[] { BackgroundColor });
+
+            try {
+                switch (_state) {
+                    case StateOfButton.Normal:
+                        texture = TextureHolder.Get($"{TextureDir}button_normal");
+                        break;
+                    case StateOfButton.Hovered:
+                        texture = TextureHolder.Get($"{TextureDir}button_hover");
+                        break;
+                    case StateOfButton.Pressed:
+                        texture = TextureHolder.Get($"{TextureDir}button_pressed");
+                        break;
+                    case StateOfButton.Disabled:
+                        texture = TextureHolder.Get($"{TextureDir}button_disabled");
+                        break;
+                }
+            } catch (Exception ex) {
+                Console.WriteLine($"Error loading texture: {ex.Message}");
+            }
+
+            return texture;
+        }
+
+        private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {
+            var scale = 7;
+            var scaledCornerSize = CornerSize * scale;
+
+            Rectangle srcTopLeft = new Rectangle(0, 0, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcTop = new Rectangle((int)CornerSize.X, 0, (int)(TextureSize.Width - CornerSize.X * 2), (int)CornerSize.Y);
+            Rectangle srcTopRight = new Rectangle(TextureSize.Width - (int)CornerSize.X, 0, (int)CornerSize.X, (int)CornerSize.Y);
+
+            Rectangle srcBottomLeft = new Rectangle(0, TextureSize.Height - (int)CornerSize.Y, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcBottomRight = new Rectangle(TextureSize.Width - (int)CornerSize.X, TextureSize.Height - (int)CornerSize.Y, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcBottom = new Rectangle((int)CornerSize.X, TextureSize.Height - (int)CornerSize.Y, (int)(TextureSize.Width - CornerSize.X * 2), (int)CornerSize.Y);
+
+            Rectangle srcMiddle = new Rectangle((int)CornerSize.X, (int)CornerSize.Y, (int)(TextureSize.Width - CornerSize.X * 2), (int)(TextureSize.Height - CornerSize.Y * 2));
+            Rectangle srcMiddleLeft = new Rectangle(0, (int)CornerSize.Y, (int)CornerSize.X, (int)(TextureSize.Height - CornerSize.Y * 2));
+            Rectangle srcMiddleRight = new Rectangle(TextureSize.Width - (int)CornerSize.X, (int)CornerSize.Y, (int)CornerSize.X, (int)(TextureSize.Height - CornerSize.Y * 2));
+
+            Rectangle dstTopLeft = new Rectangle((int)Position.X, (int)Position.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstTop = new Rectangle((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)scaledCornerSize.Y);
+            Rectangle dstTopRight = new Rectangle((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+
+            Rectangle dstBottomLeft = new Rectangle((int)Position.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstBottomRight = new Rectangle((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstBottom = new Rectangle((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)scaledCornerSize.Y);
+
+            Rectangle dstMiddle = new Rectangle((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)(Size.Y - scaledCornerSize.Y * 2));
+            Rectangle dstMiddleLeft = new Rectangle((int)Position.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)(Size.Y - scaledCornerSize.Y * 2));
+            Rectangle dstMiddleRight = new Rectangle((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)(Size.Y - scaledCornerSize.Y * 2));
+
+            spriteBatch.Draw(texture, dstTopLeft, srcTopLeft, Color.White);
+            spriteBatch.Draw(texture, dstTop, srcTop, Color.White);
+            spriteBatch.Draw(texture, dstTopRight, srcTopRight, Color.White);
+
+            spriteBatch.Draw(texture, dstBottomLeft, srcBottomLeft, Color.White);
+            spriteBatch.Draw(texture, dstBottom, srcBottom, Color.White);
+            spriteBatch.Draw(texture, dstBottomRight, srcBottomRight, Color.White);
+
+            spriteBatch.Draw(texture, dstMiddle, srcMiddle, Color.White);
+            spriteBatch.Draw(texture, dstMiddleLeft, srcMiddleLeft, Color.White);
+            spriteBatch.Draw(texture, dstMiddleRight, srcMiddleRight, Color.White);
         }
     }
 #nullable disable

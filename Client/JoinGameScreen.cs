@@ -17,10 +17,11 @@ namespace Client {
             var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
                 Position = new Vector2(50, 50),
                 Size = new Vector2(300, 400),
-                Padding = 20,
+                Padding = 25,
             };
             roomIdTextBox = new TextBox() {
                 PlaceholderText = "Enter Room Code",
+                Font = content.Load<SpriteFont>("Font/NormalFont"),
                 MaxLength = 6,
                 FontSize = 100,
                 TextAlignment = ContentAlignment.MiddleCenter,
@@ -39,6 +40,7 @@ namespace Client {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(100, 200),
                 OnClick = () => ScreenManager.Instance.NavigateBack(),
+                Font = content.Load<SpriteFont>("Font/NormalFont"),
             };
 
             layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
