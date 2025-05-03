@@ -20,6 +20,13 @@ namespace Client {
         private bool _connected = false;
         private event Action<NetworkMessage> Handlers;
 
+        // Buffer for receiving data
+        private byte[] _receiveBuffer = new byte[4096];
+        private MemoryStream _messageBuffer = new MemoryStream();
+
+        // Maximum allowed message size to prevent DoS attacks
+        private const int MaxMessageSize = 1024 * 1024; // 1MB
+
         public int ClientId {
             get {
                 return _clientId;
@@ -42,6 +49,7 @@ namespace Client {
                 _client.Connect(ip, port);
                 _stream = _client.GetStream();
                 _connected = true;
+                _messageBuffer = new MemoryStream();
                 Console.WriteLine("Connected to server");
             } catch (Exception ex) {
                 Console.WriteLine($"Error connecting to server: {ex.Message}");
@@ -56,45 +64,83 @@ namespace Client {
         }
 
         private async void StartListening(CancellationToken ct) {
-            byte[] buffer = new byte[1024];
-
             try {
-                while (!ct.IsCancellationRequested) {
+                while (!ct.IsCancellationRequested && _connected) {
                     int bytesRead = 0;
 
                     try {
-                        var readTask = _stream.ReadAsync(buffer, 0, buffer.Length, ct);
+                        var readTask = _stream.ReadAsync(_receiveBuffer, 0, _receiveBuffer.Length, ct);
                         bytesRead = await readTask;
-                    } catch {
+                    } catch (Exception ex) {
+                        Console.WriteLine($"Error reading from stream: {ex.Message}");
                         break;
                     }
 
-                    if (bytesRead <= 0) break;
-
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    string[] messages = message.Split(['\n', '\r', '|'], StringSplitOptions.RemoveEmptyEntries);
-
-                    foreach (var msg in messages) {
-                        if (string.IsNullOrEmpty(msg)) continue;
-
-                        try {
-                            NetworkMessage messageObj = NetworkMessage.FromJson(msg);
-
-                            if (messageObj.Type.Direction != MessageDirection.Server) {
-                                Console.WriteLine("The received message must be from the server side");
-                                continue;
-                            }
-
-                            Handlers?.Invoke(messageObj);
-                        } catch (Exception ex) {
-                            Console.WriteLine($"Error invoking handler: {ex.StackTrace}");
-                        }
+                    if (bytesRead <= 0) {
+                        Console.WriteLine("Server closed connection");
+                        break;
                     }
+
+                    _messageBuffer.Write(_receiveBuffer, 0, bytesRead);
+
+                    ProcessMessageBuffer();
                 }
             } catch (Exception ex) {
                 Console.WriteLine($"Unexpected error in listener: {ex.Message}");
             } finally {
                 Disconnect();
+            }
+        }
+
+        private void ProcessMessageBuffer() {
+            _messageBuffer.Position = 0;
+
+            long processedPosition = 0;
+            byte[] bufferData = _messageBuffer.ToArray();
+
+            while (true) {
+                int delimiterIndex = -1;
+                for (int i = (int)processedPosition; i < bufferData.Length; i++) {
+                    if (bufferData[i] == '|') {
+                        delimiterIndex = i;
+                        break;
+                    }
+                }
+
+                if (delimiterIndex == -1) break;
+
+                int messageSize = delimiterIndex - (int)processedPosition;
+
+                if (messageSize > MaxMessageSize) {
+                    Console.WriteLine($"Message size exceeds maximum allowed ({messageSize} > {MaxMessageSize})");
+                    _messageBuffer = new MemoryStream();
+                    return;
+                }
+
+                byte[] messageData = new byte[messageSize];
+                Array.Copy(bufferData, processedPosition, messageData, 0, messageSize);
+                string messageString = Encoding.UTF8.GetString(messageData);
+
+                try {
+                    NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+
+                    if (messageObj.Type.Direction != MessageDirection.Server) {
+                        Console.WriteLine("The received message must be from the server side");
+                    } else {
+                        Handlers?.Invoke(messageObj);
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine($"Error processing message: {ex.Message}");
+                }
+                processedPosition = delimiterIndex + 1;
+            }
+
+            if (processedPosition >= bufferData.Length) {
+                _messageBuffer = new MemoryStream();
+            } else if (processedPosition > 0) {
+                byte[] remainingData = new byte[bufferData.Length - processedPosition];
+                Array.Copy(bufferData, processedPosition, remainingData, 0, remainingData.Length);
+                _messageBuffer = new MemoryStream(remainingData);
             }
         }
 
@@ -127,6 +173,7 @@ namespace Client {
                     _stream.Flush();
                 } catch (Exception ex) {
                     Console.WriteLine($"Error sending message: {ex.Message}");
+                    Disconnect();
                 }
             } else {
                 Console.WriteLine("Not connected to server");
@@ -138,15 +185,17 @@ namespace Client {
                 return;
             }
 
-            if (_listenThread.IsAlive == true) {
-                _listenCts.Cancel();
-                _listenThread.Join();
+            _connected = false;
+
+            if (_listenThread?.IsAlive == true) {
+                _listenCts?.Cancel();
+                _listenThread?.Join(1000);
             }
 
             _stream?.Close();
             _client?.Close();
             _client = null;
-            _connected = false;
+            _messageBuffer?.Dispose();
 
             Console.WriteLine("Disconnected from server");
         }

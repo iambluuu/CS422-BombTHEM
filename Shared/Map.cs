@@ -286,9 +286,9 @@ namespace Shared {
                         }
                     }
 
-                    if (final != null) {
-                        break;
-                    }
+                    // if (final != null) {
+                    //     break;
+                    // }
 
                     foreach (var direction in Utils.Shuffle(directions)) {
                         int newX = current.X + direction.X;

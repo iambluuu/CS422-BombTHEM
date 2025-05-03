@@ -14,8 +14,6 @@ namespace Server {
         private readonly List<ClientHandler> _clients = [];
         private readonly List<GameBot> _bots = [];
         private readonly Dictionary<string, GameRoom> _rooms = [];
-        private int _nextPlayerId = 0;
-        private int _nextBotId = 1000;
         private readonly ReaderWriterLockSlim _lock = new();
         private readonly Dictionary<string, ReaderWriterLockSlim> _roomLocks = [];
         private const int MAX_PLAYERS_PER_ROOM = 4;
@@ -55,7 +53,7 @@ namespace Server {
             while (true) {
                 try {
                     TcpClient client = _server.AcceptTcpClient();
-                    int playerId = _nextPlayerId++;
+                    int playerId = GeneratePlayerId();
 
                     ClientHandler clientHandler = new() {
                         PlayerId = playerId,
@@ -94,7 +92,29 @@ namespace Server {
         }
 
         private bool isBot(int playerId) {
-            return playerId >= 1000;
+            return playerId < 100000;
+        }
+
+        private int GeneratePlayerId() {
+            lock (_lock) {
+                while (true) {
+                    int playerId = Utils.RandomInt(100000, 1000000);
+                    if (!_clients.Any(c => c.PlayerId == playerId)) {
+                        return playerId;
+                    }
+                }
+            }
+        }
+
+        private int GenerateBotId() {
+            lock (_lock) {
+                while (true) {
+                    int botId = Utils.RandomInt(100000);
+                    if (!_bots.Any(b => b.BotId == botId)) {
+                        return botId;
+                    }
+                }
+            }
         }
 
         private Map GenerateRandomMap() {
@@ -239,43 +259,88 @@ namespace Server {
 
         private async void HandleClient(ClientHandler handler) {
             NetworkStream stream = handler.Stream;
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[4096];
 
+            MemoryStream messageBuffer = new MemoryStream();
             try {
                 while (!handler.Cts.Token.IsCancellationRequested) {
                     int bytesRead;
                     try {
                         var readTask = handler.Stream.ReadAsync(buffer, 0, buffer.Length, handler.Cts.Token);
                         bytesRead = await readTask;
-                    } catch {
+                    } catch (Exception ex) {
+                        Console.WriteLine($"Error reading from client {handler.PlayerId}: {ex.Message}");
                         break;
                     }
 
                     if (bytesRead <= 0) {
+                        Console.WriteLine($"Client {handler.PlayerId} disconnected");
                         break;
                     }
 
-                    string message = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-                    string[] messages = message.Split(['\n', '\r', '|'], StringSplitOptions.RemoveEmptyEntries);
+                    messageBuffer.Write(buffer, 0, bytesRead);
 
-                    foreach (var msg in messages) {
-                        if (!string.IsNullOrEmpty(msg)) {
-                            ProcessClientMessage(handler.PlayerId, NetworkMessage.FromJson(msg));
-                        }
-                    }
+                    ProcessMessageBuffer(handler.PlayerId, messageBuffer);
                 }
             } catch (Exception ex) {
                 Console.WriteLine($"Error handling client {handler.PlayerId}: {ex.Message}");
             } finally {
+                messageBuffer.Dispose();
                 DisconnectClient(handler);
             }
         }
 
-        private void DisconnectClient(ClientHandler handler) {
-            lock (_lock) {
-                _clients.Remove(handler);
+        private void ProcessMessageBuffer(int playerId, MemoryStream messageBuffer) {
+            messageBuffer.Position = 0;
+            long processedPosition = 0;
+            byte[] bufferData = messageBuffer.ToArray();
+            while (true) {
+                int delimiterIndex = -1;
+                for (int i = (int)processedPosition; i < bufferData.Length; i++) {
+                    if (bufferData[i] == '|') {
+                        delimiterIndex = i;
+                        break;
+                    }
+                }
+
+                if (delimiterIndex == -1) break;
+
+                int messageSize = delimiterIndex - (int)processedPosition;
+
+                const int MaxMessageSize = 1024 * 1024;
+                if (messageSize > MaxMessageSize) {
+                    Console.WriteLine($"Message from client {playerId} exceeds maximum allowed size ({messageSize} > {MaxMessageSize})");
+                    messageBuffer.SetLength(0);
+                    return;
+                }
+
+                byte[] messageData = new byte[messageSize];
+                Array.Copy(bufferData, processedPosition, messageData, 0, messageSize);
+                string messageString = Encoding.UTF8.GetString(messageData);
+
+                try {
+                    if (!string.IsNullOrEmpty(messageString)) {
+                        NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                        ProcessClientMessage(playerId, messageObj);
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine($"Error processing message from client {playerId}: {ex.Message}");
+                }
+
+                processedPosition = delimiterIndex + 1;
             }
 
+            if (processedPosition >= bufferData.Length) {
+                messageBuffer.SetLength(0);
+            } else if (processedPosition > 0) {
+                byte[] remainingData = new byte[bufferData.Length - processedPosition];
+                Array.Copy(bufferData, processedPosition, remainingData, 0, remainingData.Length);
+                messageBuffer.SetLength(0);
+                messageBuffer.Write(remainingData, 0, remainingData.Length);
+            }
+        }
+
+        private void DisconnectClient(ClientHandler handler) {
             RemoveClientFromRoom(handler);
 
             try {
@@ -286,6 +351,10 @@ namespace Server {
                 handler.connected = false;
             } catch (Exception ex) {
                 Console.WriteLine($"Error disconnecting client {handler.PlayerId}: {ex.Message}");
+            }
+
+            lock (_lock) {
+                _clients.RemoveAll(c => c.PlayerId == handler.PlayerId);
             }
 
             Console.WriteLine($"Player {handler.PlayerId} disconnected");
@@ -450,7 +519,7 @@ namespace Server {
                                 return;
                             }
 
-                            int botId = _nextBotId++;
+                            int botId = GenerateBotId();
                             _bots.Add(new GameBot(botId, roomId!, ProcessClientMessage));
                             room.PlayerIds.Add(botId);
 
