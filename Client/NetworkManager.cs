@@ -4,7 +4,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
+
 using Shared;
 
 namespace Client {
@@ -20,12 +20,13 @@ namespace Client {
         private bool _connected = false;
         private event Action<NetworkMessage> Handlers;
 
-        // Buffer for receiving data
+        private DateTime _lastPing;
+        private System.Timers.Timer _pingTimer;
+
         private byte[] _receiveBuffer = new byte[4096];
         private MemoryStream _messageBuffer = new MemoryStream();
 
-        // Maximum allowed message size to prevent DoS attacks
-        private const int MaxMessageSize = 1024 * 1024; // 1MB
+        private const int MaxMessageSize = 1024 * 1024;
 
         public int ClientId {
             get {
@@ -61,6 +62,16 @@ namespace Client {
                 IsBackground = true,
             };
             _listenThread.Start();
+
+            _pingTimer = new System.Timers.Timer(5000) {
+                AutoReset = true,
+                Enabled = true
+            };
+            _pingTimer.Elapsed += (sender, e) => {
+                _lastPing = DateTime.Now;
+                Send(NetworkMessage.From(ClientMessageType.Ping));
+            };
+            _pingTimer.Start();
         }
 
         private async void StartListening(CancellationToken ct) {
@@ -77,7 +88,6 @@ namespace Client {
                     }
 
                     if (bytesRead <= 0) {
-                        Console.WriteLine("Server closed connection");
                         break;
                     }
 
@@ -127,7 +137,13 @@ namespace Client {
                     if (messageObj.Type.Direction != MessageDirection.Server) {
                         Console.WriteLine("The received message must be from the server side");
                     } else {
-                        Handlers?.Invoke(messageObj);
+                        if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
+                            DateTime now = DateTime.Now;
+                            TimeSpan pingTime = now - _lastPing;
+                            Console.WriteLine($"Ping: {(int)pingTime.TotalMilliseconds} ms");
+                        } else {
+                            Handlers?.Invoke(messageObj);
+                        }
                     }
                 } catch (Exception ex) {
                     Console.WriteLine($"Error processing message: {ex.Message}");
@@ -196,6 +212,9 @@ namespace Client {
             _client?.Close();
             _client = null;
             _messageBuffer?.Dispose();
+
+            _pingTimer?.Stop();
+            _pingTimer?.Dispose();
 
             Console.WriteLine("Disconnected from server");
         }

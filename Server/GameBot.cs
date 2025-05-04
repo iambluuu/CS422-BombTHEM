@@ -41,7 +41,7 @@ namespace Server {
         private void Run() {
             while (!_cts.Token.IsCancellationRequested) {
                 if (_botId == -1 || !_isGameStarted) {
-                    Thread.Sleep(1000);
+                    Thread.Sleep(300);
                     continue;
                 }
 
@@ -55,7 +55,7 @@ namespace Server {
                     }
                 }
 
-                Thread.Sleep(150);
+                Thread.Sleep(300);
             }
         }
 

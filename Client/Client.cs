@@ -13,8 +13,8 @@ namespace Client {
 
         public Client() {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferHeight = 800;
-            _graphics.PreferredBackBufferWidth = 1200;
+            _graphics.PreferredBackBufferHeight = 720;
+            _graphics.PreferredBackBufferWidth = 960;
             _graphics.PreferMultiSampling = false;
             _graphics.ApplyChanges();
             Content.RootDirectory = "Content";

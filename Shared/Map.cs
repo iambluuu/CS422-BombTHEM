@@ -69,13 +69,15 @@ namespace Shared {
     }
 
     public class Bomb {
+        public int PlayerId { get; set; }
         public Position Position { get; set; }
         public BombType Type { get; set; }
         public DateTime PlaceTime { get; set; }
         public DateTime ExplodeTime { get; set; }
         public List<Position> ExplosionPositions { get; set; }
 
-        public Bomb(Position position, BombType type) {
+        public Bomb(Position position, BombType type, int playerId = -1) {
+            PlayerId = playerId;
             Position = position;
             Type = type;
             PlaceTime = DateTime.Now;
@@ -184,7 +186,7 @@ namespace Shared {
             return false;
         }
 
-        public void AddBomb(int x, int y, BombType bombType) {
+        public void AddBomb(int x, int y, BombType bombType, int playerId = -1) {
             if (!IsInBounds(x, y)) {
                 throw new ArgumentOutOfRangeException($"Map.AddBomb: Coordinate ({x}, {y}) is out of bounds");
             }

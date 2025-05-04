@@ -1,3 +1,4 @@
+using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -10,10 +11,10 @@ namespace Client {
         private int _lastFrame;
         private float _frameTime;
         private float _elapsedFrameTime;
+        private DateTime _lastDie = DateTime.MinValue;
         private Direction _currentDirection;
 
-        public PlayerNode(Texture2D texture, Vector2 size, float frameTime = 0.15f)
-            : base(texture, size) {
+        public PlayerNode(Texture2D texture, Vector2 size, float frameTime = 0.1f) : base(texture, size) {
             _frameTime = frameTime;
             _elapsedFrameTime = 0f;
             _currentFrame = 0;
@@ -21,15 +22,26 @@ namespace Client {
             _currentDirection = Direction.Down;
         }
 
+        public void Die() {
+            _lastDie = DateTime.Now;
+            SetDirection(Direction.Down);
+        }
+
         public void SetDirection(Direction dir) {
             if (_currentDirection != dir) {
                 _currentDirection = dir;
                 _currentFrame = 0;
                 _elapsedFrameTime = 0f;
+                _lastFrame = -1;
             }
         }
 
-        public void MoveTo(Vector2 target, Direction direction, float durationSeconds) {
+        public void TeleportTo(Vector2 target, Direction direction) {
+            base.TeleportTo(target);
+            SetDirection(direction);
+        }
+
+        public void MoveTo(Vector2 target, Direction direction, float durationSeconds = 0.3f) {
             base.MoveTo(target, durationSeconds);
             SetDirection(direction);
         }
@@ -55,6 +67,18 @@ namespace Client {
         }
 
         protected override void DrawCurrent(SpriteBatch spriteBatch, Matrix transform) {
+            float alpha = 1f;
+            if (_lastDie != DateTime.MinValue) {
+                double elapsedTime = (DateTime.Now - _lastDie).TotalMilliseconds;
+                if (elapsedTime > 2000) {
+                    _lastDie = DateTime.MinValue;
+                } else {
+                    if (Math.Sin(elapsedTime / 100) > 0) {
+                        alpha = 0.5f;
+                    }
+                }
+            }
+
             Vector2 position = Vector2.Transform(Vector2.Zero, transform);
             float rotation = RotationFromMatrix(transform);
             Vector2 scale = ScaleFromMatrix(transform);
@@ -74,7 +98,7 @@ namespace Client {
                 _texture,
                 position,
                 sourceRect,
-                Color.White,
+                Color.White * alpha,
                 rotation,
                 _origin,
                 scale * textureScale,

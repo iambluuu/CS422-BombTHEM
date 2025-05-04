@@ -21,7 +21,7 @@ namespace Client {
             // Create main horizontal layout
             mainLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 20) {
                 Position = new Vector2(50, 50),
-                Size = new Vector2(1000, 600),
+                Size = new Vector2(800, 600),
                 Padding = 20,
             };
             mainLayout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));

@@ -1,10 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using System.Linq;
 
 using Shared;
 
@@ -117,6 +113,21 @@ namespace Server {
             }
         }
 
+        private string GenerateRoomId() {
+            lock (_lock) {
+                while (true) {
+                    string roomId = string.Empty;
+                    for (int i = 0; i < 6; i++) {
+                        roomId += (char)(Utils.RandomInt(26) + 'A');
+                    }
+
+                    if (!_rooms.ContainsKey(roomId)) {
+                        return roomId;
+                    }
+                }
+            }
+        }
+
         private Map GenerateRandomMap() {
             int height = 15;
             int width = 15;
@@ -217,7 +228,7 @@ namespace Server {
                             }));
 
                             foreach (var pos in bomb.ExplosionPositions) {
-                                CheckForPlayersInExplosion(room, pos.X, pos.Y);
+                                CheckForPlayersInExplosion(room, pos.X, pos.Y, bomb.PlayerId);
                             }
 
                             room.Map.Bombs.Remove(bomb);
@@ -231,7 +242,7 @@ namespace Server {
             }
         }
 
-        private void CheckForPlayersInExplosion(GameRoom room, int x, int y) {
+        private void CheckForPlayersInExplosion(GameRoom room, int x, int y, int bombPlayerId) {
             foreach (var player in room.Map.PlayerPositions) {
                 Position playerPos = player.Value;
                 if (playerPos.X == x && playerPos.Y == y) {
@@ -240,6 +251,7 @@ namespace Server {
 
                     BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.PlayerDied, new() {
                         { "playerId", player.Key.ToString() },
+                        { "byPlayerId", bombPlayerId.ToString() },
                         { "x", respawnPosition.X.ToString() },
                         { "y", respawnPosition.Y.ToString() },
                     }));
@@ -274,7 +286,6 @@ namespace Server {
                     }
 
                     if (bytesRead <= 0) {
-                        Console.WriteLine($"Client {handler.PlayerId} disconnected");
                         break;
                     }
 
@@ -320,6 +331,7 @@ namespace Server {
 
                 try {
                     if (!string.IsNullOrEmpty(messageString)) {
+                        Console.WriteLine($"Received message from client {playerId}: {messageString}");
                         NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
                         ProcessClientMessage(playerId, messageObj);
                     }
@@ -434,7 +446,6 @@ namespace Server {
         }
 
         private void BroadcastRoomListToLobby() {
-            // Send updated room list to all clients not in a room
             var lobbyClients = _clients.Where(c => c.RoomId == null).ToList();
             foreach (var client in lobbyClients) {
                 SendRoomListToClient(client.PlayerId);
@@ -456,6 +467,10 @@ namespace Server {
             }
 
             switch (Enum.Parse<ClientMessageType>(message.Type.Name)) {
+                case ClientMessageType.Ping: {
+                        SendToClient(playerId, NetworkMessage.From(ServerMessageType.Pong));
+                    }
+                    break;
                 case ClientMessageType.GetClientId: {
                         SendToClient(playerId, NetworkMessage.From(ServerMessageType.ClientId, new() {
                             { "clientId", playerId.ToString() }
@@ -465,16 +480,9 @@ namespace Server {
                 case ClientMessageType.CreateRoom: {
                         if (roomId != null) return;
 
-                        string newRoomId = message.Data.ContainsKey("roomId") ? message.Data["roomId"] : Guid.NewGuid().ToString().Substring(0, 6);
+                        string newRoomId = GenerateRoomId();
 
                         lock (_lock) {
-                            if (_rooms.ContainsKey(newRoomId)) {
-                                SendToClient(playerId, NetworkMessage.From(ServerMessageType.Error, new() {
-                                    { "message", "Room with this ID already exists" }
-                                }));
-                                return;
-                            }
-
                             GameRoom newRoom = new GameRoom(newRoomId, playerId, GenerateRandomMap());
                             _rooms.Add(newRoomId, newRoom);
                             _roomLocks.Add(newRoomId, new ReaderWriterLockSlim());
@@ -482,9 +490,6 @@ namespace Server {
                             client!.RoomId = newRoomId;
 
                             SendToClient(playerId, NetworkMessage.From(ServerMessageType.RoomCreated));
-
-                            // Update room list for all clients in lobby
-                            // BroadcastRoomListToLobby();
                         }
                     }
                     break;
@@ -666,12 +671,12 @@ namespace Server {
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.GameStarted) return;
 
+                            int x = int.Parse(message.Data["x"]);
+                            int y = int.Parse(message.Data["y"]);
                             BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
-                            int x = room.Map.GetPlayerPosition(playerId).X;
-                            int y = room.Map.GetPlayerPosition(playerId).Y;
                             if (!room.Map.HasBomb(x, y)) {
-                                room.Map.AddBomb(x, y, type);
+                                room.Map.AddBomb(x, y, type, playerId);
 
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
                                     { "x", x.ToString() },
