@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 
 using Shared;
+using Client.Component;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
@@ -25,7 +26,24 @@ namespace Client {
         public MainGameScreen() { }
 
         public override void Initialize() {
-            base.Initialize();
+            LinearLayout mainLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 20) {
+                Position = Vector2.Zero,
+                Size = new Vector2(240, 720),
+                Padding = 20,
+            };
+
+            Button leaveButton = new Button() {
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
+                OnClick = () => {
+                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
+                    ScreenManager.Instance.NavigateToRoot();
+                },
+                Text = "Leave",
+            };
+
+            mainLayout.AddComponent(leaveButton);
+            uiManager.AddComponent(mainLayout);
 
             _sceneGraph = new SceneNode();
             _mapLayer = new SceneNode();

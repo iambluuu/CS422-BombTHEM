@@ -32,6 +32,7 @@ namespace Server {
             public bool GameStarted { get; set; } = false;
             public Thread? BombThread { get; set; } = null;
             public CancellationTokenSource? BombCts { get; set; } = null;
+            public bool Closed { get; set; } = false;
 
             public GameRoom(string roomId, int hostPlayerId, Map map) {
                 RoomId = roomId;
@@ -211,6 +212,10 @@ namespace Server {
             while (room.BombCts != null && !room.BombCts.Token.IsCancellationRequested) {
                 try {
                     lock (_roomLocks[roomId]) {
+                        if (room.Closed) {
+                            return;
+                        }
+
                         List<Bomb> explodedBombs = [];
                         foreach (var bomb in room.Map.Bombs) {
                             if ((DateTime.Now - bomb.PlaceTime).TotalSeconds >= 2.0) {
@@ -331,7 +336,7 @@ namespace Server {
 
                 try {
                     if (!string.IsNullOrEmpty(messageString)) {
-                        Console.WriteLine($"Received message from client {playerId}: {messageString}");
+                        // Console.WriteLine($"Received message from client {playerId}: {messageString}");
                         NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
                         ProcessClientMessage(playerId, messageObj);
                     }
@@ -353,7 +358,7 @@ namespace Server {
         }
 
         private void DisconnectClient(ClientHandler handler) {
-            RemoveClientFromRoom(handler);
+            RemovePlayerFromRoom(handler);
 
             try {
                 handler.Cts.Cancel();
@@ -369,10 +374,10 @@ namespace Server {
                 _clients.RemoveAll(c => c.PlayerId == handler.PlayerId);
             }
 
-            Console.WriteLine($"Player {handler.PlayerId} disconnected");
+            Console.WriteLine($"Client {handler.PlayerId} disconnected");
         }
 
-        private void RemoveClientFromRoom(ClientHandler handler) {
+        private void RemovePlayerFromRoom(ClientHandler handler) {
             if (handler.RoomId == null) {
                 return;
             }
@@ -384,7 +389,6 @@ namespace Server {
                 }
             }
 
-            bool closeRoom = false;
             lock (_roomLocks[handler.RoomId]) {
                 room.PlayerIds.Remove(handler.PlayerId);
 
@@ -399,10 +403,10 @@ namespace Server {
 
                     if (room.HostPlayerId != -1) {
                         BroadcastToRoom(room.RoomId, NetworkMessage.From(ServerMessageType.NewHost, new() {
-                                { "hostId", room.HostPlayerId.ToString() }
-                            }));
+                            { "hostId", room.HostPlayerId.ToString() }
+                        }));
                     } else {
-                        closeRoom = true;
+                        room.Closed = true;
                         if (room.BombThread != null) {
                             if (room.BombThread.IsAlive) {
                                 room.BombCts?.Cancel();
@@ -424,13 +428,12 @@ namespace Server {
                 }
             }
 
-            if (closeRoom) {
+            if (room.Closed) {
                 foreach (var playerId in room.PlayerIds) {
                     if (isBot(playerId)) {
-                        GameBot? bot = _bots.Find(b => b.BotId == playerId);
-                        if (bot == null) continue;
-                        bot.Dispose();
                         lock (_lock) {
+                            GameBot? bot = _bots.Find(b => b.BotId == playerId);
+                            bot!.Dispose();
                             _bots.Remove(bot);
                         }
                     }
@@ -494,6 +497,8 @@ namespace Server {
                     }
                     break;
                 case ClientMessageType.GetRoomInfo: {
+                        if (roomId == null) return;
+
                         lock (_roomLocks[roomId!]) {
                             if (_rooms.TryGetValue(roomId!, out GameRoom? room)) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.RoomInfo, new() {
@@ -534,6 +539,47 @@ namespace Server {
                                         { "playerId", botId.ToString() },
                                     }));
                                 }
+                            }
+                        }
+                    }
+                    break;
+                case ClientMessageType.KickPlayer: {
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
+
+                            if (room.HostPlayerId != playerId) {
+                                SendToClient(playerId, NetworkMessage.From(ServerMessageType.Error, new() {
+                                    { "message", "Only the host can kick players" }
+                                }));
+                                return;
+                            }
+
+                            int playerToKick = int.Parse(message.Data["playerId"]);
+
+                            if (playerToKick == playerId) {
+                                SendToClient(playerId, NetworkMessage.From(ServerMessageType.Error, new() {
+                                    { "message", "You cannot kick yourself" }
+                                }));
+                                return;
+                            }
+
+                            if (!isBot(playerToKick)) {
+                                var clientToKick = _clients.Find(c => c.PlayerId == playerToKick);
+                                RemovePlayerFromRoom(clientToKick!);
+                                SendToClient(playerToKick, NetworkMessage.From(ServerMessageType.PlayerKicked, new() {
+                                    { "message", "You have been kicked from the room" }
+                                }));
+                            } else {
+                                room.PlayerIds.Remove(playerToKick);
+                                lock (_lock) {
+                                    GameBot bot = _bots.Find(b => b.BotId == playerToKick)!;
+                                    bot.Dispose();
+                                    _bots.Remove(bot);
+                                }
+
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PlayerLeft, new() {
+                                    { "playerId", playerToKick.ToString() }
+                                }));
                             }
                         }
                     }
@@ -594,7 +640,7 @@ namespace Server {
                     break;
                 case ClientMessageType.LeaveRoom: {
                         lock (_roomLocks[roomId!]) {
-                            RemoveClientFromRoom(client!);
+                            RemovePlayerFromRoom(client!);
                         }
                     }
                     break;
@@ -653,8 +699,7 @@ namespace Server {
                     break;
                 case ClientMessageType.MovePlayer: {
                         lock (_roomLocks[roomId!]) {
-                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.GameStarted) return;
-
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
                             Direction direction = Enum.Parse<Direction>(message.Data["direction"]);
                             room.Map.MovePlayer(playerId, direction);
 
@@ -669,8 +714,7 @@ namespace Server {
                     break;
                 case ClientMessageType.PlaceBomb: {
                         lock (_roomLocks[roomId!]) {
-                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.GameStarted) return;
-
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
                             int x = int.Parse(message.Data["x"]);
                             int y = int.Parse(message.Data["y"]);
                             BombType type = Enum.Parse<BombType>(message.Data["type"]);

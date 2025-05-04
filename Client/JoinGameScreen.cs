@@ -22,7 +22,6 @@ namespace Client {
             roomIdTextBox = new TextBox() {
                 PlaceholderText = "Enter Room Code",
                 MaxLength = 6,
-                FontSize = 100,
                 TextAlignment = ContentAlignment.MiddleCenter,
                 IsUppercase = true,
             };

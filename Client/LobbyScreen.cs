@@ -9,6 +9,7 @@ using Shared;
 namespace Client {
     public class LobbyScreen : GameScreen {
         private TextBox[] playerTextBoxes;
+        private Button[] kickButtons;
         private TextBox roomIdTextBox;
         private Button addBotButton;
         private Button leaveButton;
@@ -27,36 +28,32 @@ namespace Client {
             mainLayout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
 
             leftLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15) {
-                Position = Vector2.Zero, // Will be set by parent layout
-                Size = Vector2.Zero,     // Will be set by parent layout
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
                 Padding = 10,
             };
 
             // Create right layout for buttons
             rightLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15) {
-                Position = Vector2.Zero, // Will be set by parent layout
-                Size = Vector2.Zero,     // Will be set by parent layout
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
                 Padding = 10,
             };
 
-            // Create player text boxes and status indicators
             playerTextBoxes = new TextBox[4];
-
+            kickButtons = new Button[4];
             for (int i = 0; i < 4; i++) {
-                // Create a horizontal layout for each player row
-                var playerRowLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 10) {
-                    Position = Vector2.Zero, // Will be set by parent layout
-                    Size = Vector2.Zero,     // Will be set by parent layout
-                    Padding = 5,
+                LinearLayout playerRowLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 10) {
+                    Position = Vector2.Zero,
+                    Size = Vector2.Zero,
+                    Padding = 10,
                 };
 
-                // Player name/ID text box
                 playerTextBoxes[i] = new TextBox {
-                    Position = Vector2.Zero, // Will be set by parent layout
-                    Size = Vector2.Zero,     // Will be set by parent layout
+                    Position = Vector2.Zero,
+                    Size = Vector2.Zero,
                     IsReadOnly = true,
                     PlaceholderText = $"Player {i + 1} (Waiting...)",
-                    FontSize = 50,
                     TextColor = Color.Black,
                     BackgroundColor = Color.White,
                     BorderColor = Color.Black,
@@ -65,8 +62,17 @@ namespace Client {
                     TextAlignment = ContentAlignment.MiddleCenter,
                 };
 
+                int index = i;
+                kickButtons[i] = new Button() {
+                    Position = Vector2.Zero,
+                    Size = Vector2.Zero,
+                    OnClick = () => KickPlayer(index),
+                    Text = "X",
+                };
+
                 // Add components to the player row
                 playerRowLayout.AddComponent(playerTextBoxes[i]);
+                playerRowLayout.AddComponent(kickButtons[i]);
 
                 // Add the row to the left layout
                 leftLayout.AddComponent(playerRowLayout);
@@ -74,11 +80,10 @@ namespace Client {
 
             // Create buttons
             roomIdTextBox = new TextBox {
-                Position = Vector2.Zero, // Will be set by parent layout
-                Size = Vector2.Zero,     // Will be set by parent layout
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
                 IsReadOnly = true,
                 PlaceholderText = "Room ID: Waiting...",
-                FontSize = 50,
                 TextColor = Color.Black,
                 BackgroundColor = Color.White,
                 BorderColor = Color.Black,
@@ -92,26 +97,20 @@ namespace Client {
                 Size = Vector2.Zero,
                 OnClick = () => NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.AddBot)),
                 Text = "Add Bot",
-                TextColor = Color.White,
-                BackgroundColor = Color.Blue,
             };
 
             startButton = new Button() {
-                Position = Vector2.Zero, // Will be set by parent layout
-                Size = Vector2.Zero,     // Will be set by parent layout
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
                 OnClick = StartGame,
                 Text = "Start Game",
-                TextColor = Color.White,
-                BackgroundColor = Color.Green,
             };
 
             leaveButton = new Button() {
-                Position = Vector2.Zero, // Will be set by parent layout
-                Size = Vector2.Zero,     // Will be set by parent layout
+                Position = Vector2.Zero,
+                Size = Vector2.Zero,
                 OnClick = LeaveLobby,
                 Text = "Leave",
-                TextColor = Color.White,
-                BackgroundColor = Color.Red,
             };
 
             rightLayout.AddComponent(roomIdTextBox);
@@ -126,6 +125,18 @@ namespace Client {
         public override void Activate() {
             base.Activate();
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetRoomInfo));
+        }
+
+        private void KickPlayer(int index) {
+            if (string.IsNullOrEmpty(playerTextBoxes[index].Text)) {
+                return;
+            }
+
+            int playerId = int.Parse(playerTextBoxes[index].Text.Replace(" (Host)", ""));
+
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.KickPlayer, new() {
+                { "playerId", playerId.ToString() },
+            }));
         }
 
         private void StartGame() {
@@ -155,6 +166,10 @@ namespace Client {
                                 playerTextBoxes[i].PlaceholderText = $"Player {i + 1} (Waiting...)";
                             }
                         }
+                    }
+                    break;
+                case ServerMessageType.PlayerKicked: {
+                        ScreenManager.Instance.NavigateToRoot();
                     }
                     break;
                 case ServerMessageType.PlayerJoined: {

@@ -13,12 +13,12 @@
 
 #---------------------------------- Content ---------------------------------#
 
-#begin Font/NormalFont.spritefont
+#begin Font/PressStart2P.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
-/build:Font/NormalFont.spritefont
+/build:Font/PressStart2P.spritefont
 
 #begin Texture/Character/NinjaBlue.png
 /importer:TextureImporter

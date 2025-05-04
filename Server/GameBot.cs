@@ -35,7 +35,7 @@ namespace Server {
 
         public void Dispose() {
             _cts.Cancel();
-            _thread.Join();
+            // _thread.Join(); fuck this, fuck deadlock
         }
 
         private void Run() {
@@ -64,6 +64,10 @@ namespace Server {
         }
 
         public void HandleResponse(NetworkMessage message) {
+            if (_cts.Token.IsCancellationRequested) {
+                return;
+            }
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.GameStarted: {
                         SendToServer(NetworkMessage.From(ClientMessageType.GetGameInfo));

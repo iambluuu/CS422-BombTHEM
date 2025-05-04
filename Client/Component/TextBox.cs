@@ -22,13 +22,13 @@ namespace Client.Component {
         public Color BorderColor { get; set; } = Color.Black;
         public int BorderWidth { get; set; } = 1;
         public int Padding { get; set; } = 5;
-        public float FontSize { get; set; } = 100f;
+        public float FontSize { get; set; } = 30f;
 
         private const int CaretBlinkRate = 1000; // milliseconds
         private double _caretBlinkTimer = 0;
 
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleLeft;
-        public SpriteFont Font { get; set; } = FontHolder.Get("Font/NormalFont");
+        public SpriteFont Font { get; set; } = FontHolder.Get("Font/PressStart2P");
         public Texture2D Texture { get; set; } = null!;
 
         public TextBox() {
