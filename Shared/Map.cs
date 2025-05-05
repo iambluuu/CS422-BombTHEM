@@ -69,13 +69,15 @@ namespace Shared {
     }
 
     public class Bomb {
+        public int PlayerId { get; set; }
         public Position Position { get; set; }
         public BombType Type { get; set; }
         public DateTime PlaceTime { get; set; }
         public DateTime ExplodeTime { get; set; }
         public List<Position> ExplosionPositions { get; set; }
 
-        public Bomb(Position position, BombType type) {
+        public Bomb(Position position, BombType type, int playerId = -1) {
+            PlayerId = playerId;
             Position = position;
             Type = type;
             PlaceTime = DateTime.Now;
@@ -184,16 +186,16 @@ namespace Shared {
             return false;
         }
 
-        public void AddBomb(int x, int y, BombType bombType) {
+        public void AddBomb(int x, int y, BombType bombType, int playerId = -1) {
             if (!IsInBounds(x, y)) {
                 throw new ArgumentOutOfRangeException($"Map.AddBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
-            if (HasBomb(x, y)) {
+            if (HasBomb(x, y) || GetTile(x, y) != TileType.Empty) {
                 return;
             }
 
-            Bombs.Add(new Bomb(new Position(x, y), bombType));
+            Bombs.Add(new Bomb(new Position(x, y), bombType, playerId));
         }
 
         public void RemoveBomb(int x, int y) {
@@ -286,9 +288,9 @@ namespace Shared {
                         }
                     }
 
-                    if (final != null) {
-                        break;
-                    }
+                    // if (final != null) {
+                    //     break;
+                    // }
 
                     foreach (var direction in Utils.Shuffle(directions)) {
                         int newX = current.X + direction.X;
@@ -311,6 +313,10 @@ namespace Shared {
                     bomb.ExplosionPositions.Add(bomb.Position);
                 } else {
                     bomb.ExplosionPositions.Add(bomb.Position);
+                }
+
+                for (int i = 0; i < bomb.ExplosionPositions.Count; i++) {
+                    SetTile(bomb.ExplosionPositions[i].X, bomb.ExplosionPositions[i].Y, TileType.Empty);
                 }
             }
         }

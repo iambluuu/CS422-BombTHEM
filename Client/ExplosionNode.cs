@@ -9,8 +9,7 @@ namespace Client {
         private float _frameTime;
         private float _elapsedFrameTime;
 
-        public ExplosionNode(Texture2D texture, Vector2 size, float frameTime = 0.1f)
-            : base(texture, size) {
+        public ExplosionNode(Texture2D texture, Vector2 size, float frameTime = 0.1f) : base(texture, size) {
             _frameTime = frameTime;
             _elapsedFrameTime = 0f;
             _currentFrame = 0;

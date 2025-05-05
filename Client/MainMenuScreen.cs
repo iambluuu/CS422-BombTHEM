@@ -10,7 +10,6 @@ using System;
 namespace Client {
     public class MainMenuScreen : GameScreen {
         public override void Initialize() {
-            // Initialize your main menu components here
             var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
                 Position = new Vector2(50, 50),
                 Size = new Vector2(400, 500),
@@ -45,35 +44,16 @@ namespace Client {
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetClientId));
         }
 
-        private string GenerateRoomId() {
-            const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-            string roomId = string.Empty;
-            for (int i = 0; i < 6; i++) {
-                roomId += chars[Utils.RandomInt(chars.Length)];
-            }
-
-            return roomId;
-        }
-
         private void CreateGame() {
-            TryCreateGame();
-        }
-
-        private bool _waitingForResponse = false;
-
-        private void TryCreateGame() {
-            if (_waitingForResponse) {
+            if (NetworkManager.Instance.ClientId == -1) {
+                Console.WriteLine("Client ID not set, cannot create room");
                 return;
             }
 
-            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.CreateRoom, new() {
-                { "roomId", GenerateRoomId() }
-            }));
-            _waitingForResponse = true;
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.CreateRoom));
         }
 
         public override void HandleResponse(NetworkMessage message) {
-            _waitingForResponse = false;
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.ClientId: {
                         NetworkManager.Instance.ClientId = int.Parse(message.Data["clientId"]);

@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using SharpDX.Direct3D;
+using SharpDX.Direct3D9;
 using System;
 
 namespace Client.Component {
@@ -23,7 +24,7 @@ namespace Client.Component {
         public Texture2D? Icon { get; set; }
         public string? Text { get; set; } = string.Empty;
 
-        public SpriteFont? Font { get; set; } = FontHolder.Get("Font/NormalFont");
+        public SpriteFont? Font { get; set; } = FontHolder.Get("Font/PressStart2P");
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleCenter;
         public ContentAlignment IconAlignment { get; set; } = ContentAlignment.MiddleLeft;
 

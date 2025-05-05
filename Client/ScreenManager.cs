@@ -27,6 +27,8 @@ namespace Client {
         private ContentManager content;
         private SpriteBatch spriteBatch;
 
+        public bool IsFocused { get; set; } = true;
+
         public static ScreenManager Instance { get; private set; }
 
         public ScreenManager(Game game) : base(game) {
@@ -45,8 +47,8 @@ namespace Client {
             // Reversed because stack has most recent screen at index 0
             for (int i = screensToUpdate.Count - 1; i >= 0; i--) {
                 var screen = screensToUpdate[i];
-                if (screen.IsActive)
-                    screen.Update(gameTime);
+                screen.IsFocused = IsFocused;
+                screen.Update(gameTime);
             }
         }
 
@@ -177,6 +179,7 @@ namespace Client {
         public bool IsExclusive { get; set; } = false; // If true, screens below won't be visible/active
         public bool IsVisible { get; set; } = true;
         public bool IsActive { get; set; } = true;
+        public bool IsFocused { get; set; } = true;
         public bool IsInitialized { get; set; } = false;
 
         public virtual void Initialize() { }
@@ -201,7 +204,8 @@ namespace Client {
         public virtual void UnloadContent() { }
 
         public virtual void Update(GameTime gameTime) {
-            if (!IsActive) return;
+            if (!IsActive || !IsFocused) return;
+
             MouseState mouseState = Mouse.GetState();
             KeyboardState keyboardState = Keyboard.GetState();
 

@@ -2,20 +2,20 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace Shared {
-    // Direction of the message
     public enum MessageDirection {
         Client,
         Server
     }
 
-    // Separate enums for clarity
     public enum ClientMessageType {
+        Ping,
         GetClientId,
         CreateRoom,
         GetRoomInfo,
         GetRoomList,
         RefreshRooms,
         AddBot,
+        KickPlayer,
         JoinRoom,
         LeaveRoom,
         StartGame,
@@ -25,12 +25,14 @@ namespace Shared {
     }
 
     public enum ServerMessageType {
+        Pong,
         ClientId,
         RoomCreated,
         RoomList,
         RoomInfo,
         RoomJoined,
         PlayerJoined,
+        PlayerKicked,
         GameStarted,
         NewHost,
         PlayerLeft,

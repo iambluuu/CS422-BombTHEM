@@ -13,8 +13,8 @@ namespace Client {
 
         public Client() {
             _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferHeight = 800;
-            _graphics.PreferredBackBufferWidth = 1200;
+            _graphics.PreferredBackBufferHeight = 720;
+            _graphics.PreferredBackBufferWidth = 960;
             _graphics.PreferMultiSampling = false;
             _graphics.ApplyChanges();
             Content.RootDirectory = "Content";
@@ -29,12 +29,13 @@ namespace Client {
         }
 
         protected override void Update(GameTime gameTime) {
+            _screenManager.IsFocused = IsActive;
             _screenManager.Update(gameTime);
             base.Update(gameTime);
         }
 
         protected override void Draw(GameTime gameTime) {
-            GraphicsDevice.Clear(Color.CornflowerBlue);
+            GraphicsDevice.Clear(new Color(255, 173, 93, 255));
             _screenManager.Draw(gameTime);
             base.Draw(gameTime);
         }

@@ -19,6 +19,11 @@ namespace Client {
             _moving = false;
         }
 
+        public void TeleportTo(Vector2 target) {
+            Position = target;
+            _moving = false;
+        }
+
         public void MoveTo(Vector2 target, float durationSeconds) {
             _startPosition = Position;
             _targetPosition = target;
@@ -30,7 +35,12 @@ namespace Client {
         protected override void UpdateCurrent(GameTime gameTime) {
             if (_moving) {
                 _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
-                float t = _elapsedTime / _moveDuration;
+                float t;
+                if (_moveDuration > 0f) {
+                    t = _elapsedTime / _moveDuration;
+                } else {
+                    t = 1f;
+                }
 
                 if (t >= 1f) {
                     t = 1f;

@@ -2,9 +2,11 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 
 namespace Client {
     public class SceneNode {
+        private readonly ReaderWriterLockSlim _lock = new();
         private readonly List<SceneNode> _children = [];
         private SceneNode _parent = null;
         private Matrix _localTransform = Matrix.Identity;
@@ -15,12 +17,22 @@ namespace Client {
 
         public void AttachChild(SceneNode child) {
             child._parent = this;
-            _children.Add(child);
+            _lock.EnterWriteLock();
+            try {
+                _children.Add(child);
+            } finally {
+                _lock.ExitWriteLock();
+            }
         }
 
         public void DetachChild(SceneNode child) {
             child._parent = null;
-            _children.Remove(child);
+            _lock.EnterWriteLock();
+            try {
+                _children.Remove(child);
+            } finally {
+                _lock.ExitWriteLock();
+            }
         }
 
         public void DetachSelf() {
@@ -38,7 +50,15 @@ namespace Client {
         protected virtual void UpdateCurrent(GameTime gameTime) { }
 
         private void UpdateChildren(GameTime gameTime) {
-            foreach (var child in _children.ToList()) {
+            List<SceneNode> snapshot;
+            _lock.EnterReadLock();
+            try {
+                snapshot = _children.ToList();
+            } finally {
+                _lock.ExitReadLock();
+            }
+
+            foreach (var child in snapshot) {
                 child.UpdateTree(gameTime);
             }
         }
@@ -53,7 +73,15 @@ namespace Client {
         protected virtual void DrawCurrent(SpriteBatch spriteBatch, Matrix transform) { }
 
         private void DrawChildren(SpriteBatch spriteBatch, Matrix transform) {
-            foreach (var child in _children.ToList()) {
+            List<SceneNode> snapshot;
+            _lock.EnterReadLock();
+            try {
+                snapshot = _children.ToList();
+            } finally {
+                _lock.ExitReadLock();
+            }
+
+            foreach (var child in snapshot) {
                 child.DrawTree(spriteBatch, transform);
             }
         }
@@ -63,6 +91,17 @@ namespace Client {
                 Matrix.CreateScale(new Vector3(Scale, 1f)) *
                 Matrix.CreateRotationZ(Rotation) *
                 Matrix.CreateTranslation(new Vector3(Position, 0f));
+        }
+
+        protected float RotationFromMatrix(Matrix matrix) {
+            return (float)System.Math.Atan2(matrix.M21, matrix.M11);
+        }
+
+        protected Vector2 ScaleFromMatrix(Matrix matrix) {
+            return new Vector2(
+                new Vector2(matrix.M11, matrix.M21).Length(),
+                new Vector2(matrix.M12, matrix.M22).Length()
+            );
         }
     }
 }

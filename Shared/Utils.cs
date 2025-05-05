@@ -32,6 +32,14 @@ namespace Shared {
             return rng.Next(min, max);
         }
 
+        public static T randomList<T>(List<T> list) {
+            if (list.Count == 0) {
+                throw new ArgumentException("List is empty");
+            }
+
+            return list[RandomInt(list.Count)];
+        }
+
         public static List<T> Shuffle<T>(List<T> list) {
             int n = list.Count;
             while (n > 1) {
