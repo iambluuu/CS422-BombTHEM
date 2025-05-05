@@ -9,6 +9,7 @@ namespace Server {
         private Thread _thread;
         private CancellationTokenSource _cts;
         bool _isGameStarted = false;
+        DateTime _startTime;
 
         public int BotId {
             get {
@@ -41,30 +42,32 @@ namespace Server {
         private void Run() {
             while (!_cts.Token.IsCancellationRequested) {
                 if (_botId == -1 || !_isGameStarted) {
-                    Thread.Sleep(300);
+                    Thread.Sleep(200);
                     continue;
                 }
 
-                while (!_cts.Token.IsCancellationRequested) {
-                    Direction direction = (Direction)Utils.RandomInt(4);
-                    if (_map.IsPlayerMovable(_botId, direction)) {
-                        SendToServer(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
-                            { "direction", direction.ToString() },
-                        }));
-
-                        if (Utils.RandomInt(10) == 0) {
-                            SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
-                                {"x", _map.PlayerPositions[BotId].X.ToString() },
-                                {"y", _map.PlayerPositions[BotId].Y.ToString() },
-                                {"type", BombType.Normal.ToString() },
-                            }));
-                        }
-
-                        break;
+                List<int> movableDirections = [];
+                for (int i = 0; i < 4; i++) {
+                    if (_map.IsPlayerMovable(BotId, (Direction)i)) {
+                        movableDirections.Add(i);
                     }
                 }
 
-                Thread.Sleep(300);
+                if (movableDirections.Count != 0) {
+                    SendToServer(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
+                        { "direction", ((Direction)Utils.randomList(movableDirections)).ToString() },
+                    }));
+                }
+
+                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(20) == 0 || movableDirections.Count == 0)) {
+                    SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
+                        {"x", _map.PlayerPositions[BotId].X.ToString() },
+                        {"y", _map.PlayerPositions[BotId].Y.ToString() },
+                        {"type", BombType.Normal.ToString() },
+                    }));
+                }
+
+                Thread.Sleep(200);
             }
         }
 
@@ -96,6 +99,7 @@ namespace Server {
                         }
 
                         _isGameStarted = true;
+                        _startTime = DateTime.Now;
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {
@@ -123,6 +127,14 @@ namespace Server {
                 case ServerMessageType.BombExploded: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
+                        string[] positions = message.Data["positions"].Split(';');
+
+                        foreach (var pos in positions) {
+                            int ex = Position.FromString(pos).X;
+                            int ey = Position.FromString(pos).Y;
+                            _map.SetTile(ex, ey, TileType.Empty);
+                        }
+
                         _map.RemoveBomb(x, y);
                     }
                     break;

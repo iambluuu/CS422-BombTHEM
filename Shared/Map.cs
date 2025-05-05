@@ -191,7 +191,7 @@ namespace Shared {
                 throw new ArgumentOutOfRangeException($"Map.AddBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
-            if (HasBomb(x, y)) {
+            if (HasBomb(x, y) || GetTile(x, y) != TileType.Empty) {
                 return;
             }
 
@@ -313,6 +313,10 @@ namespace Shared {
                     bomb.ExplosionPositions.Add(bomb.Position);
                 } else {
                     bomb.ExplosionPositions.Add(bomb.Position);
+                }
+
+                for (int i = 0; i < bomb.ExplosionPositions.Count; i++) {
+                    SetTile(bomb.ExplosionPositions[i].X, bomb.ExplosionPositions[i].Y, TileType.Empty);
                 }
             }
         }

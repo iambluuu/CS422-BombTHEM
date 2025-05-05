@@ -15,7 +15,7 @@ namespace Client {
         private readonly Dictionary<int, int> _playerScores = [];
         private readonly TextBox[] _scoreTextBoxes = new TextBox[4];
 
-        private readonly ReaderWriterLockSlim _lock = new();
+        private readonly object _lock = new();
 
         private SceneNode _sceneGraph;
         private SceneNode _mapLayer, _bombLayer, _playerLayer;
@@ -27,6 +27,7 @@ namespace Client {
         private Map _map = null;
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
+        private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
 
         public MainGameScreen() { }
 
@@ -42,7 +43,7 @@ namespace Client {
                     IsReadOnly = true,
                     Position = Vector2.Zero,
                     Size = new Vector2(240, 40),
-                    Text = $"??????: 0",
+                    Text = $"??????: ?",
                     TextAlignment = ContentAlignment.MiddleCenter,
                     Padding = 10,
                 };
@@ -115,10 +116,12 @@ namespace Client {
                         int y = int.Parse(message.Data["y"]);
                         Direction direction = Enum.Parse<Direction>(message.Data["d"]);
 
-                        if (x != _map.PlayerPositions[playerId].X || y != _map.PlayerPositions[playerId].Y) {
-                            lock (_lock) {
-                                _map.SetPlayerPosition(playerId, x, y);
-                                _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
+                        if (playerId != NetworkManager.Instance.ClientId) {
+                            if (x != _map.PlayerPositions[playerId].X || y != _map.PlayerPositions[playerId].Y) {
+                                lock (_lock) {
+                                    _map.SetPlayerPosition(playerId, x, y);
+                                    _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
+                                }
                             }
                         }
                     }
@@ -158,9 +161,18 @@ namespace Client {
 
                         lock (_lock) {
                             foreach (var pos in positions) {
+                                int ex = Position.FromString(pos).X;
+                                int ey = Position.FromString(pos).Y;
+
                                 _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Texture/Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                                    Position = new Vector2(Position.FromString(pos).Y * TILE_SIZE, Position.FromString(pos).X * TILE_SIZE)
+                                    Position = new Vector2(ey * TILE_SIZE, ex * TILE_SIZE)
                                 });
+
+                                if (_map.GetTile(ex, ey) == TileType.Grass) {
+                                    _bombLayer.DetachChild(_grassNodes[(ex, ey)]);
+                                    _grassNodes.Remove((ex, ey));
+                                    _map.SetTile(ex, ey, TileType.Empty);
+                                }
                             }
                             _map.RemoveBomb(x, y);
                             _bombLayer.DetachChild(_bombNodes[(x, y)]);
@@ -180,6 +192,12 @@ namespace Client {
                             _playerNodes[playerId].TeleportTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), Direction.Down);
                             if (playerId != byPlayerId) {
                                 IncreseScore(byPlayerId);
+                            } else {
+                                for (int i = 0; i < _scoreTextBoxes.Length; i++) {
+                                    if (!_scoreTextBoxes[i].Text.StartsWith("?") && !_scoreTextBoxes[i].Text.StartsWith($"{playerId}:")) {
+                                        IncreseScore(int.Parse(_scoreTextBoxes[i].Text.Split(':')[0].Trim()));
+                                    }
+                                }
                             }
                         }
                     }
@@ -194,6 +212,15 @@ namespace Client {
                         Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                     };
                     _mapLayer.AttachChild(cellSprite);
+
+                    if (_map.GetTile(i, j) == TileType.Grass) {
+                        SpriteNode grassSprite = new(TextureHolder.Get("Texture/Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
+                        };
+
+                        _grassNodes.Add((i, j), grassSprite);
+                        _bombLayer.AttachChild(grassSprite);
+                    }
 
                     if (_map.GetTile(i, j) != TileType.Wall) {
                         continue;
@@ -239,7 +266,7 @@ namespace Client {
             _sceneGraph.UpdateTree(gameTime);
 
             _pingText.Text = $"Ping: {NetworkManager.Instance.Ping}ms";
-            if (NetworkManager.Instance.Ping > 300) {
+            if (NetworkManager.Instance.Ping > 200) {
                 _pingText.Color = Color.Red;
             } else {
                 _pingText.Color = Color.White;
@@ -290,9 +317,9 @@ namespace Client {
                     Position nearest = null;
                     float minDistance = float.MaxValue;
 
-                    for (int i = 0; i < _map.Height; i++) {
-                        for (int j = 0; j < _map.Width; j++) {
-                            lock (_lock) {
+                    lock (_lock) {
+                        for (int i = 0; i < _map.Height; i++) {
+                            for (int j = 0; j < _map.Width; j++) {
                                 if (_map.GetTile(i, j) == TileType.Empty && !_map.HasBomb(i, j)) {
                                     float distance = Math.Abs(startX - (j * TILE_SIZE)) + Math.Abs(startY - (i * TILE_SIZE));
                                     if (distance < TILE_SIZE / 3 && distance < minDistance) {

@@ -41,7 +41,7 @@ namespace Client {
             SetDirection(direction);
         }
 
-        public void MoveTo(Vector2 target, Direction direction, float durationSeconds = 0.3f) {
+        public void MoveTo(Vector2 target, Direction direction, float durationSeconds = 0.2f) {
             base.MoveTo(target, durationSeconds);
             SetDirection(direction);
         }
