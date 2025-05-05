@@ -12,10 +12,15 @@ using Client.Component;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
-        private ReaderWriterLockSlim _lock = new();
+        private readonly Dictionary<int, int> _playerScores = [];
+        private readonly TextBox[] _scoreTextBoxes = new TextBox[4];
+
+        private readonly ReaderWriterLockSlim _lock = new();
 
         private SceneNode _sceneGraph;
         private SceneNode _mapLayer, _bombLayer, _playerLayer;
+
+        private readonly TextNode _pingText = new("Ping: ?ms");
 
         private const int TILE_SIZE = 48;
 
@@ -31,6 +36,19 @@ namespace Client {
                 Size = new Vector2(240, 720),
                 Padding = 20,
             };
+
+            for (int i = 0; i < 4; i++) {
+                _scoreTextBoxes[i] = new TextBox() {
+                    IsReadOnly = true,
+                    Position = Vector2.Zero,
+                    Size = new Vector2(240, 40),
+                    Text = $"??????: 0",
+                    TextAlignment = ContentAlignment.MiddleCenter,
+                    Padding = 10,
+                };
+
+                mainLayout.AddComponent(_scoreTextBoxes[i]);
+            }
 
             Button leaveButton = new Button() {
                 Position = Vector2.Zero,
@@ -52,8 +70,10 @@ namespace Client {
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_playerLayer);
+            _sceneGraph.AttachChild(_pingText);
 
             _sceneGraph.Position = new Vector2(240, 0);
+            _pingText.Position = new Vector2(10 * TILE_SIZE, 14 * TILE_SIZE + 10);
         }
 
         public override void Activate() {
@@ -83,6 +103,9 @@ namespace Client {
 
                             _playerLayer.AttachChild(playerNode);
                             _playerNodes.Add(playerId, playerNode);
+
+                            _playerScores.Add(playerId, 0);
+                            _scoreTextBoxes[i].Text = $"{playerId}: 0";
                         }
                     }
                     break;
@@ -117,7 +140,9 @@ namespace Client {
                         BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
                         lock (_lock) {
-                            _map.RemoveBomb(x, y);
+                            if (_map.HasBomb(x, y)) {
+                                _map.RemoveBomb(x, y);
+                            }
                             _map.AddBomb(x, y, type);
                             _bombNodes.Add((x, y), new(TextureHolder.Get("Texture/Item/Dynamite"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
@@ -145,6 +170,7 @@ namespace Client {
                     break;
                 case ServerMessageType.PlayerDied: {
                         int playerId = int.Parse(message.Data["playerId"]);
+                        int byPlayerId = int.Parse(message.Data["byPlayerId"]);
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
 
@@ -152,6 +178,9 @@ namespace Client {
                             _map.SetPlayerPosition(playerId, x, y);
                             _playerNodes[playerId].Die();
                             _playerNodes[playerId].TeleportTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), Direction.Down);
+                            if (playerId != byPlayerId) {
+                                IncreseScore(byPlayerId);
+                            }
                         }
                     }
                     break;
@@ -192,8 +221,29 @@ namespace Client {
             }
         }
 
+        private void IncreseScore(int playerId) {
+            if (!_playerScores.ContainsKey(playerId)) {
+                Console.WriteLine($"Player {playerId} not found");
+                return;
+            }
+
+            _playerScores[playerId]++;
+            for (int i = 0; i < _scoreTextBoxes.Length; i++) {
+                if (_scoreTextBoxes[i].Text.StartsWith($"{playerId}:")) {
+                    _scoreTextBoxes[i].Text = $"{playerId}: {_playerScores[playerId]}";
+                    break;
+                }
+            }
+        }
         private void HandleUpdate(GameTime gameTime) {
             _sceneGraph.UpdateTree(gameTime);
+
+            _pingText.Text = $"Ping: {NetworkManager.Instance.Ping}ms";
+            if (NetworkManager.Instance.Ping > 300) {
+                _pingText.Color = Color.Red;
+            } else {
+                _pingText.Color = Color.White;
+            }
 
             int playerId = NetworkManager.Instance.ClientId;
             if (_map == null || !_map.PlayerPositions.ContainsKey(playerId) || !_playerNodes.ContainsKey(playerId)) {

@@ -195,7 +195,7 @@ namespace Shared {
                 return;
             }
 
-            Bombs.Add(new Bomb(new Position(x, y), bombType));
+            Bombs.Add(new Bomb(new Position(x, y), bombType, playerId));
         }
 
         public void RemoveBomb(int x, int y) {

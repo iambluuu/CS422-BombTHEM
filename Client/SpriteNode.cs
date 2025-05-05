@@ -42,16 +42,5 @@ namespace Client {
                 0f
             );
         }
-
-        protected float RotationFromMatrix(Matrix matrix) {
-            return (float)System.Math.Atan2(matrix.M21, matrix.M11);
-        }
-
-        protected Vector2 ScaleFromMatrix(Matrix matrix) {
-            return new Vector2(
-                new Vector2(matrix.M11, matrix.M21).Length(),
-                new Vector2(matrix.M12, matrix.M22).Length()
-            );
-        }
     }
 }

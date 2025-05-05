@@ -41,6 +41,8 @@ namespace Client {
             }
         }
 
+        public int Ping { get; private set; } = 0;
+
         private NetworkManager() { }
 
         public void Connect(string ip, int port) {
@@ -92,7 +94,6 @@ namespace Client {
                     }
 
                     _messageBuffer.Write(_receiveBuffer, 0, bytesRead);
-
                     ProcessMessageBuffer();
                 }
             } catch (Exception ex) {
@@ -139,8 +140,8 @@ namespace Client {
                     } else {
                         if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
                             DateTime now = DateTime.Now;
-                            TimeSpan pingTime = now - _lastPing;
-                            Console.WriteLine($"Ping: {(int)pingTime.TotalMilliseconds} ms");
+                            Ping = (int)(now - _lastPing).TotalMilliseconds;
+                            Console.WriteLine($"Ping: {Ping} ms");
                         } else {
                             Handlers?.Invoke(messageObj);
                         }

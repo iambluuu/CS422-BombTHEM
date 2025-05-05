@@ -22,6 +22,7 @@ namespace Server {
             public CancellationTokenSource Cts { get; set; } = null!;
             public bool connected { get; set; } = true;
             public string? RoomId { get; set; }
+            public System.Timers.Timer? aliveTimer { get; set; } = null;
         }
 
         public class GameRoom {
@@ -69,6 +70,15 @@ namespace Server {
                         IsBackground = true
                     };
                     clientHandler.Thread.Start();
+
+                    clientHandler.aliveTimer = new System.Timers.Timer(10000) {
+                        Enabled = true
+                    };
+                    clientHandler.aliveTimer.Elapsed += (sender, e) => {
+                        Console.WriteLine($"Client {playerId} is inactive, disconnecting...");
+                        DisconnectClient(clientHandler);
+                    };
+                    clientHandler.aliveTimer.Start();
                 } catch (Exception ex) {
                     Console.WriteLine($"Error accepting client: {ex.Message}");
                 }
@@ -294,8 +304,10 @@ namespace Server {
                         break;
                     }
 
-                    messageBuffer.Write(buffer, 0, bytesRead);
+                    handler.aliveTimer?.Stop();
+                    handler.aliveTimer?.Start();
 
+                    messageBuffer.Write(buffer, 0, bytesRead);
                     ProcessMessageBuffer(handler.PlayerId, messageBuffer);
                 }
             } catch (Exception ex) {
@@ -365,6 +377,8 @@ namespace Server {
                 handler.Thread.Join();
                 handler.Stream.Close();
                 handler.Client.Close();
+                handler.aliveTimer?.Stop();
+                handler.aliveTimer?.Dispose();
                 handler.connected = false;
             } catch (Exception ex) {
                 Console.WriteLine($"Error disconnecting client {handler.PlayerId}: {ex.Message}");
@@ -715,6 +729,7 @@ namespace Server {
                 case ClientMessageType.PlaceBomb: {
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
+
                             int x = int.Parse(message.Data["x"]);
                             int y = int.Parse(message.Data["y"]);
                             BombType type = Enum.Parse<BombType>(message.Data["type"]);

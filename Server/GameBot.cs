@@ -51,6 +51,15 @@ namespace Server {
                         SendToServer(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
                             { "direction", direction.ToString() },
                         }));
+
+                        if (Utils.RandomInt(10) == 0) {
+                            SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
+                                {"x", _map.PlayerPositions[BotId].X.ToString() },
+                                {"y", _map.PlayerPositions[BotId].Y.ToString() },
+                                {"type", BombType.Normal.ToString() },
+                            }));
+                        }
+
                         break;
                     }
                 }
