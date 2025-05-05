@@ -29,6 +29,7 @@ namespace Client {
         }
 
         protected override void Update(GameTime gameTime) {
+            _screenManager.IsFocused = IsActive;
             _screenManager.Update(gameTime);
             base.Update(gameTime);
         }

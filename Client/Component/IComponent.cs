@@ -19,6 +19,7 @@ namespace Client.Component {
         public bool IsVisible { get; set; } = true;
         public bool IsEnabled { get; set; } = true;
         public bool IsFocused { get; set; } = false;
+        public bool IsActive { get; set; } = true;
         public float Opacity { get; set; } = 1f; // for fade in/out
 
         public Vector2 Position { get; set; } = Vector2.Zero;
