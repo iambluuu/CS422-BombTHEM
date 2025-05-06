@@ -9,6 +9,7 @@ using System.Threading;
 
 using Shared;
 using Client.Component;
+using Client.Component;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
@@ -28,6 +29,9 @@ namespace Client {
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
         private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
+
+        private LinearLayout _sidebar;
+        private Scoreboard _scoreboard;
 
         public MainGameScreen() { }
 
@@ -71,9 +75,18 @@ namespace Client {
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_playerLayer);
-            _sceneGraph.AttachChild(_pingText);
 
             _sceneGraph.Position = new Vector2(240, 0);
+
+            _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false) {
+                Position = new Vector2(0, 0),
+                Size = new Vector2(240, 720),
+                Padding = 0,
+                Spacing = 0,
+            };
+            uiManager.AddComponent(_sidebar);
+            _sceneGraph.AttachChild(_pingText);
+
             _pingText.Position = new Vector2(10 * TILE_SIZE, 14 * TILE_SIZE + 10);
         }
 
@@ -89,14 +102,14 @@ namespace Client {
                         int playerCount = int.Parse(message.Data["playerCount"]);
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
                         Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
-
                         ProcessMap();
-
+                        List<(string, int)> playerData = new();
                         for (int i = 0; i < playerCount; i++) {
                             int playerId = playerIds[i];
                             int x = playerPositions[i].X;
                             int y = playerPositions[i].Y;
                             _map.SetPlayerPosition(playerId, x, y);
+                            playerData.Add((playerId.ToString(), i));
 
                             PlayerNode playerNode = new(TextureHolder.Get($"Texture/Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
@@ -104,10 +117,19 @@ namespace Client {
 
                             _playerLayer.AttachChild(playerNode);
                             _playerNodes.Add(playerId, playerNode);
-
-                            _playerScores.Add(playerId, 0);
-                            _scoreTextBoxes[i].Text = $"{playerId}: 0";
                         }
+
+                        _scoreboard = new Scoreboard(playerData) {
+                            Position = new Vector2(0, 0),
+                            Size = new Vector2(240, Client.Instance.GraphicsDevice.Viewport.Height)
+                        };
+
+                        _sidebar.AddComponent(_scoreboard, 6);
+                        _sidebar.AddComponent(new Button() {
+                            Text = "Leave Game",
+                            Size = new Vector2(240, 100),
+                            OnClick = () => ScreenManager.Instance.NavigateBack()
+                        });
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {

@@ -49,10 +49,10 @@ namespace Client {
                     Padding = 10,
                 };
 
-                playerTextBoxes[i] = new TextBox {
-                    Position = Vector2.Zero,
-                    Size = Vector2.Zero,
-                    IsReadOnly = true,
+                // Player name/ID text box
+                playerTextBoxes[i] = new TextBox(isReadOnly: true) {
+                    Position = Vector2.Zero, // Will be set by parent layout
+                    Size = Vector2.Zero,     // Will be set by parent layout
                     PlaceholderText = $"Player {i + 1} (Waiting...)",
                     TextColor = Color.Black,
                     BackgroundColor = Color.White,
@@ -79,10 +79,9 @@ namespace Client {
             }
 
             // Create buttons
-            roomIdTextBox = new TextBox {
-                Position = Vector2.Zero,
-                Size = Vector2.Zero,
-                IsReadOnly = true,
+            roomIdTextBox = new TextBox(isReadOnly: true) {
+                Position = Vector2.Zero, // Will be set by parent layout
+                Size = Vector2.Zero,     // Will be set by parent layout
                 PlaceholderText = "Room ID: Waiting...",
                 TextColor = Color.Black,
                 BackgroundColor = Color.White,

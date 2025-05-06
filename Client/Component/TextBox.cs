@@ -15,12 +15,12 @@ namespace Client.Component {
         public int MaxLength { get; set; } = 100;
         public bool IsMultiline { get; set; } = false;
         public bool IsPassword { get; set; } = false;
-        public bool IsReadOnly { get; set; } = false;
+        public readonly bool IsReadOnly = false;
         public bool IsUppercase { get; set; } = false;
         public Color TextColor { get; set; } = Color.Black;
         public Color BackgroundColor { get; set; } = Color.White;
         public Color BorderColor { get; set; } = Color.Black;
-        public int BorderWidth { get; set; } = 1;
+        public int BorderWidth { get; set; } = 0;
         public int Padding { get; set; } = 5;
         public float FontSize { get; set; } = 30f;
 
@@ -31,7 +31,8 @@ namespace Client.Component {
         public SpriteFont Font { get; set; } = FontHolder.Get("Font/PressStart2P");
         public Texture2D Texture { get; set; } = null!;
 
-        public TextBox() {
+        public TextBox(bool isReadOnly = false) {
+            IsReadOnly = isReadOnly;
             IsFocused = false;
             IsVisible = true;
             IsEnabled = true;

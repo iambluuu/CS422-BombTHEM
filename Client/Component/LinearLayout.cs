@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -18,17 +19,23 @@ namespace Client.Component {
         public int Spacing { get; set; } = 5;
         public int Padding { get; set; } = 5;
         public List<IComponent> Components { get; set; } = new();
+        public List<int> Weights { get; set; } = new();
+        private int _totalWeight = 0;
+
+        public readonly bool HasBackground = true;
 #nullable enable
         private IComponent _focusedComponent = null!;
         public LinearLayout(
             Orientation orientation = Orientation.Vertical,
             List<IComponent>? components = null,
+            bool hasBackground = true,
             int spacing = 5,
             int padding = 5
         ) {
             LayoutOrientation = orientation;
             Spacing = spacing;
             Padding = padding;
+            HasBackground = hasBackground;
             if (components != null) {
                 Components = components;
             } else {
@@ -36,24 +43,45 @@ namespace Client.Component {
             }
         }
 
-        public void AddComponent(IComponent component) {
-            Components.Add(component);
-            switch (LayoutOrientation) {
-                case Orientation.Horizontal:
-                    float compWidth = (Size.X - Padding * 2 - Spacing * (Components.Count - 1)) / Components.Count;
-                    for (int i = 0; i < Components.Count; i++) {
-                        Components[i].Position = new Vector2(Padding + (compWidth + Spacing) * i, Position.Y + Padding);
-                        Components[i].Size = new Vector2(compWidth, Size.Y - Padding * 2);
-                    }
-                    break;
-                case Orientation.Vertical:
-                    float compHeight = (Size.Y - Padding * 2 - Spacing * (Components.Count - 1)) / Components.Count;
-                    for (int i = 0; i < Components.Count; i++) {
-                        Components[i].Position = new Vector2(Position.X + Padding, Padding + (compHeight + Spacing) * i);
-                        Components[i].Size = new Vector2(Size.X - Padding * 2, compHeight);
-                    }
-                    break;
+        public override Vector2 Position {
+            get => base.Position;
+            set {
+                base.Position = value;
+                RearrangeComponents();
             }
+        }
+        public override Vector2 Size {
+            get => base.Size;
+            set {
+                base.Size = value;
+                RearrangeComponents();
+            }
+        }
+
+        private void RearrangeComponents() {
+            var currentPosition = Position + new Vector2(Padding, Padding);
+            for (int i = 0; i < Components.Count; i++) {
+                if (!Components[i].IsVisible) continue;
+
+                if (LayoutOrientation == Orientation.Horizontal) {
+                    var compWidth = (Size.X - Padding * 2 - Spacing * (Components.Count - 1)) * Weights[i] / _totalWeight;
+                    Components[i].Position = currentPosition;
+                    Components[i].Size = new Vector2(compWidth, Size.Y - Padding * 2);
+                    currentPosition.X += compWidth + Spacing;
+                } else {
+                    var compHeight = (Size.Y - Padding * 2 - Spacing * (Components.Count - 1)) * Weights[i] / _totalWeight;
+                    Components[i].Position = currentPosition;
+                    Components[i].Size = new Vector2(Size.X - Padding * 2, compHeight);
+                    currentPosition.Y += compHeight + Spacing;
+                }
+            }
+        }
+
+        public void AddComponent(IComponent component, int weight = 1) {
+            Components.Add(component);
+            Weights.Add(weight);
+            _totalWeight += weight;
+            RearrangeComponents();
         }
 
         public override void Update(GameTime gameTime) {
@@ -83,29 +111,10 @@ namespace Client.Component {
             }
             if (visibleCount == 0) return;
 
-            float compWidth =
-                (LayoutOrientation == Orientation.Horizontal)
-                ? (int)((Size.X - Padding * 2 - Spacing * (visibleCount - 1)) / visibleCount)
-                : Size.X - Padding * 2;
-            float compHeight =
-                (LayoutOrientation == Orientation.Vertical)
-                ? (int)((Size.Y - Padding * 2 - Spacing * (visibleCount - 1)) / visibleCount)
-                : Size.Y - Padding * 2;
-
-            Vector2 currentPosition = Position + new Vector2(Padding, Padding);
-
             foreach (var component in Components) {
                 if (!component.IsVisible) continue;
 
-                component.Position = currentPosition;
-                component.Size = new Vector2(compWidth, compHeight);
                 component.Draw(spriteBatch);
-
-                if (LayoutOrientation == Orientation.Horizontal) {
-                    currentPosition.X += compWidth + Spacing;
-                } else {
-                    currentPosition.Y += compHeight + Spacing;
-                }
             }
         }
 
@@ -162,6 +171,8 @@ namespace Client.Component {
         }
 
         private Texture2D GetTexture() {
+            if (!HasBackground) return null!;
+
             Texture2D texture = new Texture2D(TextureHolder.Get($"{TextureDir}nine_path_panel_2").GraphicsDevice, 1, 1);
             texture.SetData(new[] { Color.Red * 0.5f });
 
