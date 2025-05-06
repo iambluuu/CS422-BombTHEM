@@ -13,7 +13,6 @@ using Client.Component;
 namespace Client {
     public class MainGameScreen : GameScreen {
         private readonly Dictionary<int, int> _playerScores = [];
-        private readonly TextBox[] _scoreTextBoxes = new TextBox[4];
 
         private readonly object _lock = new();
 
@@ -29,40 +28,31 @@ namespace Client {
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
         private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
 
+        private LinearLayout _sidebar;
+        private Scoreboard _scoreboard;
+
         public MainGameScreen() { }
 
         public override void Initialize() {
-            LinearLayout mainLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 20) {
-                Position = Vector2.Zero,
-                Size = new Vector2(240, 720),
-                Padding = 20,
-            };
+            // LinearLayout mainLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 20) {
+            //     Position = Vector2.Zero,
+            //     Size = new Vector2(240, 720),
+            //     Padding = 20,
+            // };
 
-            for (int i = 0; i < 4; i++) {
-                _scoreTextBoxes[i] = new TextBox() {
-                    IsReadOnly = true,
-                    Position = Vector2.Zero,
-                    Size = new Vector2(240, 40),
-                    Text = $"??????: ?",
-                    TextAlignment = ContentAlignment.MiddleCenter,
-                    Padding = 10,
-                };
+            // for (int i = 0; i < 4; i++) {
+            //     _scoreTextBoxes[i] = new TextBox(isReadOnly: true) {
+            //         Position = Vector2.Zero,
+            //         Size = new Vector2(240, 40),
+            //         Text = $"??????: ?",
+            //         TextAlignment = ContentAlignment.MiddleCenter,
+            //         Padding = 10,
+            //     };
 
-                mainLayout.AddComponent(_scoreTextBoxes[i]);
-            }
+            //     mainLayout.AddComponent(_scoreTextBoxes[i]);
+            // }
 
-            Button leaveButton = new Button() {
-                Position = Vector2.Zero,
-                Size = Vector2.Zero,
-                OnClick = () => {
-                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
-                    ScreenManager.Instance.NavigateToRoot();
-                },
-                Text = "Leave",
-            };
-
-            mainLayout.AddComponent(leaveButton);
-            uiManager.AddComponent(mainLayout);
+            // uiManager.AddComponent(mainLayout);
 
             _sceneGraph = new SceneNode();
             _mapLayer = new SceneNode();
@@ -71,9 +61,26 @@ namespace Client {
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_playerLayer);
-            _sceneGraph.AttachChild(_pingText);
 
             _sceneGraph.Position = new Vector2(240, 0);
+
+            _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false) {
+                Position = new Vector2(0, 0),
+                Size = new Vector2(240, 720),
+                Padding = 0,
+                Spacing = 0,
+            };
+
+            _sidebar.AddComponent(new PowerSlot(), weight: 2);
+            _sidebar.AddComponent(new Button() {
+                Text = "Leave Game",
+                OnClick = () => {
+                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
+                    ScreenManager.Instance.NavigateToRoot();
+                },
+            });
+            uiManager.AddComponent(_sidebar);
+            _sceneGraph.AttachChild(_pingText);
             _pingText.Position = new Vector2(10 * TILE_SIZE, 14 * TILE_SIZE + 10);
         }
 
@@ -89,9 +96,8 @@ namespace Client {
                         int playerCount = int.Parse(message.Data["playerCount"]);
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
                         Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
-
                         ProcessMap();
-
+                        List<(string, int)> playerData = new();
                         for (int i = 0; i < playerCount; i++) {
                             int playerId = playerIds[i];
                             int x = playerPositions[i].X;
@@ -104,10 +110,16 @@ namespace Client {
 
                             _playerLayer.AttachChild(playerNode);
                             _playerNodes.Add(playerId, playerNode);
-
                             _playerScores.Add(playerId, 0);
-                            _scoreTextBoxes[i].Text = $"{playerId}: 0";
+                            playerData.Add((playerId.ToString(), i));
                         }
+
+                        _scoreboard = new Scoreboard(playerData) {
+                            Position = new Vector2(0, 0),
+                            Size = new Vector2(240, Client.Instance.GraphicsDevice.Viewport.Height)
+                        };
+
+                        _sidebar.AddComponent(_scoreboard, 6, 0);
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {
@@ -191,13 +203,7 @@ namespace Client {
                             _playerNodes[playerId].Die();
                             _playerNodes[playerId].TeleportTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), Direction.Down);
                             if (playerId != byPlayerId) {
-                                IncreseScore(byPlayerId);
-                            } else {
-                                for (int i = 0; i < _scoreTextBoxes.Length; i++) {
-                                    if (!_scoreTextBoxes[i].Text.StartsWith("?") && !_scoreTextBoxes[i].Text.StartsWith($"{playerId}:")) {
-                                        IncreseScore(int.Parse(_scoreTextBoxes[i].Text.Split(':')[0].Trim()));
-                                    }
-                                }
+                                IncreaseScore(byPlayerId);
                             }
                         }
                     }
@@ -248,19 +254,14 @@ namespace Client {
             }
         }
 
-        private void IncreseScore(int playerId) {
+        private void IncreaseScore(int playerId) {
             if (!_playerScores.ContainsKey(playerId)) {
                 Console.WriteLine($"Player {playerId} not found");
                 return;
             }
 
             _playerScores[playerId]++;
-            for (int i = 0; i < _scoreTextBoxes.Length; i++) {
-                if (_scoreTextBoxes[i].Text.StartsWith($"{playerId}:")) {
-                    _scoreTextBoxes[i].Text = $"{playerId}: {_playerScores[playerId]}";
-                    break;
-                }
-            }
+            _scoreboard.IncreaseScore(playerId);
         }
         private void HandleUpdate(GameTime gameTime) {
             _sceneGraph.UpdateTree(gameTime);

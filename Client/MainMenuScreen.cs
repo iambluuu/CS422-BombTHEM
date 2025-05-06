@@ -10,7 +10,8 @@ using System;
 namespace Client {
     public class MainMenuScreen : GameScreen {
         public override void Initialize() {
-            var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
+            // Initialize your main menu components here
+            var layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 30) {
                 Position = new Vector2(50, 50),
                 Size = new Vector2(400, 500),
                 Padding = 30,

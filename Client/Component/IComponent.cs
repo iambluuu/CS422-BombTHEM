@@ -22,8 +22,27 @@ namespace Client.Component {
         public bool IsActive { get; set; } = true;
         public float Opacity { get; set; } = 1f;
 
-        public Vector2 Position { get; set; } = Vector2.Zero;
-        public Vector2 Size { get; set; } = new Vector2(100, 100);
+        private Vector2 _position = Vector2.Zero;
+
+        public virtual Vector2 Position {
+            get => _position;
+            set {
+                _position = value;
+                if (_position.X < 0) _position.X = 0;
+                if (_position.Y < 0) _position.Y = 0;
+            }
+        }
+
+        private Vector2 _size = new Vector2(100, 100);
+        public virtual Vector2 Size {
+            get => _size;
+            set {
+                _size = value;
+                if (_size.X < 0) _size.X = 0;
+                if (_size.Y < 0) _size.Y = 0;
+            }
+        }
+
         public void Center(Rectangle parentRect) {
             if (parentRect == Rectangle.Empty) return;
             if (parentRect.Width == 0 || parentRect.Height == 0) return;
