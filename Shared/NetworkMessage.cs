@@ -10,6 +10,7 @@ namespace Shared {
     public enum ClientMessageType {
         Ping,
         GetClientId,
+        SetUsername,
         CreateRoom,
         GetRoomInfo,
         GetRoomList,
@@ -27,6 +28,7 @@ namespace Shared {
     public enum ServerMessageType {
         Pong,
         ClientId,
+        UsernameSet,
         RoomCreated,
         RoomList,
         RoomInfo,

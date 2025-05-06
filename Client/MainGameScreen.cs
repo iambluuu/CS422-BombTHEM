@@ -34,36 +34,6 @@ namespace Client {
         public MainGameScreen() { }
 
         public override void Initialize() {
-            // LinearLayout mainLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 20) {
-            //     Position = Vector2.Zero,
-            //     Size = new Vector2(240, 720),
-            //     Padding = 20,
-            // };
-
-            // for (int i = 0; i < 4; i++) {
-            //     _scoreTextBoxes[i] = new TextBox(isReadOnly: true) {
-            //         Position = Vector2.Zero,
-            //         Size = new Vector2(240, 40),
-            //         Text = $"??????: ?",
-            //         TextAlignment = ContentAlignment.MiddleCenter,
-            //         Padding = 10,
-            //     };
-
-            //     mainLayout.AddComponent(_scoreTextBoxes[i]);
-            // }
-
-            // uiManager.AddComponent(mainLayout);
-
-            _sceneGraph = new SceneNode();
-            _mapLayer = new SceneNode();
-            _bombLayer = new SceneNode();
-            _playerLayer = new SceneNode();
-            _sceneGraph.AttachChild(_mapLayer);
-            _sceneGraph.AttachChild(_bombLayer);
-            _sceneGraph.AttachChild(_playerLayer);
-
-            _sceneGraph.Position = new Vector2(240, 0);
-
             _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false) {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(240, 720),
@@ -80,7 +50,17 @@ namespace Client {
                 },
             });
             uiManager.AddComponent(_sidebar);
+
+            _sceneGraph = new SceneNode();
+            _mapLayer = new SceneNode();
+            _bombLayer = new SceneNode();
+            _playerLayer = new SceneNode();
+            _sceneGraph.AttachChild(_mapLayer);
+            _sceneGraph.AttachChild(_bombLayer);
+            _sceneGraph.AttachChild(_playerLayer);
             _sceneGraph.AttachChild(_pingText);
+
+            _sceneGraph.Position = new Vector2(240, 0);
             _pingText.Position = new Vector2(10 * TILE_SIZE, 14 * TILE_SIZE + 10);
         }
 
@@ -95,11 +75,13 @@ namespace Client {
                         _map = Map.FromString(message.Data["map"]);
                         int playerCount = int.Parse(message.Data["playerCount"]);
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
+                        string[] usernames = message.Data["usernames"].Split(';');
                         Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
                         ProcessMap();
-                        List<(string, int)> playerData = new();
+                        List<(string, string, int)> playerData = new();
                         for (int i = 0; i < playerCount; i++) {
                             int playerId = playerIds[i];
+                            string username = usernames[i];
                             int x = playerPositions[i].X;
                             int y = playerPositions[i].Y;
                             _map.SetPlayerPosition(playerId, x, y);
@@ -111,7 +93,7 @@ namespace Client {
                             _playerLayer.AttachChild(playerNode);
                             _playerNodes.Add(playerId, playerNode);
                             _playerScores.Add(playerId, 0);
-                            playerData.Add((playerId.ToString(), i));
+                            playerData.Add((playerId.ToString(), username, i));
                         }
 
                         _scoreboard = new Scoreboard(playerData) {
@@ -128,12 +110,10 @@ namespace Client {
                         int y = int.Parse(message.Data["y"]);
                         Direction direction = Enum.Parse<Direction>(message.Data["d"]);
 
-                        if (playerId != NetworkManager.Instance.ClientId) {
-                            if (x != _map.PlayerPositions[playerId].X || y != _map.PlayerPositions[playerId].Y) {
-                                lock (_lock) {
-                                    _map.SetPlayerPosition(playerId, x, y);
-                                    _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
-                                }
+                        if (x != _map.PlayerPositions[playerId].X || y != _map.PlayerPositions[playerId].Y) {
+                            lock (_lock) {
+                                _map.SetPlayerPosition(playerId, x, y);
+                                _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
                             }
                         }
                     }

@@ -1,3 +1,4 @@
+using Microsoft.VisualBasic.ApplicationServices;
 using Microsoft.VisualBasic.Devices;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -49,9 +50,9 @@ namespace Client.Component {
         private readonly SpriteFont _font;
 
         // Receive a list of player name and skin
-        public Scoreboard(List<(string, int)> playerData) {
+        public Scoreboard(List<(string, string, int)> playerData) {
             for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
-                _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, rank: i));
+                _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: i));
             }
 
             _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
@@ -161,6 +162,7 @@ namespace Client.Component {
 
         private class ScoreboardEntry {
             public string PlayerName { get; set; }
+            public string Username { get; set; }
             public int PlayerSkin { get; set; }
             public int Score { get; set; }
             public int Live { get; set; }
@@ -225,8 +227,9 @@ namespace Client.Component {
             private Vector2 _currentPosition;
             private Vector2 _targetPosition;
 
-            public ScoreboardEntry(string playerName, int playerSkin, int score = 0, int live = 3, int rank = 0) {
+            public ScoreboardEntry(string playerName, string username, int playerSkin, int score = 0, int live = 3, int rank = 0) {
                 PlayerName = playerName;
+                Username = username;
                 PlayerSkin = playerSkin;
                 Score = score;
                 Live = live;
@@ -273,7 +276,7 @@ namespace Client.Component {
                 // Draw the player name on top line
                 var font = FontHolder.Get("Font/PressStart2P");
                 var textScale = Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(PlayerName).X);
-                var nameText = PlayerName;
+                var nameText = Username;
                 var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + centeringOffset + Spacing);
                 spriteBatch.DrawString(font, nameText, namePosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
 
