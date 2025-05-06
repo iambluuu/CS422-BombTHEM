@@ -77,9 +77,14 @@ namespace Client.Component {
             }
         }
 
-        public void AddComponent(IComponent component, int weight = 1) {
-            Components.Add(component);
-            Weights.Add(weight);
+        public void AddComponent(IComponent component, int weight = 1, int position = -1) {
+            if (position < 0 || position >= Components.Count) {
+                Components.Add(component);
+                Weights.Add(weight);
+            } else {
+                Components.Insert(position, component);
+                Weights.Insert(position, weight);
+            }
             _totalWeight += weight;
             RearrangeComponents();
         }
@@ -111,10 +116,10 @@ namespace Client.Component {
             }
             if (visibleCount == 0) return;
 
-            foreach (var component in Components) {
-                if (!component.IsVisible) continue;
-
-                component.Draw(spriteBatch);
+            for (int i = Components.Count - 1; i >= 0; i--) {
+                if (Components[i].IsVisible) {
+                    Components[i].Draw(spriteBatch);
+                }
             }
         }
 

@@ -56,7 +56,7 @@ namespace Client.Component {
 
             _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
             _borderTexture = TextureHolder.Get("Texture/Theme/scoreboard_border");
-            _font = FontHolder.Get("Font/NormalFont");
+            _font = FontHolder.Get("Font/PressStart2P");
 
             float clockScale = (Size.X - Padding * 2 - 20) / _font.MeasureString("00:00").X;
             ClockHeight = _font.MeasureString("00:00").Y * clockScale;
@@ -64,11 +64,17 @@ namespace Client.Component {
             TopLeftPosition = new Vector2(Position.X + Padding, Position.Y + Padding + ClockHeight + Spacing);
         }
 
-        public void IncreaseScore(int index) {
-            if (index >= 0 && index < _entries.Count) {
-                _entries[index].Score++;
+        public void IncreaseScore(int playerId) {
+            for (int i = 0; i < _entries.Count; i++) {
+                if (_entries[i].PlayerName == playerId.ToString()) {
+                    _entries[i].Score++;
+                    break;
+                }
             }
+            UpdateRanks();
+        }
 
+        private void UpdateRanks() {
             _entries.Sort((a, b) => b.Score.CompareTo(a.Score)); // Sort by score descending
             for (int i = 0; i < _entries.Count; i++) {
                 if (_entries[i].Rank != i) {
@@ -100,7 +106,7 @@ namespace Client.Component {
 
             // Draw each entry
             Texture2D separatorTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-            separatorTexture.SetData(new[] { Color.Black });
+            separatorTexture.SetData(new[] { Color.Black * 0.6f });
 
             for (int i = 0; i < _entries.Count; i++) {
                 // Draw separator line
@@ -168,6 +174,51 @@ namespace Client.Component {
                 }
             }
 
+            // Static score icon texture shared by all entries
+            private static Texture2D _scoreIconTexture;
+            private static readonly Color TextColor = new Color(110, 106, 95); // Greyish color for the score icon
+            private static bool _isScoreIconInitialized = false;
+
+            private static void InitializeScoreIcon(GraphicsDevice graphicsDevice) {
+                if (!_isScoreIconInitialized) {
+                    // Load the score icon texture
+                    _scoreIconTexture = TextureHolder.Get("Texture/Icon/score");
+
+                    // Apply flat color to the texture
+                    if (_scoreIconTexture != null) {
+                        // Get the width and height of the texture
+                        int width = _scoreIconTexture.Width;
+                        int height = _scoreIconTexture.Height;
+
+                        // Get the color data from the texture
+                        Color[] colorData = new Color[width * height];
+                        _scoreIconTexture.GetData(colorData);
+
+                        // Create a new array for the modified color data
+                        Color[] newColorData = new Color[width * height];
+
+                        for (int i = 0; i < colorData.Length; i++) {
+                            byte alpha = colorData[i].A;
+
+                            if (alpha > 0) {
+                                newColorData[i] = new Color(
+                                    TextColor.R,
+                                    TextColor.G,
+                                    TextColor.B,
+                                    alpha
+                                );
+                            } else {
+                                newColorData[i] = Color.Transparent;
+                            }
+                        }
+
+                        // Set the modified color data back to the texture
+                        _scoreIconTexture.SetData(newColorData);
+                        _isScoreIconInitialized = true;
+                    }
+                }
+            }
+
             private const int AnimationDuration = 1000; // milliseconds
             private const int Spacing = 5; // spacing between elements of the entry
             private int _animationTimer = 0;
@@ -207,27 +258,56 @@ namespace Client.Component {
                 // Draw icon
                 var iconTexture = TextureHolder.Get($"Texture/Character/{(Shared.PlayerSkin)PlayerSkin}", new Rectangle(0, 0, 16, 13));
                 var iconSize = Math.Min(EntrySize.Y, EntrySize.X / 2.5f);
+                var centeringOffset = (EntrySize.Y - iconSize) / 2;
                 spriteBatch.Draw(
                     iconTexture,
-                    new Rectangle((int)_currentPosition.X, (int)(_currentPosition.Y + (EntrySize.Y - iconSize) / 2), (int)iconSize, (int)iconSize),
+                    new Rectangle((int)_currentPosition.X, (int)(_currentPosition.Y + centeringOffset), (int)iconSize, (int)iconSize),
                     new Rectangle(0, 0, 16, 13),
                     Color.White
                 );
 
                 // line height for info display
                 var lineHeight = (EntrySize.Y - Spacing) / 2;
+                var lineWidth = EntrySize.X - iconSize - Spacing;
 
                 // Draw the player name on top line
-                var font = FontHolder.Get("Font/NormalFont");
-                var textScale = font.LineSpacing / lineHeight;
+                var font = FontHolder.Get("Font/PressStart2P");
+                var textScale = Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(PlayerName).X);
                 var nameText = PlayerName;
-                var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y);
+                var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + centeringOffset + Spacing);
                 spriteBatch.DrawString(font, nameText, namePosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
 
-                // Draw the score on bottom line
+                // Draw score icon
+                var scoreIconSize = lineHeight * 0.7f;
+                var scoreIconPosition = new Vector2(
+                    _currentPosition.X + Spacing + iconSize,
+                    _currentPosition.Y + EntrySize.Y - lineHeight
+                );
+                if (!_isScoreIconInitialized) {
+                    InitializeScoreIcon(spriteBatch.GraphicsDevice);
+                }
+
+                spriteBatch.Draw(
+                    _scoreIconTexture,
+                    new Rectangle(
+                        (int)scoreIconPosition.X,
+                        (int)scoreIconPosition.Y,
+                        (int)scoreIconSize,
+                        (int)scoreIconSize
+                    ),
+                    null,
+                    Color.White  // Use white since we've already colored the texture
+                );
+
+                // Draw the score text next to the icon
                 var scoreText = Score.ToString();
-                var scorePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + EntrySize.Y - font.LineSpacing);
-                spriteBatch.DrawString(font, scoreText, scorePosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
+                var scoreTextSize = font.MeasureString(scoreText);
+                var scoreTextScale = scoreIconSize / scoreTextSize.Y * 0.8f; // Scale the text to fit the icon size
+                var scorePosition = new Vector2(
+                    scoreIconPosition.X + scoreIconSize + Spacing * 2,
+                    scoreIconPosition.Y + (scoreIconSize - scoreTextSize.Y * scoreTextScale) / 2
+                );
+                spriteBatch.DrawString(font, scoreText, scorePosition, TextColor, 0f, Vector2.Zero, scoreTextScale, SpriteEffects.None, 0f);
             }
         }
     }
