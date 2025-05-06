@@ -9,6 +9,9 @@ using System;
 
 namespace Client {
     public class MainMenuScreen : GameScreen {
+        string currentUsername = string.Empty;
+        TextBox usernameText;
+
         public override void Initialize() {
             // Initialize your main menu components here
             var layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 30) {
@@ -18,6 +21,13 @@ namespace Client {
             };
 
             layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
+            usernameText = new TextBox() {
+                Position = new Vector2(0, 0),
+                Size = new Vector2(100, 200),
+                Text = "Player",
+                TextAlignment = ContentAlignment.MiddleCenter,
+            };
+
             var createGameButton = new Button() {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(100, 200),
@@ -37,6 +47,7 @@ namespace Client {
                 Text = "Join Game",
             };
 
+            layout.AddComponent(usernameText);
             layout.AddComponent(createGameButton);
             layout.AddComponent(joinGameButton);
             layout.AddComponent(exitButton);
@@ -65,7 +76,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error creating room: {message.Data["message"]}");
+                        Console.WriteLine($"Error: {message.Data["message"]}");
                     }
                     break;
             }
@@ -82,23 +93,15 @@ namespace Client {
             ScreenManager.Instance.NavigateTo(ScreenName.JoinGameScreen);
         }
 
-        public override void LoadContent() {
-            base.LoadContent();
-        }
-
-        public override void UnloadContent() {
-            base.UnloadContent();
-            NetworkManager.Instance.Disconnect();
-        }
-
         public override void Update(GameTime gameTime) {
-            // Handle input and update UI components
             base.Update(gameTime);
-        }
 
-        public override void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
-            // Draw the main menu components
-            base.Draw(gameTime, spriteBatch);
+            if (!usernameText.IsFocused && currentUsername != usernameText.Text) {
+                currentUsername = usernameText.Text;
+                NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.SetUsername, new Dictionary<string, string> {
+                    { "username", currentUsername }
+                }));
+            }
         }
     }
 }

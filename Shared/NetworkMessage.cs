@@ -10,10 +10,10 @@ namespace Shared {
     public enum ClientMessageType {
         Ping,
         GetClientId,
+        SetUsername,
         CreateRoom,
         GetRoomInfo,
         GetRoomList,
-        RefreshRooms,
         AddBot,
         KickPlayer,
         JoinRoom,
@@ -22,11 +22,13 @@ namespace Shared {
         GetGameInfo,
         MovePlayer,
         PlaceBomb,
+        GetGameResults,
     }
 
     public enum ServerMessageType {
         Pong,
         ClientId,
+        UsernameSet,
         RoomCreated,
         RoomList,
         RoomInfo,
@@ -34,6 +36,7 @@ namespace Shared {
         PlayerJoined,
         PlayerKicked,
         GameStarted,
+        GameStopped,
         NewHost,
         PlayerLeft,
         GameInfo,
@@ -41,6 +44,7 @@ namespace Shared {
         BombPlaced,
         BombExploded,
         PlayerDied,
+        GameResults,
         Error
     }
 

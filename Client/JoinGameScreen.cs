@@ -69,7 +69,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error joining room: {message.Data["message"]}");
+                        Console.WriteLine($"Error: {message.Data["message"]}");
                     }
                     break;
             }

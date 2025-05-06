@@ -8,6 +8,7 @@ using Shared;
 
 namespace Client {
     public class LobbyScreen : GameScreen {
+        private readonly int[] _playerIds = new int[4];
         private TextBox[] playerTextBoxes;
         private Button[] kickButtons;
         private TextBox roomIdTextBox;
@@ -71,8 +72,8 @@ namespace Client {
                 };
 
                 // Add components to the player row
-                playerRowLayout.AddComponent(playerTextBoxes[i]);
-                playerRowLayout.AddComponent(kickButtons[i]);
+                playerRowLayout.AddComponent(playerTextBoxes[i], 3);
+                playerRowLayout.AddComponent(kickButtons[i], 1);
 
                 // Add the row to the left layout
                 leftLayout.AddComponent(playerRowLayout);
@@ -119,6 +120,10 @@ namespace Client {
             mainLayout.AddComponent(leftLayout);
             mainLayout.AddComponent(rightLayout);
             uiManager.AddComponent(mainLayout, 0);
+
+            for (int i = 0; i < _playerIds.Length; i++) {
+                _playerIds[i] = -1;
+            }
         }
 
         public override void Activate() {
@@ -127,14 +132,12 @@ namespace Client {
         }
 
         private void KickPlayer(int index) {
-            if (string.IsNullOrEmpty(playerTextBoxes[index].Text)) {
+            if (_playerIds[index] == -1) {
                 return;
             }
 
-            int playerId = int.Parse(playerTextBoxes[index].Text.Replace(" (Host)", ""));
-
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.KickPlayer, new() {
-                { "playerId", playerId.ToString() },
+                { "playerId", _playerIds[index].ToString() },
             }));
         }
 
@@ -152,17 +155,17 @@ namespace Client {
                 case ServerMessageType.RoomInfo: {
                         roomIdTextBox.Text = $"Room ID: {message.Data["roomId"]}";
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
+                        string[] usernames = message.Data["usernames"].Split(';');
                         int hostId = int.Parse(message.Data["hostId"]);
                         bool isHost = bool.Parse(message.Data["isHost"]);
-                        for (int i = 0; i < playerTextBoxes.Length; i++) {
+
+                        for (int i = 0; i < playerIds.Length; i++) {
+                            _playerIds[i] = playerIds[i];
                             if (i < playerIds.Length) {
-                                playerTextBoxes[i].Text = playerIds[i].ToString();
+                                playerTextBoxes[i].Text = usernames[i];
                                 if (playerIds[i] == hostId) {
                                     playerTextBoxes[i].Text += " (Host)";
                                 }
-                            } else {
-                                playerTextBoxes[i].Text = "";
-                                playerTextBoxes[i].PlaceholderText = $"Player {i + 1} (Waiting...)";
                             }
                         }
                     }
@@ -173,9 +176,11 @@ namespace Client {
                     break;
                 case ServerMessageType.PlayerJoined: {
                         int playerId = int.Parse(message.Data["playerId"]);
-                        for (int i = 0; i < playerTextBoxes.Length; i++) {
-                            if (string.IsNullOrEmpty(playerTextBoxes[i].Text)) {
-                                playerTextBoxes[i].Text = playerId.ToString();
+                        string username = message.Data["username"];
+                        for (int i = 0; i < _playerIds.Length; i++) {
+                            if (_playerIds[i] == -1) {
+                                _playerIds[i] = playerId;
+                                playerTextBoxes[i].Text = username;
                                 break;
                             }
                         }
@@ -184,16 +189,19 @@ namespace Client {
                 case ServerMessageType.PlayerLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         for (int i = 0; i < playerTextBoxes.Length; i++) {
-                            if (playerTextBoxes[i].Text == playerId.ToString()) {
+                            if (playerId == _playerIds[i]) {
+                                _playerIds[i] = -1;
                                 playerTextBoxes[i].Text = "";
                                 playerTextBoxes[i].PlaceholderText = $"Player {i + 1} (Waiting...)";
                                 break;
                             }
                         }
 
-                        for (int i = 0; i < playerTextBoxes.Length - 1; i++) {
-                            if (string.IsNullOrEmpty(playerTextBoxes[i].Text) && !string.IsNullOrEmpty(playerTextBoxes[i + 1].Text)) {
+                        for (int i = 0; i < _playerIds.Length - 1; i++) {
+                            if (_playerIds[i] == -1 && _playerIds[i + 1] != -1) {
+                                _playerIds[i] = _playerIds[i + 1];
                                 playerTextBoxes[i].Text = playerTextBoxes[i + 1].Text;
+                                _playerIds[i + 1] = -1;
                                 playerTextBoxes[i + 1].Text = "";
                                 playerTextBoxes[i + 1].PlaceholderText = $"Player {i + 2} (Waiting...)";
                             }
@@ -203,7 +211,7 @@ namespace Client {
                 case ServerMessageType.NewHost: {
                         int newHostId = int.Parse(message.Data["hostId"]);
                         for (int i = 0; i < playerTextBoxes.Length; i++) {
-                            if (playerTextBoxes[i].Text == newHostId.ToString()) {
+                            if (newHostId == _playerIds[i]) {
                                 playerTextBoxes[i].Text += " (Host)";
                             } else {
                                 playerTextBoxes[i].Text = playerTextBoxes[i].Text.Replace(" (Host)", "");
@@ -216,8 +224,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        string errorMessage = message.Data["message"];
-                        Console.WriteLine($"Error: {errorMessage}");
+                        Console.WriteLine($"Error: {message.Data["message"]}");
                     }
                     break;
             }
