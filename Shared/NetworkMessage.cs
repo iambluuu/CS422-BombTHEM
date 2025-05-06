@@ -14,7 +14,6 @@ namespace Shared {
         CreateRoom,
         GetRoomInfo,
         GetRoomList,
-        RefreshRooms,
         AddBot,
         KickPlayer,
         JoinRoom,
@@ -23,6 +22,7 @@ namespace Shared {
         GetGameInfo,
         MovePlayer,
         PlaceBomb,
+        GetGameResults,
     }
 
     public enum ServerMessageType {
@@ -36,6 +36,7 @@ namespace Shared {
         PlayerJoined,
         PlayerKicked,
         GameStarted,
+        GameStopped,
         NewHost,
         PlayerLeft,
         GameInfo,
@@ -43,6 +44,7 @@ namespace Shared {
         BombPlaced,
         BombExploded,
         PlayerDied,
+        GameResults,
         Error
     }
 

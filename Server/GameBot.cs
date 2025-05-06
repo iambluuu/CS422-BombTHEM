@@ -34,6 +34,10 @@ namespace Server {
             _thread.Start();
         }
 
+        public void Stop() {
+            _isGameStarted = false;
+        }
+
         public void Dispose() {
             _cts.Cancel();
             // _thread.Join(); fuck this, fuck deadlock

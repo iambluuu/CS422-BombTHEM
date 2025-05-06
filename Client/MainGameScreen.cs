@@ -12,8 +12,6 @@ using Client.Component;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
-        private readonly Dictionary<int, int> _playerScores = [];
-
         private readonly object _lock = new();
 
         private SceneNode _sceneGraph;
@@ -92,7 +90,6 @@ namespace Client {
 
                             _playerLayer.AttachChild(playerNode);
                             _playerNodes.Add(playerId, playerNode);
-                            _playerScores.Add(playerId, 0);
                             playerData.Add((playerId.ToString(), username, i));
                         }
 
@@ -188,6 +185,10 @@ namespace Client {
                         }
                     }
                     break;
+                case ServerMessageType.GameStopped: {
+                        Console.WriteLine("Game stopped");
+                    }
+                    break;
             }
         }
 
@@ -235,14 +236,9 @@ namespace Client {
         }
 
         private void IncreaseScore(int playerId) {
-            if (!_playerScores.ContainsKey(playerId)) {
-                Console.WriteLine($"Player {playerId} not found");
-                return;
-            }
-
-            _playerScores[playerId]++;
             _scoreboard.IncreaseScore(playerId);
         }
+
         private void HandleUpdate(GameTime gameTime) {
             _sceneGraph.UpdateTree(gameTime);
 
