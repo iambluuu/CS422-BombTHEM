@@ -64,7 +64,7 @@ namespace Client {
         }
 
         // Navigate to a screen using an enum
-        public void NavigateTo(ScreenName screenType, bool isOverlay = false) {
+        public void NavigateTo(ScreenName screenType, bool isOverlay = false, Dictionary<string, object> parameters = null) {
             GameScreen screen;
 
             // Check if screen exists in cache
@@ -79,7 +79,7 @@ namespace Client {
             // Set whether this screen should overlay or replace current screens
             screen.IsExclusive = !isOverlay;
 
-            PushScreen(screen);
+            PushScreen(screen, parameters);
         }
 
         // Create screen instance based on enum type
@@ -110,7 +110,7 @@ namespace Client {
             }
         }
 
-        private void PushScreen(GameScreen screen) {
+        private void PushScreen(GameScreen screen, Dictionary<string, object> parameters = null) {
             // Optionally deactivate the current top screen
             if (screenStack.Count > 0) {
                 var currentScreen = screenStack.Peek();
@@ -128,6 +128,7 @@ namespace Client {
                 screen.IsInitialized = true;
             }
             screen.Activate();
+            screen.LoadParameters(parameters);
             screenStack.Push(screen);
         }
 
@@ -196,6 +197,8 @@ namespace Client {
             Client.Instance.Window.TextInput -= DispatchTextInput;
             NetworkManager.Instance.RemoveHandler(HandleResponse);
         }
+
+        public virtual void LoadParameters(Dictionary<string, object> parameters) { }
 
         public virtual void HandleResponse(NetworkMessage message) { }
 
