@@ -1,8 +1,31 @@
+using Client.Animation;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using System;
+using System.Collections.Generic;
 
 namespace Client.Component {
+    public struct Padding {
+        public float Left, Top, Right, Bottom;
+
+        public Padding(float all) => Left = Top = Right = Bottom = all;
+
+        public Padding(float vertical, float horizontal) {
+            Left = Right = horizontal;
+            Top = Bottom = vertical;
+        }
+
+        public Padding(float left, float top, float right, float bottom) {
+            Left = left;
+            Top = top;
+            Right = right;
+            Bottom = bottom;
+        }
+
+        public float Horizontal => Left + Right;
+        public float Vertical => Top + Bottom;
+    }
+
     public enum ContentAlignment {
         TopLeft,
         TopCenter,
@@ -23,7 +46,6 @@ namespace Client.Component {
         public float Opacity { get; set; } = 1f;
 
         private Vector2 _position = Vector2.Zero;
-
         public virtual Vector2 Position {
             get => _position;
             set {
@@ -52,7 +74,15 @@ namespace Client.Component {
             Position = new Vector2(parentRect.X + (parentRect.Width - Size.X) / 2, parentRect.Y + (parentRect.Height - Size.Y) / 2);
         }
 
-        public virtual void Update(GameTime gameTime) { }
+        public virtual void Update(GameTime gameTime) {
+
+            for (int i = _animations.Count - 1; i >= 0; i--) {
+                var anim = _animations[i];
+                anim.Update(this, gameTime);
+                if (anim.IsFinished)
+                    _animations.RemoveAt(i);
+            }
+        }
         public virtual void Draw(SpriteBatch spriteBatch) { }
         public virtual bool HitTest(Point mousePos) {
             return mousePos.X >= Position.X && mousePos.X <= Position.X + Size.X &&
@@ -69,5 +99,11 @@ namespace Client.Component {
 
         public virtual void OnFocus() { IsFocused = true; }
         public virtual void OnUnfocus() { IsFocused = false; }
+
+        private List<IUIAnimation> _animations = new List<IUIAnimation>();
+        public void AddAnimation(IUIAnimation animation) {
+            _animations.Add(animation);
+            animation.OnStart(this);
+        }
     }
 }

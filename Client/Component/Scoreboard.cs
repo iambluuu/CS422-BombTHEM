@@ -274,8 +274,8 @@ namespace Client.Component {
 
                 // Draw the player name on top line
                 var font = FontHolder.Get("Font/PressStart2P");
-                var textScale = Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(PlayerName).X);
                 var nameText = Username;
+                var textScale = Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(nameText).X);
                 var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + centeringOffset + Spacing);
                 spriteBatch.DrawString(font, nameText, namePosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
 

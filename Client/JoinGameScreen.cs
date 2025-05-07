@@ -17,7 +17,7 @@ namespace Client {
             var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
                 Position = new Vector2(50, 50),
                 Size = new Vector2(300, 400),
-                Padding = 25,
+                Padding = new Padding(25),
             };
             roomIdTextBox = new TextBox() {
                 PlaceholderText = "Enter Room Code",

@@ -15,6 +15,7 @@ namespace Client {
         LobbyScreen,
         JoinGameScreen,
         MainGameScreen,
+        EndGameScreen,
         PauseMenu,
         SettingsMenu
     }
@@ -39,26 +40,42 @@ namespace Client {
 
         public override void Update(GameTime gameTime) {
             // Copy screens to a temporary list to avoid modification issues during update
-            screensToUpdate.Clear();
-            foreach (var screen in screenStack)
-                screensToUpdate.Add(screen);
+            var screens = screenStack.ToArray();
+            int index = 0;
+            for (int i = 0; i < screens.Length; i++) {
+                var screen = screens[i];
+                if (screen.IsExclusive) {
+                    index = i;
+                    break; // Stop updating if the screen is exclusive
+                }
+            }
 
-            // Update screens in order (from bottom to top of stack)
-            // Reversed because stack has most recent screen at index 0
-            for (int i = screensToUpdate.Count - 1; i >= 0; i--) {
-                var screen = screensToUpdate[i];
-                screen.IsFocused = IsFocused;
-                screen.Update(gameTime);
+            for (int i = index; i >= 0; i--) {
+                var screen = screens[i];
+                if (screen.IsActive) {
+                    screen.Update(gameTime);
+                    screensToUpdate.Add(screen);
+                }
             }
         }
 
         public override void Draw(GameTime gameTime) {
             var screens = screenStack.ToArray();
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            for (int i = screens.Length - 1; i >= 0; i--) {
+            int index = 0;
+            for (int i = 0; i < screens.Length; i++) {
                 var screen = screens[i];
-                if (screen.IsVisible)
+                if (screen.IsExclusive) {
+                    index = i;
+                    break; // Stop drawing if the screen is exclusive
+                }
+            }
+
+            for (int i = index; i >= 0; i--) {
+                var screen = screens[i];
+                if (screen.IsVisible) {
                     screen.Draw(gameTime, spriteBatch);
+                }
             }
             spriteBatch.End();
         }
@@ -78,7 +95,6 @@ namespace Client {
 
             // Set whether this screen should overlay or replace current screens
             screen.IsExclusive = !isOverlay;
-
             PushScreen(screen, parameters);
         }
 
@@ -93,6 +109,8 @@ namespace Client {
                     return new JoinGameScreen();
                 case ScreenName.MainGameScreen:
                     return new MainGameScreen();
+                case ScreenName.EndGameScreen:
+                    return new EndGameScreen();
                 default:
                     throw new ArgumentException($"Unknown screen type: {screenType}");
             }
@@ -100,6 +118,16 @@ namespace Client {
 
         public void NavigateBack() {
             if (screenStack.Count > 1) {
+                PopScreen();
+            }
+        }
+
+        public void NavigateBackTo(ScreenName screenType) {
+            while (screenStack.Count > 0) {
+                var currentScreen = screenStack.Peek();
+                if (currentScreen.GetType() == CreateScreen(screenType).GetType()) {
+                    break;
+                }
                 PopScreen();
             }
         }
@@ -114,10 +142,7 @@ namespace Client {
             // Optionally deactivate the current top screen
             if (screenStack.Count > 0) {
                 var currentScreen = screenStack.Peek();
-                if (screen.IsExclusive) {
-                    currentScreen.IsVisible = false;
-                    currentScreen.Deactivate();
-                }
+                currentScreen.Deactivate();
             }
 
             // Only initialize if it's a new screen
@@ -137,7 +162,6 @@ namespace Client {
                 var screen = screenStack.Pop();
                 screen.Deactivate();
                 screen.IsVisible = false;
-
 
                 // Don't unload content if the screen is cached
                 // Content will be unloaded when the game exits or explicitly

@@ -7,64 +7,80 @@ using Microsoft.Xna.Framework.Input;
 
 using Client.Component;
 using Shared;
+using Client.Animation;
 
 namespace Client {
     public class EndGameScreen : GameScreen {
-        private Button mainMenuButton;
-        private Button rematchButton;
         private LinearLayout layout;
+        private (int, string, int)[] _gameResults = Array.Empty<(int, string, int)>();
+        private Dictionary<int, int> _skinMapping = [];
+        private bool hasResultArrived = false;
 
-        public override void Initialize() {
-            layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 30) {
-                Position = new Vector2(50, 50),
-                Size = new Vector2(400, 500),
-                Padding = 30,
-            };
-            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
+        private const float ScreenDarkenOpacity = 0.8f;
+        private const float ScreenDarkenDuration = 1f;
+        private const int StartingPositionOffset = 1000;
 
-            rematchButton = new Button() {
-                Position = new Vector2(0, 0),
-                Size = new Vector2(100, 200),
-                OnClick = Rematch,
-                Text = "Rematch",
-            };
+        private float _elapsedTime = 0f;
 
-            mainMenuButton = new Button() {
-                Position = new Vector2(0, 0),
-                Size = new Vector2(100, 200),
-                OnClick = NavigateToMainMenu,
-                Text = "Main Menu",
-            };
+        public override void Activate() {
+            base.Activate();
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetGameResults));
+        }
 
-            layout.AddComponent(rematchButton);
-            layout.AddComponent(mainMenuButton);
-            uiManager.AddComponent(layout, 0);
+        public override void LoadParameters(Dictionary<string, object> parameters) {
+            if (parameters.ContainsKey("skinMapping")) {
+                _skinMapping = parameters["skinMapping"] as Dictionary<int, int>;
+                if (_skinMapping != null) {
+
+                } else {
+                    Console.WriteLine("Skin mapping is null.");
+                }
+            } else {
+                Console.WriteLine("Skin mapping not found in parameters.");
+            }
         }
 
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
+            if (_elapsedTime < ScreenDarkenDuration) {
+                _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            }
+            float t = MathHelper.Clamp(_elapsedTime / ScreenDarkenDuration, 0f, 1f);
+            float opacity = MathHelper.Lerp(0f, ScreenDarkenOpacity, t);
+            var blackTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+            blackTexture.SetData(new[] { Color.Black * opacity });
+            spriteBatch.Draw(blackTexture, new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height), new Color(0, 0, 0, opacity));
+            if (!hasResultArrived)
+                return;
             base.Draw(gameTime, spriteBatch);
-
-            Dictionary<string, string> gameResults = GetGameResults();
-
-        }
-
-        private Dictionary<string, string> GetGameResults() {
-            // This method should return the game results. For now, we return an empty dictionary.
-            return new Dictionary<string, string>();
         }
 
         private void NavigateToMainMenu() {
-            ScreenManager.Instance.NavigateTo(ScreenName.MainMenu);
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
+            ScreenManager.Instance.NavigateToRoot();
         }
 
         private void Rematch() {
-            ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
+            // Maybe send a rematch request to the server here?
+            // ScreenManager.Instance.NavigateBackTo(ScreenName.LobbyScreen);
         }
 
         public override void HandleResponse(NetworkMessage message) {
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
-                        ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
+                        ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen, isOverlay: false);
+                    }
+                    break;
+                case ServerMessageType.GameResults: {
+                        string[] playerIds = message.Data["playerIds"].Split(';');
+                        string[] playerNames = message.Data["usernames"].Split(';');
+                        int[] playerScores = Array.ConvertAll(message.Data["scores"].Split(';'), int.Parse);
+                        _gameResults = new (int, string, int)[playerIds.Length];
+                        for (int i = 0; i < playerIds.Length; i++) {
+                            _gameResults[i] = (int.Parse(playerIds[i]), playerNames[i], playerScores[i]);
+                        }
+
+                        Console.WriteLine($"Game results: {string.Join(", ", _gameResults)}");
+                        OnResultsArrived();
                     }
                     break;
                 case ServerMessageType.Error: {
@@ -72,6 +88,70 @@ namespace Client {
                     }
                     break;
             }
+        }
+
+        private void OnResultsArrived() {
+            hasResultArrived = true;
+            Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3)); // Sort by score descending
+            var winner = _gameResults[0];
+
+            layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 10) {
+                Position = new Vector2(50, 50),
+                Size = new Vector2(400, 600),
+                Padding = new Padding(30),
+            };
+
+            var screenTitle = new TextBox(hasBackground: false) {
+                Text = "Finished!",
+                FontSize = 60,
+                TextColor = Color.White,
+                Padding = new Padding(0),
+                TextAlignment = ContentAlignment.MiddleCenter,
+            };
+
+            var winnerImage = new ImageComponent(TextureHolder.Get($"Texture/Character/{(PlayerSkin)_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)), ScaleMode.Fit);
+            var winnerName = new TextBox(hasBackground: false) {
+                Text = $"Winner: {winner.Item2}",
+                FontSize = 40,
+                TextColor = Color.White,
+                Padding = new Padding(0),
+                TextAlignment = ContentAlignment.MiddleCenter,
+            };
+            var winnerScore = new TextBox(hasBackground: false) {
+                Text = $"Score: {winner.Item3}",
+                FontSize = 40,
+                Padding = new Padding(0),
+                TextColor = Color.White,
+                TextAlignment = ContentAlignment.TopCenter,
+            };
+
+            var buttonLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 10, hasBackground: false) {
+                Size = new Vector2(400, 100),
+                Padding = new Padding(0, 60),
+            };
+            var rematchButton = new Button() {
+                Size = new Vector2(100, 200),
+                OnClick = Rematch,
+                Text = "Rematch",
+            };
+
+            var mainMenuButton = new Button() {
+                Size = new Vector2(100, 200),
+                OnClick = NavigateToMainMenu,
+                Text = "Main Menu",
+            };
+
+            layout.AddComponent(screenTitle, 2);
+            layout.AddComponent(winnerImage, 2);
+            layout.AddComponent(winnerName, 1);
+            layout.AddComponent(winnerScore, 1);
+            buttonLayout.AddComponent(rematchButton);
+            buttonLayout.AddComponent(mainMenuButton);
+            layout.AddComponent(buttonLayout, 3);
+            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
+            uiManager.AddComponent(layout, 0);
+
+            layout.AddAnimation(new MoveFromAnimation(layout.Position + new Vector2(0, StartingPositionOffset), 2f, Easing.QuadraticEaseInOut));
         }
     }
 }

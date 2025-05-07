@@ -6,7 +6,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Client.Component {
     public class LinearLayout : IComponent {
-        private readonly Vector2 CornerSize = new(5, 5);
+        private readonly Vector2 CornerSize = new(6, 6);
         private readonly Rectangle TextureSize = new(0, 0, 16, 16);
         private const string TextureDir = "Texture/Theme/";
 
@@ -17,7 +17,7 @@ namespace Client.Component {
 
         public Orientation LayoutOrientation { get; set; }
         public int Spacing { get; set; } = 5;
-        public int Padding { get; set; } = 5;
+        public Padding Padding { get; set; } = new Padding(5);
         public List<IComponent> Components { get; set; } = new();
         public List<int> Weights { get; set; } = new();
         private int _totalWeight = 0;
@@ -34,7 +34,7 @@ namespace Client.Component {
         ) {
             LayoutOrientation = orientation;
             Spacing = spacing;
-            Padding = padding;
+            Padding = new Padding(padding);
             HasBackground = hasBackground;
             if (components != null) {
                 Components = components;
@@ -59,19 +59,19 @@ namespace Client.Component {
         }
 
         private void RearrangeComponents() {
-            var currentPosition = Position + new Vector2(Padding, Padding);
+            var currentPosition = Position + new Vector2(Padding.Left, Padding.Top);
             for (int i = 0; i < Components.Count; i++) {
                 if (!Components[i].IsVisible) continue;
 
                 if (LayoutOrientation == Orientation.Horizontal) {
-                    var compWidth = (Size.X - Padding * 2 - Spacing * (Components.Count - 1)) * Weights[i] / _totalWeight;
+                    var compWidth = (Size.X - Padding.Left - Padding.Right - Spacing * (Components.Count - 1)) * Weights[i] / _totalWeight;
                     Components[i].Position = currentPosition;
-                    Components[i].Size = new Vector2(compWidth, Size.Y - Padding * 2);
+                    Components[i].Size = new Vector2(compWidth, Size.Y - Padding.Top - Padding.Bottom);
                     currentPosition.X += compWidth + Spacing;
                 } else {
-                    var compHeight = (Size.Y - Padding * 2 - Spacing * (Components.Count - 1)) * Weights[i] / _totalWeight;
+                    var compHeight = (Size.Y - Padding.Top - Padding.Bottom - Spacing * (Components.Count - 1)) * Weights[i] / _totalWeight;
                     Components[i].Position = currentPosition;
-                    Components[i].Size = new Vector2(Size.X - Padding * 2, compHeight);
+                    Components[i].Size = new Vector2(Size.X - Padding.Left - Padding.Right, compHeight);
                     currentPosition.Y += compHeight + Spacing;
                 }
             }
@@ -90,6 +90,7 @@ namespace Client.Component {
         }
 
         public override void Update(GameTime gameTime) {
+            base.Update(gameTime);
             foreach (var component in Components) {
                 component.Update(gameTime);
             }

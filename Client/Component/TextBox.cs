@@ -16,12 +16,14 @@ namespace Client.Component {
         public bool IsMultiline { get; set; } = false;
         public bool IsPassword { get; set; } = false;
         public readonly bool IsReadOnly = false;
+        public readonly bool HasBackground = true;
+
         public bool IsUppercase { get; set; } = false;
         public Color TextColor { get; set; } = Color.Black;
         public Color BackgroundColor { get; set; } = Color.White;
         public Color BorderColor { get; set; } = Color.Black;
         public int BorderWidth { get; set; } = 0;
-        public int Padding { get; set; } = 5;
+        public Padding Padding { get; set; } = new Padding(5);
         public float FontSize { get; set; } = 30f;
 
         private const int CaretBlinkRate = 1000; // milliseconds
@@ -31,11 +33,12 @@ namespace Client.Component {
         public SpriteFont Font { get; set; } = FontHolder.Get("Font/PressStart2P");
         public Texture2D Texture { get; set; } = null!;
 
-        public TextBox(bool isReadOnly = false) {
+        public TextBox(bool isReadOnly = false, bool hasBackground = true) {
             IsReadOnly = isReadOnly;
             IsFocused = false;
             IsVisible = true;
             IsEnabled = true;
+            HasBackground = hasBackground;
         }
 
         public override void HandleInput(UIEvent uiEvent) {
@@ -83,13 +86,15 @@ namespace Client.Component {
             if (!IsVisible) return;
 
             // Draw background
-            Texture2D texture = GetTexture();
-            if (texture != null) {
-                DrawNineSlice(spriteBatch, texture);
-            } else {
-                texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-                texture.SetData(new[] { Color.White });
-                spriteBatch.Draw(texture, Position, Color.White);
+            if (HasBackground) {
+                Texture2D texture = GetTexture();
+                if (texture != null) {
+                    DrawNineSlice(spriteBatch, texture);
+                } else {
+                    texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+                    texture.SetData(new[] { Color.White });
+                    spriteBatch.Draw(texture, Position, Color.White);
+                }
             }
 
             // Draw border
@@ -107,30 +112,19 @@ namespace Client.Component {
             string rawText = string.IsNullOrEmpty(Text) && (!IsFocused || IsReadOnly) ? PlaceholderText : Text;
             Color colorToDraw = string.IsNullOrEmpty(Text) && !IsFocused ? TextColor * 0.5f : TextColor;
             float scale = ToPixels(FontSize) / Font.LineSpacing;
-            string textToDraw = TruncateText(rawText, Font, Size.X - Padding * 2, scale);
+            string textToDraw = TruncateText(rawText, Font, Size.X - Padding.Left - Padding.Right, scale);
             Vector2 textSize = string.IsNullOrEmpty(textToDraw) ? new(0, Font.LineSpacing * scale) : Font.MeasureString(textToDraw) * scale;
 
             if (IsPassword) {
                 textToDraw = new string('*', Text.Length);
             }
 
-            Vector2 textPosition = Position + new Vector2(Padding, Padding);
-            if (TextAlignment == ContentAlignment.MiddleCenter) {
-                textPosition.X += (Size.X - textSize.X) / 2;
-                textPosition.Y += (Size.Y - textSize.Y) / 2;
-            } else if (TextAlignment == ContentAlignment.MiddleRight) {
-                textPosition.X += Size.X - textSize.X - Padding;
-                textPosition.Y += (Size.Y - textSize.Y) / 2;
-            } else if (TextAlignment == ContentAlignment.BottomLeft) {
-                textPosition.X += Padding;
-                textPosition.Y += Size.Y - textSize.Y - Padding;
-            }
-
+            Vector2 textPosition = GetAlignedPosition(TextAlignment, textSize, Size);
             spriteBatch.DrawString(Font, textToDraw, textPosition, colorToDraw, scale: scale, origin: Vector2.Zero, rotation: 0f, effects: SpriteEffects.None, layerDepth: 0f);
 
             // Draw caret
             if (!IsReadOnly && IsFocused && _caretBlinkTimer < CaretBlinkRate / 2) {
-                Vector2 caretPosition = new(textPosition.X + textSize.X + Padding / 2, textPosition.Y);
+                Vector2 caretPosition = new(textPosition.X + textSize.X + Padding.Left / 2, textPosition.Y);
                 var blackTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
                 blackTexture.SetData(new[] { Color.Black });
                 spriteBatch.Draw(blackTexture, new Rectangle((int)caretPosition.X, (int)caretPosition.Y, 5, (int)textSize.Y), TextColor);
@@ -168,6 +162,42 @@ namespace Client.Component {
             }
 
             return texture;
+        }
+
+        private Vector2 GetAlignedPosition(ContentAlignment alignment, Vector2 contentSize, Vector2 containerSize) {
+            Vector2 position = Position;
+
+            switch (alignment) {
+                case ContentAlignment.TopLeft:
+                    position += new Vector2(Padding.Top, Padding.Left);
+                    break;
+                case ContentAlignment.TopCenter:
+                    position += new Vector2((containerSize.X - contentSize.X) / 2, Padding.Top);
+                    break;
+                case ContentAlignment.TopRight:
+                    position += new Vector2(containerSize.X - contentSize.X - Padding.Right, Padding.Top);
+                    break;
+                case ContentAlignment.MiddleLeft:
+                    position += new Vector2(Padding.Left, (containerSize.Y - contentSize.Y) / 2);
+                    break;
+                case ContentAlignment.MiddleCenter:
+                    position += new Vector2((containerSize.X - contentSize.X) / 2, (containerSize.Y - contentSize.Y) / 2);
+                    break;
+                case ContentAlignment.MiddleRight:
+                    position += new Vector2(containerSize.X - contentSize.X - Padding.Right, (containerSize.Y - contentSize.Y) / 2);
+                    break;
+                case ContentAlignment.BottomLeft:
+                    position += new Vector2(Padding.Left, containerSize.Y - contentSize.Y - Padding.Bottom);
+                    break;
+                case ContentAlignment.BottomCenter:
+                    position += new Vector2((containerSize.X - contentSize.X) / 2, containerSize.Y - contentSize.Y - Padding.Bottom);
+                    break;
+                case ContentAlignment.BottomRight:
+                    position += new Vector2(containerSize.X - contentSize.X - Padding.Left, containerSize.Y - contentSize.Y - Padding.Bottom);
+                    break;
+            }
+
+            return position;
         }
 
         private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {

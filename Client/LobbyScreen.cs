@@ -21,33 +21,29 @@ namespace Client {
 
         public override void Initialize() {
             // Create main horizontal layout
-            mainLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 20) {
+            mainLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 20, padding: 20) {
                 Position = new Vector2(50, 50),
                 Size = new Vector2(800, 600),
-                Padding = 20,
             };
             mainLayout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
 
-            leftLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15) {
+            leftLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15, padding: 10) {
                 Position = Vector2.Zero,
                 Size = Vector2.Zero,
-                Padding = 10,
             };
 
             // Create right layout for buttons
-            rightLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15) {
+            rightLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15, padding: 10) {
                 Position = Vector2.Zero,
                 Size = Vector2.Zero,
-                Padding = 10,
             };
 
             playerTextBoxes = new TextBox[4];
             kickButtons = new Button[4];
             for (int i = 0; i < 4; i++) {
-                LinearLayout playerRowLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 10) {
+                LinearLayout playerRowLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 10, padding: 10) {
                     Position = Vector2.Zero,
                     Size = Vector2.Zero,
-                    Padding = 10,
                 };
 
                 // Player name/ID text box
@@ -59,7 +55,7 @@ namespace Client {
                     BackgroundColor = Color.White,
                     BorderColor = Color.Black,
                     BorderWidth = 2,
-                    Padding = 10,
+                    Padding = new Padding(10),
                     TextAlignment = ContentAlignment.MiddleCenter,
                 };
 
@@ -88,7 +84,7 @@ namespace Client {
                 BackgroundColor = Color.White,
                 BorderColor = Color.Black,
                 BorderWidth = 2,
-                Padding = 10,
+                Padding = new Padding(10),
                 TextAlignment = ContentAlignment.MiddleCenter,
             };
 

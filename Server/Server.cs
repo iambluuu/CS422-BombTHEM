@@ -573,7 +573,7 @@ namespace Server {
                             };
                             room.BombThread.Start();
 
-                            room.GameTimer = new System.Timers.Timer(60 * 1000) {
+                            room.GameTimer = new System.Timers.Timer(5 * 1000) {
                                 Enabled = true
                             };
                             room.GameTimer.Elapsed += (sender, e) => {
