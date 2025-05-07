@@ -28,7 +28,7 @@ namespace Client.Component {
         public ContentAlignment TextAlignment { get; set; } = ContentAlignment.MiddleCenter;
         public ContentAlignment IconAlignment { get; set; } = ContentAlignment.MiddleLeft;
 
-        public int Padding { get; set; } = 5;
+        public int Padding { get; set; } = 20;
 
         public Color TextColor { get; set; } = Color.White;
         public Vector2 TextSize { get; set; } = Vector2.Zero;
@@ -79,6 +79,7 @@ namespace Client.Component {
 
         public override void Update(GameTime gameTime) {
             if (!IsVisible) return;
+            base.Update(gameTime);
         }
 
         public override void HandleInput(UIEvent uiEvent) {

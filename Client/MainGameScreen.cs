@@ -25,6 +25,7 @@ namespace Client {
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
         private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
+        private Dictionary<int, int> _skinMapping = [];
 
         private LinearLayout _sidebar;
         private Scoreboard _scoreboard;
@@ -32,10 +33,9 @@ namespace Client {
         public MainGameScreen() { }
 
         public override void Initialize() {
-            _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false) {
+            _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false, padding: 0) {
                 Position = new Vector2(0, 0),
                 Size = new Vector2(240, 720),
-                Padding = 0,
                 Spacing = 0,
             };
 
@@ -90,6 +90,7 @@ namespace Client {
 
                             _playerLayer.AttachChild(playerNode);
                             _playerNodes.Add(playerId, playerNode);
+                            _skinMapping.Add(playerId, i);
                             playerData.Add((playerId.ToString(), username, i));
                         }
 
@@ -187,6 +188,9 @@ namespace Client {
                     break;
                 case ServerMessageType.GameStopped: {
                         Console.WriteLine("Game stopped");
+                        ScreenManager.Instance.NavigateTo(ScreenName.EndGameScreen, isOverlay: true, new(){
+                            { "skinMapping", _skinMapping },
+                        });
                     }
                     break;
             }

@@ -14,10 +14,9 @@ namespace Client {
 
         public override void Initialize() {
             // Initialize your main menu components here
-            var layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 30) {
+            var layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 30, padding: 30) {
                 Position = new Vector2(50, 50),
                 Size = new Vector2(400, 500),
-                Padding = 30,
             };
 
             layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
