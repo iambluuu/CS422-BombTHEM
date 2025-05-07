@@ -80,7 +80,6 @@ namespace Client {
                     }
                     break;
             }
-
         }
 
         private void ExitGame() {

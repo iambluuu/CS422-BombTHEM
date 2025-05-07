@@ -106,6 +106,7 @@ namespace Server {
             public void Dispose() {
                 StopGame();
                 Closed = true;
+                Console.WriteLine($"Room {RoomId} disposed");
             }
         }
 
@@ -573,7 +574,7 @@ namespace Server {
                             };
                             room.BombThread.Start();
 
-                            room.GameTimer = new System.Timers.Timer(60 * 1000) {
+                            room.GameTimer = new System.Timers.Timer(300 * 1000) {
                                 Enabled = true
                             };
                             room.GameTimer.Elapsed += (sender, e) => {
@@ -727,7 +728,7 @@ namespace Server {
                     continue;
                 }
 
-                if (!room.PlayerLastDied.ContainsKey(player.Key) || (playerPos.X == x && playerPos.Y == y && (DateTime.Now - room.PlayerLastDied[player.Key]).TotalMilliseconds >= 2000)) {
+                if (playerPos.X == x && playerPos.Y == y && (!room.PlayerLastDied.ContainsKey(player.Key) || (DateTime.Now - room.PlayerLastDied[player.Key]).TotalMilliseconds >= 2000)) {
                     Position respawnPosition = room.InitialPositions[player.Key];
                     room.Map.SetPlayerPosition(player.Key, respawnPosition.X, respawnPosition.Y);
                     room.PlayerScores[bombPlayerId] += 1;
