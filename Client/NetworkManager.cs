@@ -206,7 +206,7 @@ namespace Client {
 
             if (_listenThread?.IsAlive == true) {
                 _listenCts?.Cancel();
-                _listenThread?.Join(1000);
+                _listenThread?.Join();
             }
 
             _stream?.Close();
