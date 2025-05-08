@@ -95,10 +95,10 @@ namespace Client {
             Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3)); // Sort by score descending
             var winner = _gameResults[0];
 
-            layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 10) {
+            layout = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Vertical,
                 Position = new Vector2(50, 50),
                 Size = new Vector2(400, 600),
-                Padding = new Padding(30),
             };
 
             var screenTitle = new TextBox(hasBackground: false) {
@@ -125,9 +125,9 @@ namespace Client {
                 TextAlignment = ContentAlignment.TopCenter,
             };
 
-            var buttonLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 10, hasBackground: false) {
+            var buttonLayout = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Vertical,
                 Size = new Vector2(400, 100),
-                Padding = new Padding(0, 60),
             };
             var rematchButton = new Button() {
                 Size = new Vector2(100, 200),

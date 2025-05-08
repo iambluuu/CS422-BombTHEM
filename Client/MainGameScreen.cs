@@ -33,7 +33,8 @@ namespace Client {
         public MainGameScreen() { }
 
         public override void Initialize() {
-            _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false, padding: 0) {
+            _sidebar = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Vertical,
                 Position = new Vector2(0, 0),
                 Size = new Vector2(240, 720),
                 Spacing = 0,
@@ -43,7 +44,7 @@ namespace Client {
             _sidebar.AddComponent(new Button() {
                 Text = "Leave Game",
                 OnClick = () => {
-                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
+                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
                     ScreenManager.Instance.NavigateToRoot();
                 },
             });
@@ -187,7 +188,6 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.GameStopped: {
-                        Console.WriteLine("Game stopped");
                         ScreenManager.Instance.NavigateTo(ScreenName.EndGameScreen, isOverlay: true, new(){
                             { "skinMapping", _skinMapping },
                         });
@@ -292,27 +292,21 @@ namespace Client {
 
             if (key.IsKeyDown(Keys.Space) || key.IsKeyDown(Keys.Enter)) {
                 var currentPos = _playerNodes[playerId].Position;
-                var nearestCell = GetNearestEmptyCell(currentPos.X, currentPos.Y);
-
-                Position GetNearestEmptyCell(float startX, float startY) {
-                    Position nearest = null;
-                    float minDistance = float.MaxValue;
-
-                    lock (_lock) {
-                        for (int i = 0; i < _map.Height; i++) {
-                            for (int j = 0; j < _map.Width; j++) {
-                                if (_map.GetTile(i, j) == TileType.Empty && !_map.HasBomb(i, j)) {
-                                    float distance = Math.Abs(startX - (j * TILE_SIZE)) + Math.Abs(startY - (i * TILE_SIZE));
-                                    if (distance < TILE_SIZE / 3 && distance < minDistance) {
-                                        minDistance = distance;
-                                        nearest = new Position(i, j);
-                                    }
+                var currentIdx = _map.PlayerPositions[playerId];
+                Position nearestCell = null;
+                float minDistance = float.MaxValue;
+                lock (_lock) {
+                    for (int i = currentIdx.X - 2; i <= currentIdx.X + 2; i++) {
+                        for (int j = currentIdx.Y - 2; j <= currentIdx.Y + 2; j++) {
+                            if (_map.IsInBounds(i, j) && _map.GetTile(i, j) == TileType.Empty && !_map.HasBomb(i, j)) {
+                                float distance = Math.Abs(currentPos.Y - (i * TILE_SIZE)) + Math.Abs(currentPos.X - (j * TILE_SIZE));
+                                if (distance < TILE_SIZE / 3 && distance < minDistance) {
+                                    minDistance = distance;
+                                    nearestCell = new Position(i, j);
                                 }
                             }
                         }
                     }
-
-                    return nearest;
                 }
 
                 if (nearestCell != null) {

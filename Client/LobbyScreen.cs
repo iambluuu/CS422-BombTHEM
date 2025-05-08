@@ -21,19 +21,23 @@ namespace Client {
 
         public override void Initialize() {
             // Create main horizontal layout
-            mainLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 20, padding: 20) {
+            mainLayout = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Horizontal,
                 Position = new Vector2(50, 50),
                 Size = new Vector2(800, 600),
             };
+
             mainLayout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
 
-            leftLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15, padding: 10) {
+            leftLayout = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Vertical,
                 Position = Vector2.Zero,
                 Size = Vector2.Zero,
             };
 
             // Create right layout for buttons
-            rightLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 15, padding: 10) {
+            rightLayout = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Vertical,
                 Position = Vector2.Zero,
                 Size = Vector2.Zero,
             };
@@ -41,7 +45,8 @@ namespace Client {
             playerTextBoxes = new TextBox[4];
             kickButtons = new Button[4];
             for (int i = 0; i < 4; i++) {
-                LinearLayout playerRowLayout = new LinearLayout(LinearLayout.Orientation.Horizontal, spacing: 10, padding: 10) {
+                LinearLayout playerRowLayout = new LinearLayout() {
+                    LayoutOrientation = LinearLayout.Orientation.Horizontal,
                     Position = Vector2.Zero,
                     Size = Vector2.Zero,
                 };

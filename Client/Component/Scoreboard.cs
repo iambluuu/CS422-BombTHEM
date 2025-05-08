@@ -10,7 +10,7 @@ namespace Client.Component {
     public class Scoreboard : IComponent {
         private List<ScoreboardEntry> _entries = new();
         private const int MaxEntryNum = 4;
-        private const float TimePerGame = 300f; // seconds
+        private const float TimePerGame = 60f; // seconds
         private const int Padding = 25; // surrounding padding
         private const int Spacing = 5; // spacing between entries
         private const int SeparatorHeight = 2; // height of the separator line

@@ -19,6 +19,7 @@ namespace Shared {
         JoinRoom,
         LeaveRoom,
         StartGame,
+        LeaveGame,
         GetGameInfo,
         MovePlayer,
         PlaceBomb,

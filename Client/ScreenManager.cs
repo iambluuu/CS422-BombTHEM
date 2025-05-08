@@ -52,6 +52,7 @@ namespace Client {
 
             for (int i = index; i >= 0; i--) {
                 var screen = screens[i];
+                screen.IsFocused = IsFocused;
                 if (screen.IsActive) {
                     screen.Update(gameTime);
                     screensToUpdate.Add(screen);
@@ -207,6 +208,12 @@ namespace Client {
         public bool IsFocused { get; set; } = true;
         public bool IsInitialized { get; set; } = false;
 
+        public static Vector2 ScreenSize {
+            get {
+                return new Vector2(Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height);
+            }
+        }
+
         public virtual void Initialize() { }
 
         public virtual void Activate() {
@@ -231,36 +238,38 @@ namespace Client {
         public virtual void UnloadContent() { }
 
         public virtual void Update(GameTime gameTime) {
-            if (!IsActive || !IsFocused) return;
+            if (!IsActive) return;
 
             MouseState mouseState = Mouse.GetState();
             KeyboardState keyboardState = Keyboard.GetState();
 
-            if (mouseState.Position != previousMouseState.Position) {
-                // Handle mouse movement event
-                UIEvent mouseMoveEvent = new UIEvent(UIEventType.MouseMove, mousePosition: mouseState.Position);
-                uiManager.DispatchEvent(mouseMoveEvent);
-            }
+            if (IsFocused) {
+                if (mouseState.Position != previousMouseState.Position) {
+                    // Handle mouse movement event
+                    UIEvent mouseMoveEvent = new UIEvent(UIEventType.MouseMove, mousePosition: mouseState.Position);
+                    uiManager.DispatchEvent(mouseMoveEvent);
+                }
 
-            // Handle Click
-            if (mouseState.LeftButton == ButtonState.Released) {
-                // Handle click event
-                UIEvent clickEvent = new UIEvent(UIEventType.MouseUp, mousePosition: mouseState.Position);
-                uiManager.DispatchEvent(clickEvent);
-            }
+                // Handle Click
+                if (mouseState.LeftButton == ButtonState.Released) {
+                    // Handle click event
+                    UIEvent clickEvent = new UIEvent(UIEventType.MouseUp, mousePosition: mouseState.Position);
+                    uiManager.DispatchEvent(clickEvent);
+                }
 
-            // Handle Mouse Down
-            if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released) {
-                // Handle mouse down event
-                UIEvent mouseDownEvent = new UIEvent(UIEventType.MouseDown, mousePosition: mouseState.Position);
-                uiManager.DispatchEvent(mouseDownEvent);
-            }
+                // Handle Mouse Down
+                if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released) {
+                    // Handle mouse down event
+                    UIEvent mouseDownEvent = new UIEvent(UIEventType.MouseDown, mousePosition: mouseState.Position);
+                    uiManager.DispatchEvent(mouseDownEvent);
+                }
 
-            // Handle Key Press
-            if (keyboardState.GetPressedKeys().Length > 0 && previousKeyboardState.GetPressedKeys().Length == 0) {
-                // Handle key press event
-                UIEvent keyPressEvent = new UIEvent(UIEventType.KeyPress, key: keyboardState.GetPressedKeys()[0]);
-                uiManager.DispatchEvent(keyPressEvent);
+                // Handle Key Press
+                if (keyboardState.GetPressedKeys().Length > 0 && previousKeyboardState.GetPressedKeys().Length == 0) {
+                    // Handle key press event
+                    UIEvent keyPressEvent = new UIEvent(UIEventType.KeyPress, key: keyboardState.GetPressedKeys()[0]);
+                    uiManager.DispatchEvent(keyPressEvent);
+                }
             }
 
             // Update UI components

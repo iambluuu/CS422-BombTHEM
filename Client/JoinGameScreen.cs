@@ -14,10 +14,10 @@ namespace Client {
         public override void Initialize() {
             base.Initialize();
 
-            var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
+            var layout = new LinearLayout() {
+                LayoutOrientation = LinearLayout.Orientation.Vertical,
                 Position = new Vector2(50, 50),
                 Size = new Vector2(300, 400),
-                Padding = new Padding(25),
             };
             roomIdTextBox = new TextBox() {
                 PlaceholderText = "Enter Room Code",

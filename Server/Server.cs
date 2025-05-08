@@ -18,6 +18,7 @@ namespace Server {
             public required int PlayerId { get; set; }
             public required string Username { get; set; }
             public string? RoomId { get; set; }
+            public bool InGame { get; set; } = false;
 
             public virtual void Dispose() { }
         }
@@ -265,8 +266,7 @@ namespace Server {
                             return Math.Abs(x1 - x2) + Math.Abs(y1 - y2);
                         }
 
-                        int distance = Math.Min(Math.Min(Distance(i, j, 1, 1), Distance(i, j, height - 2, width - 2)),
-                            Math.Min(Distance(i, j, 1, width - 2), Distance(i, j, height - 2, 1)));
+                        int distance = Math.Min(Math.Min(Distance(i, j, 1, 1), Distance(i, j, height - 2, width - 2)), Math.Min(Distance(i, j, 1, width - 2), Distance(i, j, height - 2, 1)));
 
                         if (distance > 2) {
                             map.SetTile(i, j, TileType.Grass);
@@ -423,6 +423,7 @@ namespace Server {
                                     { "isHost", (playerId == room.HostPlayerId).ToString().ToLower() },
                                     { "playerIds", string.Join(";", room.PlayerIds) },
                                     { "usernames", string.Join(";", room.PlayerIds.Select(id => _idToPlayer[id].Username)) },
+                                    { "inGames", string.Join(";", room.PlayerIds.Select(id => _idToPlayer[id].InGame.ToString() )) },
                                 }));
                             }
                         }
@@ -492,6 +493,7 @@ namespace Server {
                             }
 
                             RemovePlayerFromRoom(_idToPlayer[playerToKick]);
+
                             if (!isBot(playerToKick)) {
                                 SendToClient(playerToKick, NetworkMessage.From(ServerMessageType.PlayerKicked, new() {
                                     { "message", "You have been kicked from the room" }
@@ -519,13 +521,6 @@ namespace Server {
                         lock (_roomLocks[joinRoomId]) {
                             _rooms.TryGetValue(joinRoomId, out GameRoom? room);
                             if (room == null) {
-                                return;
-                            }
-
-                            if (room.GameStarted) {
-                                SendToClient(playerId, NetworkMessage.From(ServerMessageType.Error, new() {
-                                    { "message", "Game already in progress" }
-                                }));
                                 return;
                             }
 
@@ -574,7 +569,7 @@ namespace Server {
                             };
                             room.BombThread.Start();
 
-                            room.GameTimer = new System.Timers.Timer(300 * 1000) {
+                            room.GameTimer = new System.Timers.Timer(60 * 1000) {
                                 Enabled = true
                             };
                             room.GameTimer.Elapsed += (sender, e) => {
@@ -586,6 +581,8 @@ namespace Server {
 
                             for (int i = 0; i < room.PlayerIds.Count; i++) {
                                 int pid = room.PlayerIds[i];
+                                _idToPlayer[pid].InGame = true;
+
                                 Position initialPosition = new Position(0, 0);
 
                                 if (i == 0 || i == 2) {
@@ -605,6 +602,15 @@ namespace Server {
                             }
 
                             BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameStarted));
+                        }
+                    }
+                    break;
+                case ClientMessageType.LeaveGame: {
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
+
+                            room.RemovePlayer(playerId);
+                            _idToPlayer[playerId].InGame = false;
                         }
                     }
                     break;

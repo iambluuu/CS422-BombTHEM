@@ -46,6 +46,7 @@ namespace Client.Component {
         public float Opacity { get; set; } = 1f;
 
         private Vector2 _position = Vector2.Zero;
+
         public virtual Vector2 Position {
             get => _position;
             set {
@@ -55,7 +56,18 @@ namespace Client.Component {
             }
         }
 
+        public virtual float X {
+            get => Position.X;
+            set => Position = new Vector2(value, Position.Y);
+        }
+
+        public virtual float Y {
+            get => Position.Y;
+            set => Position = new Vector2(Position.X, value);
+        }
+
         private Vector2 _size = new Vector2(100, 100);
+
         public virtual Vector2 Size {
             get => _size;
             set {
@@ -63,6 +75,16 @@ namespace Client.Component {
                 if (_size.X < 0) _size.X = 0;
                 if (_size.Y < 0) _size.Y = 0;
             }
+        }
+
+        public virtual float Width {
+            get => Size.X;
+            set => Size = new Vector2(value, Size.Y);
+        }
+
+        public virtual float Height {
+            get => Size.Y;
+            set => Size = new Vector2(Size.X, value);
         }
 
         public void Center(Rectangle parentRect) {
