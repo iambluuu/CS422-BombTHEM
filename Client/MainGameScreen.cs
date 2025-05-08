@@ -6,16 +6,19 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Text.Json;
+
 
 using Shared;
 using Client.Component;
+using Client.PowerUps;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
         private readonly object _lock = new();
 
         private SceneNode _sceneGraph;
-        private SceneNode _mapLayer, _bombLayer, _playerLayer;
+        private SceneNode _mapLayer, _bombLayer, _playerLayer, _itemLayer, _vfxLayer;
 
         private readonly TextNode _pingText = new("Ping: ?ms");
 
@@ -29,6 +32,7 @@ namespace Client {
 
         private LinearLayout _sidebar;
         private Scoreboard _scoreboard;
+        private PowerSlot _powerSlot;
 
         public MainGameScreen() { }
 
@@ -39,7 +43,8 @@ namespace Client {
                 Spacing = 0,
             };
 
-            _sidebar.AddComponent(new PowerSlot(), weight: 2);
+            _powerSlot = new PowerSlot();
+            _sidebar.AddComponent(_powerSlot, weight: 2);
             _sidebar.AddComponent(new Button() {
                 Text = "Leave Game",
                 OnClick = () => {
@@ -53,9 +58,13 @@ namespace Client {
             _mapLayer = new SceneNode();
             _bombLayer = new SceneNode();
             _playerLayer = new SceneNode();
+            _itemLayer = new SceneNode();
+            _vfxLayer = new SceneNode();
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_playerLayer);
+            _sceneGraph.AttachChild(_itemLayer);
+            _sceneGraph.AttachChild(_vfxLayer);
             _sceneGraph.AttachChild(_pingText);
 
             _sceneGraph.Position = new Vector2(240, 0);
@@ -108,7 +117,7 @@ namespace Client {
                         int y = int.Parse(message.Data["y"]);
                         Direction direction = Enum.Parse<Direction>(message.Data["d"]);
 
-                        if (x != _map.PlayerPositions[playerId].X || y != _map.PlayerPositions[playerId].Y) {
+                        if (x != _map.PlayerInfos[playerId].Position.X || y != _map.PlayerInfos[playerId].Position.Y) {
                             lock (_lock) {
                                 _map.SetPlayerPosition(playerId, x, y);
                                 _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
@@ -119,7 +128,7 @@ namespace Client {
                 case ServerMessageType.PlayerLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         lock (_lock) {
-                            _map.PlayerPositions.Remove(playerId);
+                            _map.PlayerInfos.Remove(playerId);
                             if (_playerNodes.ContainsKey(playerId)) {
                                 _playerLayer.DetachChild(_playerNodes[playerId]);
                                 _playerNodes.Remove(playerId);
@@ -193,6 +202,26 @@ namespace Client {
                         });
                     }
                     break;
+
+                case ServerMessageType.PowerUpUsed: {
+                        string powerUpType = message.Data["powerUpType"];
+                        Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
+                        PowerUp powerUp = PowerUpFactory.CreatePowerUp(Enum.Parse<PowerName>(powerUpType));
+                        powerUp.Apply(parameters);
+                    }
+                    break;
+
+                case ServerMessageType.PowerUpSpawned: {
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        lock (_lock) {
+                            _itemLayer.AttachChild(new ItemNode(powerUpType) {
+                                Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE),
+                            });
+                        }
+                    }
+                    break;
             }
         }
 
@@ -254,7 +283,7 @@ namespace Client {
             }
 
             int playerId = NetworkManager.Instance.ClientId;
-            if (_map == null || !_map.PlayerPositions.ContainsKey(playerId) || !_playerNodes.ContainsKey(playerId)) {
+            if (_map == null || !_map.PlayerInfos.ContainsKey(playerId) || !_playerNodes.ContainsKey(playerId)) {
                 return;
             }
 
@@ -281,8 +310,8 @@ namespace Client {
 
                 if (direction != Direction.None) {
                     _map.MovePlayer(playerId, direction);
-                    int x = _map.PlayerPositions[playerId].X;
-                    int y = _map.PlayerPositions[playerId].Y;
+                    int x = _map.PlayerInfos[playerId].Position.X;
+                    int y = _map.PlayerInfos[playerId].Position.Y;
                     _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
                     NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
                         { "direction", direction.ToString() }
@@ -334,6 +363,10 @@ namespace Client {
                         }));
                     }
                 }
+            }
+
+            if (key.IsKeyDown(Keys.E) || key.IsKeyDown(Keys.Q)) {
+                _powerSlot.UsePower(key.IsKeyDown(Keys.E) ? 'E' : 'Q');
             }
         }
 

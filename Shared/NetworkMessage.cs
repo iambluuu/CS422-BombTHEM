@@ -23,6 +23,7 @@ namespace Shared {
         MovePlayer,
         PlaceBomb,
         GetGameResults,
+        UsePowerUp,
     }
 
     public enum ServerMessageType {
@@ -45,7 +46,10 @@ namespace Shared {
         BombExploded,
         PlayerDied,
         GameResults,
-        Error
+        Error,
+        PowerUpSpawned,
+        PowerUpUsed,
+        PowerUpRemoved,
     }
 
     public class MessageType {

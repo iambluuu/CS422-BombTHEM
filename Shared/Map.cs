@@ -1,4 +1,15 @@
+using Server;
+
 namespace Shared {
+    public enum PowerName {
+        None,
+        Ghost,
+        RandomBomb,
+        InstantBomb,
+        Shield,
+        Teleport,
+    }
+
     public enum TileType {
         Empty,
         Wall,
@@ -90,14 +101,14 @@ namespace Shared {
         public int Height { get; private set; }
         public int Width { get; private set; }
         public TileType[,] Tiles { get; private set; }
-        public Dictionary<int, Position> PlayerPositions { get; private set; }
+        public Dictionary<int, PlayerIngameInfo> PlayerInfos { get; private set; }
         public List<Bomb> Bombs { get; private set; }
 
         public Map(int height, int width) {
             Height = height;
             Width = width;
             Tiles = new TileType[height, width];
-            PlayerPositions = new Dictionary<int, Position>();
+            PlayerInfos = [];
             Bombs = new List<Bomb>();
         }
 
@@ -127,37 +138,37 @@ namespace Shared {
                 throw new ArgumentOutOfRangeException($"Map.SetPlayerPosition: Coordinate ({x}, {y}) is out of bounds");
             }
 
-            PlayerPositions[playerId] = new Position(x, y);
+            PlayerInfos[playerId].Position = new Position(x, y);
         }
 
         public Position GetPlayerPosition(int playerId) {
-            if (!PlayerPositions.ContainsKey(playerId)) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.GetPlayerPosition: Player ID {playerId} not found");
             }
 
-            return PlayerPositions[playerId];
+            return PlayerInfos[playerId].Position;
         }
 
         public bool IsPlayerMovable(int playerId, Direction direction) {
-            if (!PlayerPositions.ContainsKey(playerId)) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.IsPlayerMovable: Player ID {playerId} not found");
             }
 
-            Position newPosition = PlayerPositions[playerId].Move(direction);
+            Position newPosition = PlayerInfos[playerId].Position.Move(direction);
             return IsInBounds(newPosition.X, newPosition.Y) && GetTile(newPosition.X, newPosition.Y) == TileType.Empty;
         }
 
         public void MovePlayer(int playerId, Direction direction) {
-            if (!PlayerPositions.ContainsKey(playerId)) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.MovePlayer: Player ID {playerId} not found");
             }
 
-            Position newPosition = PlayerPositions[playerId].Move(direction);
+            Position newPosition = PlayerInfos[playerId].Position.Move(direction);
             MovePlayer(playerId, newPosition.X, newPosition.Y);
         }
 
         public void MovePlayer(int playerId, int newX, int newY) {
-            if (!PlayerPositions.ContainsKey(playerId)) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.MovePlayer: Player ID {playerId} not found");
             }
 
@@ -169,7 +180,7 @@ namespace Shared {
                 return;
             }
 
-            PlayerPositions[playerId] = new Position(newX, newY);
+            PlayerInfos[playerId].Position = new Position(newX, newY);
         }
 
         public bool HasBomb(int x, int y) {
@@ -281,9 +292,9 @@ namespace Shared {
                 while (queue.Count > 0) {
                     Position current = queue.Dequeue();
 
-                    foreach (var player in PlayerPositions) {
-                        if (current.X == player.Value.X && current.Y == player.Value.Y) {
-                            final = player.Value;
+                    foreach (var player in PlayerInfos) {
+                        if (current.X == player.Value.Position.X && current.Y == player.Value.Position.Y) {
+                            final = player.Value.Position;
                             break;
                         }
                     }
@@ -319,6 +330,14 @@ namespace Shared {
                     SetTile(bomb.ExplosionPositions[i].X, bomb.ExplosionPositions[i].Y, TileType.Empty);
                 }
             }
+        }
+
+        public void UsePowerUp(int playerId, PowerName power) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
+                throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
+            }
+
+            PlayerInfos[playerId].UsePowerUp(power);
         }
 
         public override string ToString() {

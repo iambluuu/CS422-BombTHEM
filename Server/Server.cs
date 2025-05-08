@@ -92,7 +92,7 @@ namespace Server {
                 PlayerIds.Remove(playerId);
                 if (!GameStarted) {
                     PlayerScores.Remove(playerId);
-                    Map?.PlayerPositions.Remove(playerId);
+                    Map?.PlayerInfos.Remove(playerId);
                 }
             }
 
@@ -574,7 +574,7 @@ namespace Server {
                             };
                             room.BombThread.Start();
 
-                            room.GameTimer = new System.Timers.Timer(300 * 1000) {
+                            room.GameTimer = new System.Timers.Timer(GameplayConfig.GameDuration * 1000) {
                                 Enabled = true
                             };
                             room.GameTimer.Elapsed += (sender, e) => {
@@ -616,7 +616,7 @@ namespace Server {
                                     { "playerCount", room.PlayerIds.Count.ToString() },
                                     { "playerIds", string.Join(";", room.PlayerIds) },
                                     { "usernames", string.Join(";", room.PlayerIds.Select(id => _idToPlayer[id].Username)) },
-                                    { "playerPositions", string.Join(";", room.Map.PlayerPositions.Select(p => new Position(p.Value.X, p.Value.Y).ToString())) },
+                                    { "playerPositions", string.Join(";", room.Map.PlayerInfos.Select(p => new Position(p.Value.Position.X, p.Value.Position.Y).ToString())) },
                                 }));
                             }
                         }
@@ -672,6 +672,20 @@ namespace Server {
                         }
                     }
                     break;
+
+                case ClientMessageType.UsePowerUp: {
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
+
+                            room.Map.UsePowerUp(playerId, powerUpType);
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                { "playerId", playerId.ToString() },
+                                { "powerUpId", powerUpType.ToString() }
+                            }));
+                        }
+                    }
+                    break;
             }
         }
 
@@ -697,8 +711,10 @@ namespace Server {
                             }
                         }
 
+                        List<Position> explosionPositions = new();
                         foreach (var bomb in explodedBombs) {
                             room.Map.ExplodeBomb(bomb.Position.X, bomb.Position.Y);
+                            explosionPositions.AddRange(bomb.ExplosionPositions);
 
                             BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.BombExploded, new() {
                                 { "x", bomb.Position.X.ToString() },
@@ -712,6 +728,20 @@ namespace Server {
 
                             room.Map.Bombs.Remove(bomb);
                         }
+
+                        Random rand = new Random();
+                        foreach (var pos in explosionPositions) {
+                            if (room.Map.GetTile(pos.X, pos.Y) == TileType.Grass) {
+                                if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
+                                    PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
+                                    BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
+                                        { "x", pos.X.ToString() },
+                                        { "y", pos.Y.ToString() },
+                                        { "powerUpType", powerUpType.ToString() }
+                                    }));
+                                }
+                            }
+                        }
                     }
                 } catch (Exception ex) {
                     Console.WriteLine($"Error processing bombs for room {roomId}: {ex.Message}");
@@ -722,9 +752,9 @@ namespace Server {
         }
 
         private void CheckForPlayersInExplosion(GameRoom room, int x, int y, int bombPlayerId) {
-            foreach (var player in room.Map.PlayerPositions) {
-                Position playerPos = player.Value;
-                if (bombPlayerId == player.Key) {
+            foreach (var player in room.Map.PlayerInfos) {
+                Position playerPos = player.Value.Position;
+                if (bombPlayerId == player.Key || player.Value.HasPowerUp(PowerName.Shield)) {
                     continue;
                 }
 
