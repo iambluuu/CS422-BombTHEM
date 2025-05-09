@@ -28,6 +28,7 @@ namespace Client {
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
         private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
+        private readonly Dictionary<(int, int), ItemNode> _itemNodes = [];
         private Dictionary<int, int> _skinMapping = [];
 
         private LinearLayout _sidebar;
@@ -57,13 +58,13 @@ namespace Client {
             _sceneGraph = new SceneNode();
             _mapLayer = new SceneNode();
             _bombLayer = new SceneNode();
-            _playerLayer = new SceneNode();
             _itemLayer = new SceneNode();
+            _playerLayer = new SceneNode();
             _vfxLayer = new SceneNode();
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_bombLayer);
-            _sceneGraph.AttachChild(_playerLayer);
             _sceneGraph.AttachChild(_itemLayer);
+            _sceneGraph.AttachChild(_playerLayer);
             _sceneGraph.AttachChild(_vfxLayer);
             _sceneGraph.AttachChild(_pingText);
 
@@ -216,9 +217,29 @@ namespace Client {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         lock (_lock) {
-                            _itemLayer.AttachChild(new ItemNode(powerUpType) {
+                            ItemNode itemNode = new ItemNode(powerUpType) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE),
-                            });
+                            };
+                            _map.AddItem(x, y, powerUpType);
+                            _itemNodes.Add((x, y), itemNode);
+                            _itemLayer.AttachChild(itemNode);
+                        }
+                    }
+                    break;
+
+                case ServerMessageType.PowerUpPickedUp: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        lock (_lock) {
+                            _map.RemoveItem(x, y);
+                            _map.PlayerInfos[playerId].PickUpItem(powerUpType);
+                            _itemLayer.DetachChild(_itemNodes[(x, y)]);
+                            _itemNodes.Remove((x, y));
+                            if (playerId == NetworkManager.Instance.ClientId) {
+                                _powerSlot.ObtainPower(powerUpType);
+                            }
                         }
                     }
                     break;

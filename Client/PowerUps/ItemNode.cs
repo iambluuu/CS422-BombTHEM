@@ -8,12 +8,14 @@ namespace Client.PowerUps {
     public class ItemNode : SceneNode {
         private Texture2D _texture;
         private Vector2 _floatingOffset = new Vector2(0, 0);
-        private const float _floatingSpeed = 2f;
+        private readonly Vector2 _size;
+        private const float _floatingSpeed = 4f; // higher is faster
         private const float _floatingAmplitude = 5f;
 
         public ItemNode(PowerName name) {
             // Constructor logic here
             _texture = TextureHolder.Get($"Texture/Power/{name}");
+            _size = new Vector2(GameValues.TILE_SIZE * 0.7f, GameValues.TILE_SIZE * 0.7f);
         }
 
         protected override void UpdateCurrent(GameTime gameTime) {
@@ -24,9 +26,10 @@ namespace Client.PowerUps {
         protected override void DrawCurrent(SpriteBatch spriteBatch, Matrix transform) {
             Vector2 position = Vector2.Transform(Vector2.Zero, transform);
             position += _floatingOffset; // Apply floating effect
+            position += (new Vector2(GameValues.TILE_SIZE) - _size) / 2; // Center the item
             float rotation = RotationFromMatrix(transform);
             Vector2 scale = ScaleFromMatrix(transform);
-            Vector2 textureScale = new Vector2((GameValues.TILE_SIZE * 0.7f) / _texture.Width, (GameValues.TILE_SIZE * 0.7f) / _texture.Height);
+            Vector2 textureScale = new Vector2(_size.X / _texture.Width, _size.Y / _texture.Height);
 
             spriteBatch.Draw(
                 _texture,

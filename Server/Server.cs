@@ -628,13 +628,24 @@ namespace Server {
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
                             room.Map.MovePlayer(playerId, direction);
+                            Position playerPos = room.Map.GetPlayerPosition(playerId);
 
                             BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PlayerMoved, new() {
                                 { "playerId", playerId.ToString() },
-                                { "x", room.Map.GetPlayerPosition(playerId).X.ToString() },
-                                { "y", room.Map.GetPlayerPosition(playerId).Y.ToString() },
+                                { "x", playerPos.X.ToString() },
+                                { "y", playerPos.Y.ToString() },
                                 { "d", direction.ToString() }
                             }));
+
+                            PowerName pickedItem = room.Map.PickUpItem(playerId, playerPos.X, playerPos.Y);
+                            if (pickedItem != PowerName.None) {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpPickedUp, new() {
+                                    { "playerId", playerId.ToString() },
+                                    { "x", playerPos.X.ToString() },
+                                    { "y", playerPos.Y.ToString() },
+                                    { "powerUpType", pickedItem.ToString() }
+                                }));
+                            }
                         }
                     }
                     break;
@@ -681,7 +692,7 @@ namespace Server {
                             room.Map.UsePowerUp(playerId, powerUpType);
                             BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                 { "playerId", playerId.ToString() },
-                                { "powerUpId", powerUpType.ToString() }
+                                { "powerUpType" , powerUpType.ToString() }
                             }));
                         }
                     }
@@ -711,10 +722,15 @@ namespace Server {
                             }
                         }
 
-                        List<Position> explosionPositions = new();
+                        HashSet<Position> explosionPositions = new();
+                        Random rand = new Random();
                         foreach (var bomb in explodedBombs) {
                             room.Map.ExplodeBomb(bomb.Position.X, bomb.Position.Y);
-                            explosionPositions.AddRange(bomb.ExplosionPositions);
+                            foreach (var pos in bomb.ExplosionPositions) {
+                                if (room.Map.GetTile(pos.X, pos.Y) == TileType.Grass) {
+                                    explosionPositions.Add(pos);
+                                }
+                            }
 
                             BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.BombExploded, new() {
                                 { "x", bomb.Position.X.ToString() },
@@ -729,17 +745,17 @@ namespace Server {
                             room.Map.Bombs.Remove(bomb);
                         }
 
-                        Random rand = new Random();
                         foreach (var pos in explosionPositions) {
-                            if (room.Map.GetTile(pos.X, pos.Y) == TileType.Grass) {
-                                if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
-                                    PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
-                                    BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
-                                        { "x", pos.X.ToString() },
-                                        { "y", pos.Y.ToString() },
-                                        { "powerUpType", powerUpType.ToString() }
-                                    }));
-                                }
+                            room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
+                            if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
+                                // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
+                                PowerName powerUpType = PowerName.Shield;
+                                room.Map.AddItem(pos.X, pos.Y, powerUpType);
+                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
+                                    { "x", pos.X.ToString() },
+                                    { "y", pos.Y.ToString() },
+                                    { "powerUpType", powerUpType.ToString() }
+                                }));
                             }
                         }
                     }
@@ -795,7 +811,6 @@ namespace Server {
         private void BroadcastToRoom(string roomId, NetworkMessage message) {
             lock (_lock) {
                 if (!_rooms.TryGetValue(roomId, out GameRoom? room)) return;
-
                 foreach (var playerId in room.PlayerIds) {
                     SendToClient(playerId, message);
                 }

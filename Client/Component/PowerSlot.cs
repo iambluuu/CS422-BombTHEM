@@ -12,7 +12,7 @@ namespace Client.Component {
         private const int Spacing = 10; // spacing between entries
 
         // Nine-slice texture size
-        private static readonly Vector2 CornerSize = new Vector2(5, 5);
+        private static readonly Vector2 CornerSize = new Vector2(6, 6);
         private static readonly Rectangle TextureSize = new(0, 0, 16, 16); // Assuming the texture is 16x16 pixels
 
         private Color _textColor = Color.White;
@@ -21,7 +21,7 @@ namespace Client.Component {
         private readonly Texture2D _borderTexture;
         private readonly SpriteFont _font;
 
-        private PowerName[] _powers = { PowerName.Shield, PowerName.InstantBomb };
+        private PowerName[] _powers = { PowerName.None, PowerName.None };
 
         public PowerSlot() {
             _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
@@ -101,7 +101,7 @@ namespace Client.Component {
         }
 
         private Texture2D GetPowerTexture(PowerName power) {
-            return TextureHolder.Get($"Texture/PowerUps/{power}");
+            return TextureHolder.Get($"Texture/Power/{power}");
         }
 
         private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {

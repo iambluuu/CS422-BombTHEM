@@ -65,6 +65,19 @@ namespace Shared {
             return newPosition;
         }
 
+        public override bool Equals(object? obj) {
+            if (obj == null) return false;
+
+            if (obj is Position other)
+                return this.X == other.X && this.Y == other.Y;
+            return false;
+        }
+
+        public override int GetHashCode() {
+            // Combine X and Y into a unique hash
+            return HashCode.Combine(X, Y);
+        }
+
         public override string ToString() {
             return $"({X}, {Y})";
         }
@@ -97,12 +110,23 @@ namespace Shared {
         }
     }
 
+    public class DroppedItem {
+        public Position Position { get; set; }
+        public PowerName Item { get; set; }
+
+        public DroppedItem(Position position, PowerName item) {
+            Position = position;
+            Item = item;
+        }
+    }
+
     public class Map {
         public int Height { get; private set; }
         public int Width { get; private set; }
         public TileType[,] Tiles { get; private set; }
         public Dictionary<int, PlayerIngameInfo> PlayerInfos { get; private set; }
         public List<Bomb> Bombs { get; private set; }
+        public List<DroppedItem> Items { get; private set; }
 
         public Map(int height, int width) {
             Height = height;
@@ -110,6 +134,7 @@ namespace Shared {
             Tiles = new TileType[height, width];
             PlayerInfos = [];
             Bombs = new List<Bomb>();
+            Items = new List<DroppedItem>();
         }
 
         public bool IsInBounds(int x, int y) {
@@ -137,8 +162,11 @@ namespace Shared {
             if (!IsInBounds(x, y)) {
                 throw new ArgumentOutOfRangeException($"Map.SetPlayerPosition: Coordinate ({x}, {y}) is out of bounds");
             }
-
-            PlayerInfos[playerId].Position = new Position(x, y);
+            if (!PlayerInfos.ContainsKey(playerId)) {
+                PlayerInfos.Add(playerId, new PlayerIngameInfo(playerId.ToString(), new Position(x, y)));
+            } else {
+                PlayerInfos[playerId].Position = new Position(x, y);
+            }
         }
 
         public Position GetPlayerPosition(int playerId) {
@@ -180,7 +208,11 @@ namespace Shared {
                 return;
             }
 
-            PlayerInfos[playerId].Position = new Position(newX, newY);
+            if (PlayerInfos.ContainsKey(playerId)) {
+                PlayerInfos[playerId].Position = new Position(newX, newY);
+            } else {
+                PlayerInfos.Add(playerId, new PlayerIngameInfo(playerId.ToString(), new Position(newX, newY)));
+            }
         }
 
         public bool HasBomb(int x, int y) {
@@ -268,11 +300,8 @@ namespace Shared {
                         int newY = bomb.Position.Y + direction.Y * i;
 
                         if (IsInBounds(newX, newY)) {
-                            if (GetTile(newX, newY) == TileType.Empty) {
+                            if (GetTile(newX, newY) == TileType.Empty || GetTile(newX, newY) == TileType.Grass) {
                                 bomb.ExplosionPositions.Add(new Position(newX, newY));
-                            } else if (GetTile(newX, newY) == TileType.Grass) {
-                                bomb.ExplosionPositions.Add(new Position(newX, newY));
-                                SetTile(newX, newY, TileType.Empty);
                             } else {
                                 break;
                             }
@@ -326,10 +355,72 @@ namespace Shared {
                     bomb.ExplosionPositions.Add(bomb.Position);
                 }
 
-                for (int i = 0; i < bomb.ExplosionPositions.Count; i++) {
-                    SetTile(bomb.ExplosionPositions[i].X, bomb.ExplosionPositions[i].Y, TileType.Empty);
+                // for (int i = 0; i < bomb.ExplosionPositions.Count; i++) {
+                //     SetTile(bomb.ExplosionPositions[i].X, bomb.ExplosionPositions[i].Y, TileType.Empty);
+                // }
+            }
+        }
+
+        public PowerName PickUpItem(int playerId, int x, int y) {
+            if (!IsInBounds(x, y)) {
+                throw new ArgumentOutOfRangeException($"Map.PickUpItem: Coordinate ({x}, {y}) is out of bounds");
+            }
+
+            if (!PlayerInfos.ContainsKey(playerId)) {
+                throw new KeyNotFoundException($"Map.PickUpItem: Player ID {playerId} not found");
+            }
+
+            int itemId = Items.FindIndex(i => i.Position.X == x && i.Position.Y == y);
+            if (itemId < 0) {
+                return PowerName.None; // No item found at the specified position
+            }
+
+            PowerName powerName = Items[itemId].Item;
+            if (PlayerInfos[playerId].PickUpItem(powerName)) {
+                Items.RemoveAt(itemId);
+                return powerName; // Item picked up successfully
+            }
+
+            return PowerName.None; // Player's inventory is full
+        }
+
+        public bool HasItem(int x, int y) {
+            if (!IsInBounds(x, y)) {
+                throw new ArgumentOutOfRangeException($"Map.HasItem: Coordinate ({x}, {y}) is out of bounds");
+            }
+
+            foreach (var item in Items) {
+                if (item.Position.X == x && item.Position.Y == y) {
+                    return true;
                 }
             }
+
+            return false;
+        }
+
+        public void AddItem(int x, int y, PowerName item) {
+            if (!IsInBounds(x, y)) {
+                throw new ArgumentOutOfRangeException($"Map.AddItem: Coordinate ({x}, {y}) is out of bounds");
+            }
+
+            if (GetTile(x, y) != TileType.Empty) {
+                return;
+            }
+
+            Items.Add(new DroppedItem(new Position(x, y), item));
+        }
+
+        public void RemoveItem(int x, int y) {
+            if (!IsInBounds(x, y)) {
+                throw new ArgumentOutOfRangeException($"Map.RemoveItem: Coordinate ({x}, {y}) is out of bounds");
+            }
+
+            int itemId = Items.FindIndex(i => i.Position.X == x && i.Position.Y == y);
+            if (itemId < 0) {
+                throw new KeyNotFoundException($"Map.RemoveItem: No item found at ({x}, {y})");
+            }
+
+            Items.RemoveAt(itemId);
         }
 
         public void UsePowerUp(int playerId, PowerName power) {

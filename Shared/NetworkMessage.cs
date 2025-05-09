@@ -48,6 +48,7 @@ namespace Shared {
         GameResults,
         Error,
         PowerUpSpawned,
+        PowerUpPickedUp,
         PowerUpUsed,
         PowerUpRemoved,
     }
