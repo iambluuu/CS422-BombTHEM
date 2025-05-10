@@ -124,7 +124,7 @@ namespace Server {
 
                     ClientHandler clientHandler = new() {
                         PlayerId = playerId,
-                        Username = "Player",
+                        Username = "",
                         Client = client,
                         Stream = client.GetStream()
                     };
@@ -380,6 +380,12 @@ namespace Server {
                 case ClientMessageType.GetClientId: {
                         SendToClient(playerId, NetworkMessage.From(ServerMessageType.ClientId, new() {
                             { "clientId", playerId.ToString() }
+                        }));
+                    }
+                    break;
+                case ClientMessageType.GetUsername: {
+                        SendToClient(playerId, NetworkMessage.From(ServerMessageType.UsernameSet, new() {
+                            { "username", client.Username }
                         }));
                     }
                     break;
@@ -823,6 +829,10 @@ namespace Server {
         private void DisconnectPlayer(ClientHandler handler) {
             RemovePlayerFromRoom(handler);
 
+            if (handler == null || handler.Connected == false) {
+                return;
+            }
+
             handler.Dispose();
             lock (_lock) {
                 _players.Remove(_idToPlayer[handler.PlayerId]);
@@ -833,7 +843,7 @@ namespace Server {
         }
 
         private void RemovePlayerFromRoom(PlayerHandler handler) {
-            if (handler.RoomId == null) {
+            if (handler == null || handler.RoomId == null) {
                 return;
             }
 

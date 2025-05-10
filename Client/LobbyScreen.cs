@@ -77,6 +77,7 @@ namespace Client {
                 _playerNames[i] = new TextBox() {
                     HeightMode = SizeMode.MatchParent,
                     Weight = 1,
+                    AllowedCharacters = CharacterSet.Alphanumeric | CharacterSet.Underscore,
                     Text = "",
                     PlaceholderText = $"Waiting...",
                     TextColor = (i == 0) ? Color.Red : Color.Black,
@@ -139,6 +140,7 @@ namespace Client {
             _waitText = new TextBox() {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 1,
+                AllowedCharacters = CharacterSet.Alphanumeric | CharacterSet.Whitespace | CharacterSet.Dot,
                 Text = "Waiting for host to start game...",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
@@ -199,6 +201,8 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomInfo: {
                         _roomIdText.Text = $"Room {message.Data["roomId"]}";

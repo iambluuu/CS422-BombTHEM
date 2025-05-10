@@ -6,7 +6,7 @@ namespace Client.Component {
     public class ContainerBox : LinearLayout {
         private readonly Vector2 CornerSize = new(6, 6);
         private readonly Rectangle TextureSize = new(0, 0, 16, 16);
-        private const string TextureDir = "Texture/Theme/";
+        private const string TextureDir = "Theme/";
 
         // Visual properties
         public Color BackgroundColor { get; set; } = Color.White;

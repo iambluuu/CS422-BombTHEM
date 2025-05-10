@@ -83,6 +83,8 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.GameInfo: {
                         _map = Map.FromString(message.Data["map"]);
@@ -100,7 +102,7 @@ namespace Client {
                             int y = playerPositions[i].Y;
                             _map.SetPlayerPosition(playerId, x, y);
 
-                            PlayerNode playerNode = new(TextureHolder.Get($"Texture/Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            PlayerNode playerNode = new(TextureHolder.Get($"Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             };
 
@@ -149,7 +151,7 @@ namespace Client {
                                 _map.RemoveBomb(x, y);
                             }
                             _map.AddBomb(x, y, type);
-                            _bombNodes.Add((x, y), new(TextureHolder.Get("Texture/Item/Dynamite"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Dynamite"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             });
                             _bombLayer.AttachChild(_bombNodes[(x, y)]);
@@ -166,7 +168,7 @@ namespace Client {
                                 int ex = Position.FromString(pos).X;
                                 int ey = Position.FromString(pos).Y;
 
-                                _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Texture/Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                                _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                     Position = new Vector2(ey * TILE_SIZE, ex * TILE_SIZE)
                                 });
 
@@ -210,13 +212,13 @@ namespace Client {
         private void ProcessMap() {
             for (int i = 0; i < _map.Height; i++) {
                 for (int j = 0; j < _map.Width; j++) {
-                    SpriteNode cellSprite = new(TextureHolder.Get("Texture/Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                    SpriteNode cellSprite = new(TextureHolder.Get("Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
                         Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                     };
                     _mapLayer.AttachChild(cellSprite);
 
                     if (_map.GetTile(i, j) == TileType.Grass) {
-                        SpriteNode grassSprite = new(TextureHolder.Get("Texture/Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                        SpriteNode grassSprite = new(TextureHolder.Get("Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
                             Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                         };
 
@@ -242,7 +244,7 @@ namespace Client {
                     }
 
                     (int, int) p = BitmaskReferences.GetPosition(localArea);
-                    SpriteNode wallSprite = new(TextureHolder.Get("Texture/Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                    SpriteNode wallSprite = new(TextureHolder.Get("Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
                         Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                     };
                     _mapLayer.AttachChild(wallSprite);

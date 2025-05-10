@@ -34,7 +34,7 @@ namespace Client.Component {
         }
 
         // Font properties
-        private SpriteFont _font = FontHolder.Get("Font/PressStart2P");
+        private SpriteFont _font = FontHolder.Get("PressStart2P");
         public SpriteFont Font {
             get => _font;
             set {

@@ -52,9 +52,9 @@ namespace Client.Component {
 
         // Receive a list of player name and skin
         public Scoreboard() {
-            _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
-            _borderTexture = TextureHolder.Get("Texture/Theme/scoreboard_border");
-            _font = FontHolder.Get("Font/PressStart2P");
+            _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
+            _borderTexture = TextureHolder.Get("Theme/scoreboard_border");
+            _font = FontHolder.Get("PressStart2P");
 
             float clockScale = (Size.X - Paddings * 2 - 20) / _font.MeasureString("00:00").X;
             ClockHeight = _font.MeasureString("00:00").Y * clockScale;
@@ -193,7 +193,7 @@ namespace Client.Component {
             private static void InitializeScoreIcon(GraphicsDevice graphicsDevice) {
                 if (!_isScoreIconInitialized) {
                     // Load the score icon texture
-                    _scoreIconTexture = TextureHolder.Get("Texture/Icon/score");
+                    _scoreIconTexture = TextureHolder.Get("Icon/score");
 
                     // Apply flat color to the texture
                     if (_scoreIconTexture != null) {
@@ -268,7 +268,7 @@ namespace Client.Component {
 
             public void Draw(SpriteBatch spriteBatch) {
                 // Draw icon
-                var iconTexture = TextureHolder.Get($"Texture/Character/{(Shared.PlayerSkin)PlayerSkin}", new Rectangle(0, 0, 16, 13));
+                var iconTexture = TextureHolder.Get($"Character/{(Shared.PlayerSkin)PlayerSkin}", new Rectangle(0, 0, 16, 13));
                 var iconSize = Math.Min(EntrySize.Y, EntrySize.X / 2.5f);
                 var centeringOffset = (EntrySize.Y - iconSize) / 2;
                 spriteBatch.Draw(
@@ -283,7 +283,7 @@ namespace Client.Component {
                 var lineWidth = EntrySize.X - iconSize - Spacing;
 
                 // Draw the player name on top line
-                var font = FontHolder.Get("Font/PressStart2P");
+                var font = FontHolder.Get("PressStart2P");
                 var nameText = Username;
                 var textScale = Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(nameText).X);
                 var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + centeringOffset + Spacing);

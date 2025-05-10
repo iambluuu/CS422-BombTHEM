@@ -66,6 +66,8 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen, isOverlay: false);
@@ -124,7 +126,7 @@ namespace Client {
             var winnerImage = new ImageView() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 100,
-                Texture = TextureHolder.Get($"Texture/Character/{(PlayerSkin)_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)),
+                Texture = TextureHolder.Get($"Character/{(PlayerSkin)_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)),
                 ScaleType = ScaleType.FitCenter,
                 Gravity = Gravity.CenterHorizontal,
             };

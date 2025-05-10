@@ -231,7 +231,14 @@ namespace Client {
 
         public virtual void LoadParameters(Dictionary<string, object> parameters) { }
 
-        public virtual void HandleResponse(NetworkMessage message) { }
+        public virtual void HandleResponse(NetworkMessage message) {
+            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+                case ServerMessageType.NotConnected: {
+                        ScreenManager.Instance.NavigateToRoot();
+                    }
+                    break;
+            }
+        }
 
         public virtual void LoadContent() { }
 

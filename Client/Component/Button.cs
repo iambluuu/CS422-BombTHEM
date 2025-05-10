@@ -16,7 +16,7 @@ namespace Client.Component {
         private readonly Vector2 CornerSize = new(3, 3);
         private readonly Rectangle TextureSize = new(0, 0, 16, 8);
         private const int PressedOffset = 5;
-        private const string TextureDir = "Texture/Theme/";
+        private const string TextureDir = "Theme/";
 
         // Content properties
         public Texture2D Icon { get; set; }
@@ -32,7 +32,7 @@ namespace Client.Component {
         }
 
         // Text appearance properties
-        private SpriteFont _font = FontHolder.Get("Font/PressStart2P");
+        private SpriteFont _font = FontHolder.Get("PressStart2P");
         public SpriteFont Font {
             get => _font;
             set {

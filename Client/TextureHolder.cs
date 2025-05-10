@@ -19,7 +19,7 @@ namespace Client {
                 if (_content == null)
                     throw new System.Exception("ContentManager not set in TextureHolder");
 
-                Texture2D texture = _content.Load<Texture2D>(name);
+                Texture2D texture = _content.Load<Texture2D>($"Texture/{name}");
                 _textures[name] = texture;
                 return texture;
             }

@@ -4,21 +4,80 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using Shared;
+using SharpDX.Direct3D9;
 using TextCopy;
 
 namespace Client.Component {
+    [Flags]
+    public enum CharacterSet {
+        Alpha = 0x01,
+        Numeric = 0x02,
+        Whitespace = 0x04,
+        NewLine = 0x08,
+        Dot = 0x10,
+        Slash = 0x20,
+        Colon = 0x40,
+        Underscore = 0x80,
+
+        Alphanumeric = Alpha | Numeric,
+    }
+
     public class TextBox : IComponent {
         private readonly Vector2 CornerSize = new(6, 6);
         private readonly Rectangle TextureSize = new(0, 0, 16, 16);
-        private const string TextureDir = "Texture/Theme/";
+        private const string TextureDir = "Theme/";
+
+        private readonly List<char> _allowedCharacters = [];
+        private CharacterSet _allowedCharactersSet;
+        public required CharacterSet AllowedCharacters {
+            private get => _allowedCharactersSet;
+            set {
+                _allowedCharactersSet = value;
+                _allowedCharacters.Clear();
+                if ((value & CharacterSet.Alpha) != 0) {
+                    for (char c = 'A'; c <= 'Z'; c++) _allowedCharacters.Add(c);
+                    for (char c = 'a'; c <= 'z'; c++) _allowedCharacters.Add(c);
+                }
+
+                if ((value & CharacterSet.Numeric) != 0) {
+                    for (char c = '0'; c <= '9'; c++) _allowedCharacters.Add(c);
+                }
+
+                if ((value & CharacterSet.Whitespace) != 0) {
+                    _allowedCharacters.Add(' ');
+                }
+
+                if ((value & CharacterSet.NewLine) != 0) {
+                    _allowedCharacters.Add('\n');
+                }
+
+                if ((value & CharacterSet.Dot) != 0) {
+                    _allowedCharacters.Add('.');
+                }
+
+                if ((value & CharacterSet.Slash) != 0) {
+                    _allowedCharacters.Add('/');
+                }
+
+                if ((value & CharacterSet.Colon) != 0) {
+                    _allowedCharacters.Add(':');
+                }
+
+                if ((value & CharacterSet.Underscore) != 0) {
+                    _allowedCharacters.Add('_');
+                }
+            }
+        }
 
         // Text properties
         private string _text = string.Empty;
         private string InternalText {
             get => _text;
             set {
-                if (_text != value) {
-                    _text = value;
+                string filteredText = filterText(value);
+
+                if (_text != filteredText) {
+                    _text = filteredText;
                     _needsTextLayout = true;
                 }
             }
@@ -100,7 +159,7 @@ namespace Client.Component {
         private int _caretPosition = 0; // Tracks the cursor position within the text
 
         // Font and texture
-        public SpriteFont Font { get; set; } = FontHolder.Get("Font/PressStart2P");
+        public SpriteFont Font { get; set; } = FontHolder.Get("PressStart2P");
         public Texture2D Texture { get; set; } = null!;
 
         // Text layout properties (from TextView)
@@ -115,12 +174,23 @@ namespace Client.Component {
         // Ellipsis character
         private const string ELLIPSIS = "...";
 
+        private string filterText(string text) {
+            string filteredText = string.Empty;
+            foreach (char c in text) {
+                if (_allowedCharacters.Contains(c)) {
+                    filteredText += c;
+                }
+            }
+
+            return filteredText;
+        }
+
         public override void HandleInput(UIEvent uiEvent) {
             base.HandleInput(uiEvent);
             if (IsReadOnly || !IsEnabled) return;
 
             if (uiEvent.Type == UIEventType.TextInput && IsFocused) {
-                if (!char.IsControl(uiEvent.Character) && InternalText.Length < MaxLength) {
+                if (!char.IsControl(uiEvent.Character) && InternalText.Length < MaxLength && _allowedCharacters.Contains(uiEvent.Character)) {
                     if (IsUppercase) {
                         InternalText = InternalText.Insert(_caretPosition, char.ToUpper(uiEvent.Character).ToString());
                     } else {
@@ -136,7 +206,7 @@ namespace Client.Component {
                     if (uiEvent.Key == Keys.V) {
                         string clipboardText = ClipboardService.GetText();
                         foreach (char c in clipboardText) {
-                            if (InternalText.Length < MaxLength) {
+                            if (InternalText.Length < MaxLength && _allowedCharacters.Contains(c)) {
                                 if (IsUppercase) {
                                     InternalText = InternalText.Insert(_caretPosition, char.ToUpper(c).ToString());
                                 } else {
@@ -170,14 +240,14 @@ namespace Client.Component {
                     _caretPosition = 0;
                 } else if (uiEvent.Key == Keys.End) {
                     _caretPosition = InternalText.Length;
-                } else if (uiEvent.Key == Keys.Enter && IsMultiline) {
+                } else if (uiEvent.Key == Keys.Enter && IsMultiline && _allowedCharacters.Contains('\n')) {
                     // Add newline if multiline
                     if (InternalText.Length < MaxLength) {
                         InternalText = InternalText.Insert(_caretPosition, "\n");
                         _caretPosition++;
                         _needsTextLayout = true;
                     }
-                } else if (uiEvent.Key == Keys.Enter && !IsMultiline) {
+                } else if (uiEvent.Key == Keys.Enter && (!IsMultiline || !_allowedCharacters.Contains('\n'))) {
                     // Handle Enter key for non-multiline text box
                     IsFocused = false;
                 } else if (uiEvent.Key == Keys.Tab) {
@@ -569,7 +639,7 @@ namespace Client.Component {
             while (length > 0) {
                 int halfLength = length / 2;
                 string startPart = text.Substring(0, halfLength);
-                string endPart = text.Substring(text.Length - halfLength);
+                string endPart = text.Substring(text.Length - (length - halfLength));
                 string result = startPart + ELLIPSIS + endPart;
 
                 if (Font.MeasureString(result).X <= maxWidth || halfLength == 0) {

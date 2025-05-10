@@ -42,10 +42,16 @@ namespace Client {
         }
 
         public int Ping { get; private set; } = 0;
+        public bool IsConnected => _connected;
 
         private NetworkManager() { }
 
         public void Connect(string ip, int port) {
+            if (_connected) {
+                Console.WriteLine("Already connected to server");
+                return;
+            }
+
             try {
                 Console.WriteLine($"Connecting to {ip}:{port}");
                 _client = new TcpClient();
@@ -74,6 +80,8 @@ namespace Client {
                 Send(NetworkMessage.From(ClientMessageType.Ping));
             };
             _pingTimer.Start();
+
+            Handlers?.Invoke(NetworkMessage.From(ServerMessageType.Connected));
         }
 
         private async void StartListening(CancellationToken ct) {
@@ -195,6 +203,7 @@ namespace Client {
                     Disconnect();
                 }
             } else {
+                Handlers?.Invoke(NetworkMessage.From(ServerMessageType.NotConnected));
                 Console.WriteLine("Not connected to server");
             }
         }
@@ -205,6 +214,7 @@ namespace Client {
             }
 
             _connected = false;
+            _clientId = -1;
 
             _listenCts?.Cancel();
             _listenThread?.Join();

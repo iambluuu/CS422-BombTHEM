@@ -41,6 +41,7 @@ namespace Client {
             _roomIdBox = new TextBox() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
+                AllowedCharacters = CharacterSet.Alpha,
                 PlaceholderText = "Enter room ID",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
@@ -87,6 +88,8 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);

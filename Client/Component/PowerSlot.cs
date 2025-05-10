@@ -33,9 +33,9 @@ namespace Client.Component {
         private PowerName[] _powers = new PowerName[2] { PowerName.Shield, PowerName.InstantBomb };
 
         public PowerSlot() {
-            _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
-            _borderTexture = TextureHolder.Get("Texture/Theme/scoreboard_border");
-            _font = FontHolder.Get("Font/PressStart2P");
+            _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
+            _borderTexture = TextureHolder.Get("Theme/scoreboard_border");
+            _font = FontHolder.Get("PressStart2P");
         }
 
         public void ObtainPower(PowerName power) {
@@ -90,7 +90,7 @@ namespace Client.Component {
             var charScale = (keySize - 6) / Math.Min(charSize.X, charSize.Y);
             var qPosition = new Vector2(Position.X + leftMargin, Position.Y + Padding + textSize.Y + Spacing);
             var ePosition = new Vector2(Position.X + leftMargin + slotSize + Spacing, Position.Y + Padding + textSize.Y + Spacing);
-            var backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
+            var backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
             var backgroundScale = keySize / backgroundTexture.Width;
 
             spriteBatch.Draw(backgroundTexture, qPosition, null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
@@ -103,12 +103,12 @@ namespace Client.Component {
 
         private Texture2D GetPowerTexture(PowerName power) {
             return power switch {
-                PowerName.Ghost => TextureHolder.Get("Texture/Power/ghost"),
-                PowerName.RandomBomb => TextureHolder.Get("Texture/Power/random_bomb"),
-                PowerName.Shield => TextureHolder.Get("Texture/Power/shield"),
-                PowerName.Teleport => TextureHolder.Get("Texture/Power/teleport"),
-                PowerName.InstantBomb => TextureHolder.Get("Texture/Power/instant_bomb"),
-                _ => TextureHolder.Get("Texture/Power/none"),
+                PowerName.Ghost => TextureHolder.Get("Power/ghost"),
+                PowerName.RandomBomb => TextureHolder.Get("Power/random_bomb"),
+                PowerName.Shield => TextureHolder.Get("Power/shield"),
+                PowerName.Teleport => TextureHolder.Get("Power/teleport"),
+                PowerName.InstantBomb => TextureHolder.Get("Power/instant_bomb"),
+                _ => TextureHolder.Get("Power/none"),
             };
         }
 
