@@ -1,12 +1,12 @@
+using System;
 using Client.Component;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using System.Linq;
 
-using System;
-using System.Collections.Generic;
-using System.Security.Principal;
 using Shared;
 
 namespace Client {
@@ -244,31 +244,35 @@ namespace Client {
             KeyboardState keyboardState = Keyboard.GetState();
 
             if (IsFocused) {
+                bool ctrlHeld = keyboardState.IsKeyDown(Keys.LeftControl) || keyboardState.IsKeyDown(Keys.RightControl);
+
+                // Handle mouse movement
                 if (mouseState.Position != previousMouseState.Position) {
-                    // Handle mouse movement event
                     UIEvent mouseMoveEvent = new UIEvent(UIEventType.MouseMove, mousePosition: mouseState.Position);
                     uiManager.DispatchEvent(mouseMoveEvent);
                 }
 
-                // Handle Click
-                if (mouseState.LeftButton == ButtonState.Released) {
-                    // Handle click event
+                // Handle mouse button up
+                if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed) {
                     UIEvent clickEvent = new UIEvent(UIEventType.MouseUp, mousePosition: mouseState.Position);
                     uiManager.DispatchEvent(clickEvent);
                 }
 
-                // Handle Mouse Down
+                // Handle mouse button down
                 if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released) {
-                    // Handle mouse down event
                     UIEvent mouseDownEvent = new UIEvent(UIEventType.MouseDown, mousePosition: mouseState.Position);
                     uiManager.DispatchEvent(mouseDownEvent);
                 }
 
-                // Handle Key Press
-                if (keyboardState.GetPressedKeys().Length > 0 && previousKeyboardState.GetPressedKeys().Length == 0) {
-                    // Handle key press event
-                    UIEvent keyPressEvent = new UIEvent(UIEventType.KeyPress, key: keyboardState.GetPressedKeys()[0]);
-                    uiManager.DispatchEvent(keyPressEvent);
+                // Handle key presses (new keys this frame)
+                Keys[] currentKeys = keyboardState.GetPressedKeys();
+                Keys[] previousKeys = previousKeyboardState.GetPressedKeys();
+
+                foreach (Keys key in currentKeys) {
+                    if (!previousKeys.Contains(key)) {
+                        UIEvent keyPressEvent = new UIEvent(UIEventType.KeyPress, key: key, ctrlDown: ctrlHeld);
+                        uiManager.DispatchEvent(keyPressEvent);
+                    }
                 }
             }
 

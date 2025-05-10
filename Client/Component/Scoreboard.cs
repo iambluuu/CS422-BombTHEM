@@ -10,8 +10,7 @@ namespace Client.Component {
     public class Scoreboard : IComponent {
         private List<ScoreboardEntry> _entries = new();
         private const int MaxEntryNum = 4;
-        private const float TimePerGame = 60f; // seconds
-        private const int Padding = 25; // surrounding padding
+        private const int Paddings = 25; // surrounding Paddings
         private const int Spacing = 5; // spacing between entries
         private const int SeparatorHeight = 2; // height of the separator line
         private float ClockHeight = 30; // height of the clock display
@@ -24,24 +23,27 @@ namespace Client.Component {
             get => base.Size;
             set {
                 base.Size = value;
-                float clockScale = (Size.X - Padding * 2 - 20) / _font.MeasureString("00:00").X;
+                float clockScale = (Size.X - Paddings * 2 - 20) / _font.MeasureString("00:00").X;
                 ClockHeight = _font.MeasureString("00:00").Y * clockScale;
 
-                var entryWidth = Size.X - Padding * 2;
+                var entryWidth = Size.X - Paddings * 2;
                 var entryHeight = entryWidth * 0.5f;
                 EntrySize = new Vector2(entryWidth, entryHeight);
-                TopLeftPosition = new Vector2(Position.X + Padding, Position.Y + Padding + ClockHeight + Spacing);
+                TopLeftPosition = new Vector2(Position.X + Paddings, Position.Y + Paddings + ClockHeight + Spacing);
                 for (int i = 0; i < _entries.Count; i++) {
                     _entries[i].Rank = i; // Update rank based on new size
                 }
             }
         }
 
+        public override float Width { get => base.Width; set => base.Width = value; }
+        public override float Height { get => base.Height; set => base.Height = value; }
+
         // Nine-slice texture size
         private static readonly Vector2 CornerSize = new Vector2(5, 5);
         private static readonly Rectangle TextureSize = new(0, 0, 16, 16); // Assuming the texture is 16x16 pixels
 
-        private float _timer = TimePerGame;
+        private float _timer = 0;
         private Color _textColor = Color.White;
 
         private readonly Texture2D _backgroundTexture;
@@ -49,19 +51,27 @@ namespace Client.Component {
         private readonly SpriteFont _font;
 
         // Receive a list of player name and skin
-        public Scoreboard(List<(string, string, int)> playerData) {
-            for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
-                _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: i));
-            }
-
+        public Scoreboard() {
             _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
             _borderTexture = TextureHolder.Get("Texture/Theme/scoreboard_border");
             _font = FontHolder.Get("Font/PressStart2P");
 
-            float clockScale = (Size.X - Padding * 2 - 20) / _font.MeasureString("00:00").X;
+            float clockScale = (Size.X - Paddings * 2 - 20) / _font.MeasureString("00:00").X;
             ClockHeight = _font.MeasureString("00:00").Y * clockScale;
 
-            TopLeftPosition = new Vector2(Position.X + Padding, Position.Y + Padding + ClockHeight + Spacing);
+            TopLeftPosition = new Vector2(Position.X + Paddings, Position.Y + Paddings + ClockHeight + Spacing);
+        }
+
+        public void SetDuration(float duration) {
+            _timer = duration;
+        }
+
+        public void SetPlayerData(List<(string, string, int)> playerData) {
+            _entries.Clear();
+            for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
+                _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
+            }
+            UpdateRanks();
         }
 
         public void IncreaseScore(int playerId) {
@@ -101,7 +111,7 @@ namespace Client.Component {
             var timerText = TimeSpan.FromSeconds(_timer).ToString(@"mm\:ss");
             Vector2 timerSize = _font.MeasureString(timerText);
             float timerScale = ClockHeight / timerSize.Y;
-            Vector2 timerPosition = new Vector2(Position.X + Size.X / 2, Position.Y + Padding);
+            Vector2 timerPosition = new Vector2(Position.X + Size.X / 2, Position.Y + Paddings);
             spriteBatch.DrawString(_font, timerText, timerPosition, _textColor, 0f, new Vector2(timerSize.X / 2, 0), timerScale, SpriteEffects.None, 0f);
 
             // Draw each entry
@@ -110,8 +120,8 @@ namespace Client.Component {
 
             for (int i = 0; i < _entries.Count; i++) {
                 // Draw separator line
-                var separatorPosition = new Vector2(Position.X + Padding, TopLeftPosition.Y + (EntrySize.Y + Spacing) * i);
-                spriteBatch.Draw(separatorTexture, new Rectangle((int)separatorPosition.X, (int)separatorPosition.Y, (int)Size.X - Padding * 2, SeparatorHeight), Color.White);
+                var separatorPosition = new Vector2(Position.X + Paddings, TopLeftPosition.Y + (EntrySize.Y + Spacing) * i);
+                spriteBatch.Draw(separatorTexture, new Rectangle((int)separatorPosition.X, (int)separatorPosition.Y, (int)Size.X - Paddings * 2, SeparatorHeight), Color.White);
 
                 // Draw entry
                 _entries[i].Draw(spriteBatch);
@@ -119,7 +129,7 @@ namespace Client.Component {
         }
 
         private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {
-            var scale = (Padding - 5) / CornerSize.X; // Scale factor based on padding and corner size
+            var scale = (Paddings - 5) / CornerSize.X; // Scale factor based on Paddings and corner size
             var scaledCornerSize = CornerSize * scale;
 
             Rectangle srcTopLeft = new Rectangle(0, 0, (int)CornerSize.X, (int)CornerSize.Y);

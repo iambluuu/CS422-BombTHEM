@@ -70,6 +70,7 @@ namespace Server {
             public Dictionary<int, Position> InitialPositions { get; set; } = [];
             public Dictionary<int, int> PlayerScores { get; set; } = [];
             public Dictionary<int, DateTime> PlayerLastDied { get; set; } = [];
+            public readonly int GameDuration = 300;
             public bool GameStarted { get; set; } = false;
             public Thread? BombThread { get; set; } = null;
             public CancellationTokenSource? BombCts { get; set; } = null;
@@ -391,7 +392,12 @@ namespace Server {
                             client.Username = username;
                         }
 
-                        SendToClient(playerId, NetworkMessage.From(ServerMessageType.UsernameSet));
+                        if (roomId != null) {
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.UsernameSet, new() {
+                                { "playerId", playerId.ToString() },
+                                { "username", username }
+                            }));
+                        }
                     }
                     break;
                 case ClientMessageType.CreateRoom: {
@@ -569,7 +575,7 @@ namespace Server {
                             };
                             room.BombThread.Start();
 
-                            room.GameTimer = new System.Timers.Timer(60 * 1000) {
+                            room.GameTimer = new System.Timers.Timer(room.GameDuration * 1000) {
                                 Enabled = true
                             };
                             room.GameTimer.Elapsed += (sender, e) => {
@@ -619,6 +625,7 @@ namespace Server {
                             if (_rooms.TryGetValue(roomId!, out GameRoom? room)) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.GameInfo, new() {
                                     { "map", room.Map.ToString() },
+                                    { "duration", room.GameDuration.ToString() },
                                     { "playerCount", room.PlayerIds.Count.ToString() },
                                     { "playerIds", string.Join(";", room.PlayerIds) },
                                     { "usernames", string.Join(";", room.PlayerIds.Select(id => _idToPlayer[id].Username)) },

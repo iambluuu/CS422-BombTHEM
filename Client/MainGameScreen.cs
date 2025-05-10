@@ -34,14 +34,28 @@ namespace Client {
 
         public override void Initialize() {
             _sidebar = new LinearLayout() {
-                LayoutOrientation = LinearLayout.Orientation.Vertical,
+                LayoutOrientation = Orientation.Vertical,
                 Position = new Vector2(0, 0),
-                Size = new Vector2(240, 720),
+                Width = 240,
+                Height = ScreenSize.Y,
                 Spacing = 0,
             };
 
-            _sidebar.AddComponent(new PowerSlot(), weight: 2);
+            _scoreboard = new Scoreboard() {
+                Position = new Vector2(0, 0),
+                Width = 240, /// ???
+                Height = ScreenSize.Y, /// ???
+                Weight = 6,
+            };
+            _sidebar.AddComponent(_scoreboard);
+
+            _sidebar.AddComponent(new PowerSlot() {
+                WidthMode = SizeMode.MatchParent,
+                Weight = 2,
+            });
             _sidebar.AddComponent(new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
                 Text = "Leave Game",
                 OnClick = () => {
                     NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
@@ -72,6 +86,7 @@ namespace Client {
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.GameInfo: {
                         _map = Map.FromString(message.Data["map"]);
+                        int duration = int.Parse(message.Data["duration"]);
                         int playerCount = int.Parse(message.Data["playerCount"]);
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
                         string[] usernames = message.Data["usernames"].Split(';');
@@ -95,12 +110,8 @@ namespace Client {
                             playerData.Add((playerId.ToString(), username, i));
                         }
 
-                        _scoreboard = new Scoreboard(playerData) {
-                            Position = new Vector2(0, 0),
-                            Size = new Vector2(240, Client.Instance.GraphicsDevice.Viewport.Height)
-                        };
-
-                        _sidebar.AddComponent(_scoreboard, 6, 0);
+                        _scoreboard.SetDuration(duration);
+                        _scoreboard.SetPlayerData(playerData);
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {

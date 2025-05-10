@@ -85,7 +85,9 @@ namespace Client {
                         var readTask = _stream.ReadAsync(_receiveBuffer, 0, _receiveBuffer.Length, ct);
                         bytesRead = await readTask;
                     } catch (Exception ex) {
-                        Console.WriteLine($"Error reading from stream: {ex.Message}");
+                        if (!ct.IsCancellationRequested && _connected) {
+                            Console.WriteLine($"Error reading from stream: {ex.Message}");
+                        }
                         break;
                     }
 
@@ -141,7 +143,7 @@ namespace Client {
                         if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
                             DateTime now = DateTime.Now;
                             Ping = (int)(now - _lastPing).TotalMilliseconds;
-                            Console.WriteLine($"Ping: {Ping} ms");
+                            // Console.WriteLine($"Ping: {Ping} ms");
                         } else {
                             Handlers?.Invoke(messageObj);
                         }
@@ -204,10 +206,8 @@ namespace Client {
 
             _connected = false;
 
-            if (_listenThread?.IsAlive == true) {
-                _listenCts?.Cancel();
-                _listenThread?.Join();
-            }
+            _listenCts?.Cancel();
+            _listenThread?.Join();
 
             _stream?.Close();
             _client?.Close();

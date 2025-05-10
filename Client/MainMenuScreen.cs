@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -5,30 +6,76 @@ using Microsoft.Xna.Framework.Input;
 
 using Client.Component;
 using Shared;
-using System;
 
 namespace Client {
     public class MainMenuScreen : GameScreen {
-        string currentUsername = string.Empty;
-        TextBox usernameText;
+        string _currentName = string.Empty;
+        TextBox _usernameBox;
 
         public override void Initialize() {
             var layout = new LinearLayout() {
-                LayoutOrientation = LinearLayout.Orientation.Vertical,
+                LayoutOrientation = Orientation.Vertical,
                 Width = ScreenSize.X,
                 Height = ScreenSize.Y,
+                Gravity = Gravity.Center,
             };
 
-            var Text = new TextComponent() {
-                Text = "Welcome to the Game",
-                FontSize = 2.0f,
-                TextAlignment = ContentAlignment.MiddleCenter,
-                IsShadowEnabled = true,
-                ShadowOffset = new Vector2(2, 2),
-                ShadowColor = new Color(0, 0, 0, 128),
+            var mainBox = new ContainerBox() {
+                LayoutOrientation = Orientation.Vertical,
+                HeightMode = SizeMode.WrapContent,
+                Width = 500,
+                Spacing = 20,
             };
 
-            layout.AddComponent(Text);
+            var title = new TextView() {
+                WidthMode = SizeMode.MatchParent,
+                HeightMode = SizeMode.WrapContent,
+                Text = "Bomb THEM",
+                TextSize = 2f,
+                TextColor = Color.White,
+                Gravity = Gravity.Center,
+                PaddingBottom = 20,
+            };
+
+            _usernameBox = new TextBox() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
+                Text = "Player",
+                PlaceholderText = "Enter username",
+                TextColor = Color.Black,
+                Gravity = Gravity.Center,
+                MaxLength = 10,
+                IsReadOnly = false,
+            };
+
+            var createButton = new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
+                Text = "Create Game",
+                OnClick = CreateGame,
+            };
+
+            var joinButton = new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
+                Text = "Join Game",
+                OnClick = JoinGame,
+            };
+
+            var exitButton = new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
+                Text = "Exit",
+                OnClick = ExitGame,
+            };
+
+            layout.AddComponent(mainBox);
+            mainBox.AddComponent(title);
+            mainBox.AddComponent(_usernameBox);
+            mainBox.AddComponent(createButton);
+            mainBox.AddComponent(joinButton);
+            mainBox.AddComponent(exitButton);
+
             uiManager.AddComponent(layout, 0);
 
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetClientId));
@@ -73,12 +120,12 @@ namespace Client {
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
 
-            // if (!usernameText.IsFocused && currentUsername != usernameText.Text) {
-            //     currentUsername = usernameText.Text;
-            //     NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.SetUsername, new Dictionary<string, string> {
-            //         { "username", currentUsername }
-            //     }));
-            // }
+            if (!_usernameBox.IsFocused && _currentName != _usernameBox.Text) {
+                _currentName = _usernameBox.Text;
+                NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.SetUsername, new() {
+                    { "username", _currentName }
+                }));
+            }
         }
     }
 }

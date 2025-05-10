@@ -3,13 +3,12 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Client.Component {
-    public class ContainerBox : IComponent {
+    public class ContainerBox : LinearLayout {
         private readonly Vector2 CornerSize = new(6, 6);
         private readonly Rectangle TextureSize = new(0, 0, 16, 16);
         private const string TextureDir = "Texture/Theme/";
 
         // Visual properties
-        public bool HasBackground { get; set; } = true;
         public Color BackgroundColor { get; set; } = Color.White;
         public string TextureName { get; set; } = "nine_path_panel_2";
         public int TextureScale { get; set; } = 5;
@@ -17,63 +16,22 @@ namespace Client.Component {
         public int BorderWidth { get; set; } = 1;
         public Color BorderColor { get; set; } = Color.Black;
 
-        // Optional nested content
-#nullable enable
-        public IComponent? Content { get; set; }
-#nullable disable
-
-        public ContainerBox(bool hasBackground = true) {
-            HasBackground = hasBackground;
-            IsVisible = true;
-            IsEnabled = true;
-        }
-
-        public ContainerBox(IComponent content, bool hasBackground = true) : this(hasBackground) {
-            Content = content;
-        }
-
-        public override Vector2 Position {
-            get => base.Position;
-            set {
-                base.Position = value;
-                UpdateContentPosition();
-            }
-        }
-
-        public override Vector2 Size {
-            get => base.Size;
-            set {
-                base.Size = value;
-                UpdateContentPosition();
-            }
-        }
-
-        private void UpdateContentPosition() {
-            if (Content != null) {
-                Content.Position = Position;
-                Content.Size = Size;
-            }
-        }
-
-        public override void Update(GameTime gameTime) {
-            base.Update(gameTime);
-            Content?.Update(gameTime);
+        public ContainerBox() {
+            Padding = 50;
         }
 
         public override void Draw(SpriteBatch spriteBatch) {
             if (!IsVisible) return;
 
-            // Draw background
-            if (HasBackground) {
-                Texture2D texture = GetTexture();
-                if (texture != null) {
-                    DrawNineSlice(spriteBatch, texture);
-                } else {
-                    // Fallback to solid color
-                    texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-                    texture.SetData(new[] { BackgroundColor });
-                    spriteBatch.Draw(texture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BackgroundColor * Opacity);
-                }
+            // Draw background first
+            Texture2D texture = GetTexture();
+            if (texture != null) {
+                DrawNineSlice(spriteBatch, texture);
+            } else {
+                // Fallback to solid color
+                texture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
+                texture.SetData(new[] { BackgroundColor });
+                spriteBatch.Draw(texture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BackgroundColor * Opacity);
             }
 
             // Draw border if needed
@@ -91,41 +49,11 @@ namespace Client.Component {
                 spriteBatch.Draw(borderTexture, new Rectangle((int)(Position.X + Size.X - BorderWidth), (int)Position.Y, BorderWidth, (int)Size.Y), BorderColor * Opacity);
             }
 
-            // Draw content if any
-            Content?.Draw(spriteBatch);
-        }
-
-        public override void HandleInput(UIEvent uiEvent) {
-            if (!IsEnabled) return;
-            Content?.HandleInput(uiEvent);
-        }
-
-        public override void OnFocus() {
-            IsFocused = true;
-            Content?.OnFocus();
-        }
-
-        public override void OnUnfocus() {
-            IsFocused = false;
-            Content?.OnUnfocus();
-        }
-
-        public override bool HitTest(Point point) {
-            // First check if the point is within container bounds
-            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y);
-            if (!bounds.Contains(point)) return false;
-
-            // If we have content, delegate to it
-            if (Content != null) {
-                return Content.HitTest(point);
-            }
-
-            return true;
+            // Then draw all components (using the base class implementation)
+            base.Draw(spriteBatch);
         }
 
         private Texture2D GetTexture() {
-            if (!HasBackground) return null;
-
             try {
                 return TextureHolder.Get($"{TextureDir}{TextureName}", TextureSize);
             } catch (System.IO.FileNotFoundException ex) {

@@ -5,93 +5,32 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace Client.Component {
+    public enum Orientation {
+        Horizontal,
+        Vertical
+    }
+
     public class LinearLayout : IComponent {
-        public enum Orientation {
-            Horizontal,
-            Vertical
-        }
-
-        public enum SizeMode {
-            Fixed,       // Use exact pixel dimensions (current behavior)
-            MatchParent, // Take full size of parent (like match_parent)
-            WrapContent  // Size based on content (like wrap_content)
-        }
-
         // Layout properties
         public required Orientation LayoutOrientation { get; set; }
         public int Spacing { get; set; } = 0;
-        private Padding _padding = new(0);
         public List<IComponent> Components { get; set; } = [];
-        public List<int> Weights { get; set; } = [];
-        private int _totalWeight = 0;
-
-        // Size mode properties
-        public SizeMode WidthMode { get; set; } = SizeMode.Fixed;
-        public SizeMode HeightMode { get; set; } = SizeMode.Fixed;
-
-        // Parent reference for MatchParent sizing
-        private IComponent _parent;
+        public Gravity Gravity { get; set; } = Gravity.TopLeft; // Layout's gravity for all children
 
 #nullable enable
         private IComponent? _focusedComponent = null;
 #nullable disable
 
-        // Store desired size separately from actual size
-        private Vector2 _desiredSize;
-
         public override Vector2 Position {
             get => base.Position;
             set {
                 base.Position = value;
-                RearrangeComponents();
+                ArrangeComponents();
             }
         }
 
-        public override Vector2 Size {
-            get => base.Size;
-            set {
-                _desiredSize = value;
-                UpdateActualSize();
-            }
-        }
-
-        public float Padding { get => _padding.Left; set { _padding = new Padding(value); RearrangeComponents(); } }
-        public float PaddingLeft { get => _padding.Left; set { _padding.Left = value; RearrangeComponents(); } }
-        public float PaddingRight { get => _padding.Right; set { _padding.Right = value; RearrangeComponents(); } }
-        public float PaddingTop { get => _padding.Top; set { _padding.Top = value; RearrangeComponents(); } }
-        public float PaddingBottom { get => _padding.Bottom; set { _padding.Bottom = value; RearrangeComponents(); } }
-
-        // Set the parent component for MatchParent sizing
-        public void SetParent(IComponent parent) {
-            _parent = parent;
-            UpdateActualSize();
-        }
-
-        // Calculate and update the actual size based on sizing modes
-        private void UpdateActualSize() {
-            var newSize = _desiredSize;
-
-            // Handle width sizing
-            if (WidthMode == SizeMode.MatchParent && _parent != null) {
-                newSize.X = _parent.Size.X;
-            } else if (WidthMode == SizeMode.WrapContent) {
-                newSize.X = MeasureContentWidth();
-            }
-
-            // Handle height sizing
-            if (HeightMode == SizeMode.MatchParent && _parent != null) {
-                newSize.Y = _parent.Size.Y;
-            } else if (HeightMode == SizeMode.WrapContent) {
-                newSize.Y = MeasureContentHeight();
-            }
-
-            // Update the actual size
-            base.Size = newSize;
-            RearrangeComponents();
-        }
-
-        // Measure content width for WrapContent mode
-        private float MeasureContentWidth() {
+        // Override MeasureContent methods to calculate wrap_content size
+        protected override float MeasureContentWidth() {
             if (Components.Count == 0) return PaddingLeft + PaddingRight;
 
             if (LayoutOrientation == Orientation.Horizontal) {
@@ -99,7 +38,7 @@ namespace Client.Component {
                 float totalWidth = PaddingLeft + PaddingRight;
 
                 foreach (var component in Components.Where(c => c.IsVisible)) {
-                    totalWidth += component.Size.X;
+                    totalWidth += component.RequestedWidth;
                 }
 
                 // Add spacing between components
@@ -112,14 +51,13 @@ namespace Client.Component {
                 // For vertical layout, find the widest component
                 float maxWidth = 0;
                 foreach (var component in Components.Where(c => c.IsVisible)) {
-                    maxWidth = Math.Max(maxWidth, component.Size.X);
+                    maxWidth = Math.Max(maxWidth, component.RequestedWidth);
                 }
                 return maxWidth + PaddingLeft + PaddingRight;
             }
         }
 
-        // Measure content height for WrapContent mode
-        private float MeasureContentHeight() {
+        protected override float MeasureContentHeight() {
             if (Components.Count == 0) return PaddingTop + PaddingBottom;
 
             if (LayoutOrientation == Orientation.Vertical) {
@@ -127,7 +65,7 @@ namespace Client.Component {
                 float totalHeight = PaddingTop + PaddingBottom;
 
                 foreach (var component in Components.Where(c => c.IsVisible)) {
-                    totalHeight += component.Size.Y;
+                    totalHeight += component.RequestedHeight;
                 }
 
                 // Add spacing between components
@@ -140,114 +78,220 @@ namespace Client.Component {
                 // For horizontal layout, find the tallest component
                 float maxHeight = 0;
                 foreach (var component in Components.Where(c => c.IsVisible)) {
-                    maxHeight = Math.Max(maxHeight, component.Size.Y);
+                    maxHeight = Math.Max(maxHeight, component.RequestedHeight);
                 }
                 return maxHeight + PaddingTop + PaddingBottom;
             }
         }
 
-        private void RearrangeComponents() {
-            var currentPosition = Position + new Vector2(PaddingLeft, PaddingTop);
-            float availableWidth = Size.X - PaddingLeft - PaddingRight;
-            float availableHeight = Size.Y - PaddingTop - PaddingBottom;
+        public void ArrangeComponents() {
+            // First measure our own size based on size mode
+            MeasureAndSetSize();
+
+            // Calculate available space
+            float availableWidth = Width - PaddingLeft - PaddingRight;
+            float availableHeight = Height - PaddingTop - PaddingBottom;
             int visibleComponentCount = Components.Count(c => c.IsVisible);
             float totalSpacing = visibleComponentCount > 1 ? Spacing * (visibleComponentCount - 1) : 0;
 
-            // First pass: Calculate sizes for weighted components
-            for (int i = 0; i < Components.Count; i++) {
-                if (!Components[i].IsVisible) continue;
+            // Calculate total weight and determine fixed sizes
+            int totalWeight = 0;
+            float totalFixedSize = 0;
+            float remainingSpace = LayoutOrientation == Orientation.Horizontal ? availableWidth : availableHeight;
 
-                var component = Components[i];
-                int weight = Weights[i];
-
-                if (LayoutOrientation == Orientation.Horizontal) {
-                    float compWidth = weight > 0
-                        ? (availableWidth - totalSpacing) * weight / _totalWeight
-                        : component.Size.X;
-                    component.Size = new Vector2(compWidth, availableHeight);
+            // First pass: Calculate sizes for fixed components and total weight
+            foreach (var component in Components.Where(c => c.IsVisible)) {
+                if (component.Weight > 0) {
+                    totalWeight += component.Weight;
                 } else {
-                    float compHeight = weight > 0
-                        ? (availableHeight - totalSpacing) * weight / _totalWeight
-                        : component.Size.Y;
-                    component.Size = new Vector2(availableWidth, compHeight);
+                    // Fixed size components
+                    if (LayoutOrientation == Orientation.Horizontal) {
+                        totalFixedSize += component.RequestedWidth;
+                    } else {
+                        totalFixedSize += component.RequestedHeight;
+                    }
                 }
             }
 
-            // Second pass: Position components
-            for (int i = 0; i < Components.Count; i++) {
-                if (!Components[i].IsVisible) continue;
+            // Subtract fixed sizes and spacing from available space
+            remainingSpace -= (totalFixedSize + totalSpacing);
 
-                var component = Components[i];
-                component.Position = currentPosition;
+            // Calculate starting position for content based on gravity
+            Vector2 contentStartPosition = CalculateContentStartPosition(
+                availableWidth,
+                availableHeight,
+                LayoutOrientation == Orientation.Horizontal ? totalFixedSize + totalSpacing : 0,
+                LayoutOrientation == Orientation.Vertical ? totalFixedSize + totalSpacing : 0
+            );
+
+            // Second pass: Assign sizes and positions to components
+            var currentPosition = contentStartPosition;
+            foreach (var component in Components.Where(c => c.IsVisible)) {
+                float componentWidth, componentHeight;
 
                 if (LayoutOrientation == Orientation.Horizontal) {
-                    currentPosition.X += component.Size.X + Spacing;
-                } else {
-                    currentPosition.Y += component.Size.Y + Spacing;
-                }
-            }
+                    // Set width based on weight or fixed size
+                    if (component.Weight > 0) {
+                        componentWidth = remainingSpace * component.Weight / totalWeight;
+                    } else {
+                        if (component.WidthMode == SizeMode.MatchParent) {
+                            // For matchParent with no weight, use all remaining space
+                            componentWidth = availableWidth;
+                        } else {
+                            // For fixed or wrap_content, use the requested size
+                            componentWidth = component.RequestedWidth;
+                        }
+                    }
 
-            // Recalculate size if using WrapContent
-            if (WidthMode == SizeMode.WrapContent || HeightMode == SizeMode.WrapContent) {
-                var newSize = base.Size;
-                if (WidthMode == SizeMode.WrapContent) {
-                    newSize.X = MeasureContentWidth();
+                    // Set height based on component's height mode
+                    if (component.HeightMode == SizeMode.MatchParent) {
+                        componentHeight = availableHeight;
+                    } else {
+                        componentHeight = component.RequestedHeight;
+                    }
+
+                    // Apply vertical alignment based on component's LayoutGravity if set, otherwise use parent's Gravity
+                    float componentY = currentPosition.Y;
+                    Gravity effectiveGravity = component.LayoutGravity != Gravity.NoGravity ? component.LayoutGravity : Gravity;
+
+                    if ((effectiveGravity & Gravity.Bottom) != 0) {
+                        componentY = currentPosition.Y + availableHeight - componentHeight;
+                    } else if ((effectiveGravity & Gravity.CenterVertical) != 0) {
+                        componentY = currentPosition.Y + (availableHeight - componentHeight) / 2;
+                    }
+
+                    // Update component's measured size
+                    component.SetMeasuredSize(componentWidth, componentHeight);
+
+                    // Position the component with gravity applied
+                    component.Position = new Vector2(currentPosition.X, componentY);
+
+                    // Move to next position horizontally
+                    currentPosition.X += componentWidth + Spacing;
+                } else { // Vertical orientation
+                    // Set height based on weight or fixed size
+                    if (component.Weight > 0) {
+                        componentHeight = remainingSpace * component.Weight / totalWeight;
+                    } else {
+                        if (component.HeightMode == SizeMode.MatchParent) {
+                            // For matchParent with no weight, use all available height
+                            componentHeight = availableHeight;
+                        } else {
+                            // For fixed or wrap_content, use the requested size
+                            componentHeight = component.RequestedHeight;
+                        }
+                    }
+
+                    // Set width based on component's width mode
+                    if (component.WidthMode == SizeMode.MatchParent) {
+                        componentWidth = availableWidth;
+                    } else {
+                        componentWidth = component.RequestedWidth;
+                    }
+
+                    // Apply horizontal alignment based on component's LayoutGravity if set, otherwise use parent's Gravity
+                    float componentX = currentPosition.X;
+                    Gravity effectiveGravity = component.LayoutGravity != Gravity.NoGravity ? component.LayoutGravity : Gravity;
+
+                    if ((effectiveGravity & Gravity.Right) != 0) {
+                        componentX = currentPosition.X + availableWidth - componentWidth;
+                    } else if ((effectiveGravity & Gravity.CenterHorizontal) != 0) {
+                        componentX = currentPosition.X + (availableWidth - componentWidth) / 2;
+                    }
+
+                    // Update component's measured size
+                    component.SetMeasuredSize(componentWidth, componentHeight);
+
+                    // Position the component with gravity applied
+                    component.Position = new Vector2(componentX, currentPosition.Y);
+
+                    // Move to next position vertically
+                    currentPosition.Y += componentHeight + Spacing;
                 }
-                if (HeightMode == SizeMode.WrapContent) {
-                    newSize.Y = MeasureContentHeight();
-                }
-                // Update size without triggering infinite recursion
-                base.Size = newSize;
             }
         }
 
-        public void AddComponent(IComponent component, int weight = 1, int position = -1) {
+        private Vector2 CalculateContentStartPosition(float availableWidth, float availableHeight,
+                                                     float contentWidth, float contentHeight) {
+            Vector2 startPosition = Position + new Vector2(PaddingLeft, PaddingTop);
+
+            // If layout orientation is horizontal, apply horizontal gravity to the entire content block
+            if (LayoutOrientation == Orientation.Horizontal) {
+                // Skip horizontal gravity calculation if total width matches parent or exceeds it
+                if (contentWidth < availableWidth) {
+                    if ((Gravity & Gravity.CenterHorizontal) != 0) {
+                        startPosition.X += (availableWidth - contentWidth) / 2;
+                    } else if ((Gravity & Gravity.Right) != 0) {
+                        startPosition.X += availableWidth - contentWidth;
+                    }
+                }
+            }
+            // If layout orientation is vertical, apply vertical gravity to the entire content block
+            else {
+                // Skip vertical gravity calculation if total height matches parent or exceeds it
+                if (contentHeight < availableHeight) {
+                    if ((Gravity & Gravity.CenterVertical) != 0) {
+                        startPosition.Y += (availableHeight - contentHeight) / 2;
+                    } else if ((Gravity & Gravity.Bottom) != 0) {
+                        startPosition.Y += availableHeight - contentHeight;
+                    }
+                }
+            }
+
+            return startPosition;
+        }
+
+        private void MeasureAndSetSize() {
+            // Handle size modes
+            if (WidthMode == SizeMode.WrapContent) {
+                SetMeasuredSize(MeasureContentWidth(), Height);
+            }
+
+            if (HeightMode == SizeMode.WrapContent) {
+                SetMeasuredSize(Width, MeasureContentHeight());
+            }
+        }
+
+        public void AddComponent(IComponent component, int position = -1) {
+            // Validate component weight/size for layout orientation
+            if (component.Weight > 0) {
+                if (LayoutOrientation == Orientation.Horizontal) {
+                    // For weighted components in horizontal layout, width should be handled by layout
+                    if (component.WidthMode == SizeMode.Fixed) {
+                        component.WidthMode = SizeMode.MatchParent;
+                    }
+                } else {
+                    // For weighted components in vertical layout, height should be handled by layout
+                    if (component.HeightMode == SizeMode.Fixed) {
+                        component.HeightMode = SizeMode.MatchParent;
+                    }
+                }
+            }
+
             if (position < 0 || position >= Components.Count) {
                 Components.Add(component);
-                Weights.Add(weight);
             } else {
                 Components.Insert(position, component);
-                Weights.Insert(position, weight);
-            }
-            _totalWeight += weight;
-            RearrangeComponents();
-        }
-
-        // Child components can have their own size modes
-        public void AddComponent(IComponent component, SizeMode widthMode, SizeMode heightMode, int weight = 1, int position = -1) {
-            // If component is another LinearLayout, set its size modes
-            if (component is LinearLayout childLayout) {
-                childLayout.WidthMode = widthMode;
-                childLayout.HeightMode = heightMode;
-                childLayout.SetParent(this);
             }
 
-            AddComponent(component, weight, position);
+            ArrangeComponents();
         }
 
         public void RemoveComponent(IComponent component) {
-            int index = Components.IndexOf(component);
-            if (index != -1) {
-                _totalWeight -= Weights[index];
-                Components.RemoveAt(index);
-                Weights.RemoveAt(index);
-                RearrangeComponents();
+            if (Components.Remove(component)) {
+                ArrangeComponents();
             }
         }
 
         public void ClearComponents() {
             Components.Clear();
-            Weights.Clear();
-            _totalWeight = 0;
         }
 
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
 
-            // Check if parent size changed when using MatchParent
-            if ((WidthMode == SizeMode.MatchParent || HeightMode == SizeMode.MatchParent) && _parent != null) {
-                UpdateActualSize();
-            }
+            // Re-arrange if needed
+            ArrangeComponents();
 
             foreach (var component in Components) {
                 component.Update(gameTime);
@@ -260,6 +304,7 @@ namespace Client.Component {
             // Draw components from back to front
             for (int i = 0; i < Components.Count; i++) {
                 if (Components[i].IsVisible) {
+                    // Console.WriteLine($"Drawing component {i}: {Components[i].GetType().Name} at {Components[i].Position} with size {Components[i].Size}");
                     Components[i].Draw(spriteBatch);
                 }
             }
