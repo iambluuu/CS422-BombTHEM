@@ -71,6 +71,7 @@ namespace Server {
             public Dictionary<int, DateTime> PlayerLastDied { get; set; } = [];
             public bool GameStarted { get; set; } = false;
             public Thread? BombThread { get; set; } = null;
+            public Thread? ItemThread { get; set; } = null;
             public CancellationTokenSource? BombCts { get; set; } = null;
             public System.Timers.Timer? GameTimer { get; set; } = null;
             public bool Closed { get; set; } = false;
@@ -99,6 +100,7 @@ namespace Server {
             public void StopGame() {
                 BombCts?.Cancel();
                 BombThread?.Join();
+                ItemThread?.Join();
                 GameTimer?.Stop();
                 GameTimer?.Dispose();
             }
@@ -573,6 +575,11 @@ namespace Server {
                                 IsBackground = true
                             };
                             room.BombThread.Start();
+
+                            room.ItemThread = new Thread(() => ProcessBombs(roomId!)) {
+                                IsBackground = true
+                            };
+                            room.ItemThread.Start();
 
                             room.GameTimer = new System.Timers.Timer(GameplayConfig.GameDuration * 1000) {
                                 Enabled = true

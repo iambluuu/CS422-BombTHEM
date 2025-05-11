@@ -111,12 +111,14 @@ namespace Shared {
     }
 
     public class DroppedItem {
+        public DateTime DropTime { get; set; }
         public Position Position { get; set; }
         public PowerName Item { get; set; }
 
         public DroppedItem(Position position, PowerName item) {
             Position = position;
             Item = item;
+            DropTime = DateTime.Now;
         }
     }
 
@@ -127,6 +129,7 @@ namespace Shared {
         public Dictionary<int, PlayerIngameInfo> PlayerInfos { get; private set; }
         public List<Bomb> Bombs { get; private set; }
         public List<DroppedItem> Items { get; private set; }
+        public List<DroppedItem> ExpiredItems { get; private set; }
 
         public Map(int height, int width) {
             Height = height;
@@ -456,5 +459,7 @@ namespace Shared {
 
             return map;
         }
+
+        public List<DroppedItem
     }
 }

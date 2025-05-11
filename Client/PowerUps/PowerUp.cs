@@ -14,6 +14,7 @@ namespace Client.PowerUps {
     }
 
     public abstract class PowerUp {
+        public static PowerUp Instance { get; private set; }
         public virtual void Apply(Dictionary<string, object> parameters) {
             // Default implementation does nothing
         }

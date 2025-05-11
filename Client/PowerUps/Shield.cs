@@ -7,7 +7,6 @@ using SharpDX.Direct2D1.Effects;
 
 namespace Client.PowerUps {
     public class Shield : PowerUp {
-        public static Shield Instance { get; }
         private static Dictionary<PlayerNode, VFXNode> _activeEffects = new();
 
         public override void Apply(Dictionary<string, object> parameters) {
