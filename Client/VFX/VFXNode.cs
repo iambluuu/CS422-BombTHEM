@@ -6,6 +6,7 @@ namespace Client {
     public class VFXNode : SpriteNode {
         private readonly int _frameCount;
         private readonly bool _isLooping;
+        private readonly bool _isInfinite;
         private readonly float _duration;
 
         private int _currentFrame;
@@ -13,20 +14,23 @@ namespace Client {
         private float _elapsedFrameTime;
         private float _elapsedTime;
 
-        public VFXNode(Texture2D texture, Vector2 size, int frameCount, float frameTime = 0.1f, float duration = 1f, bool isLooping = true) : base(texture, size) {
+        public VFXNode(Texture2D texture, Vector2 size, int frameCount, float frameTime = 0.1f, float duration = 1f, bool isLooping = true, bool isInfinite = false) : base(texture, size) {
             _frameTime = frameTime;
             _elapsedFrameTime = 0f;
             _currentFrame = 0;
             _frameCount = frameCount;
-            _duration = duration;
             _isLooping = isLooping;
+            _duration = duration;
+            _isInfinite = isInfinite;
         }
 
         protected override void UpdateCurrent(GameTime gameTime) {
             base.UpdateCurrent(gameTime);
 
             _elapsedFrameTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
-            _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (!_isInfinite) {
+                _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
+            }
 
             if (_elapsedFrameTime >= _frameTime) {
                 _elapsedFrameTime = 0f;

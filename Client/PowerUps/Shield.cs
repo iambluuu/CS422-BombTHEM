@@ -3,22 +3,22 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Shared;
-using SharpDX.Direct2D1.Effects;
 
 namespace Client.PowerUps {
     public class Shield : PowerUp {
-        private static Dictionary<PlayerNode, VFXNode> _activeEffects = new();
+        private static Dictionary<PlayerNode, VFXNode> _activeEffects = new(); // Current Players with Shield
 
         public override void Apply(Dictionary<string, object> parameters) {
-            if (parameters == null || parameters.Count == 0) {
-                throw new ArgumentException("Parameters cannot be null or empty.");
+            base.Apply(parameters);
+            bool needToChange = Boolean.Parse(parameters["needToChange"].ToString());
+            if (!needToChange) {
+                return;
             }
 
-            PlayerNode target = parameters["target"] as PlayerNode;
-            if (target == null) {
-                throw new ArgumentException("Target must be a PlayerNode.");
-            }
-            VFXNode vfx = new VFXNode(TextureHolder.Get("Texture/Effect/Shield"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE), 6, 0.1f, 5, true);
+            int playerId = int.Parse(parameters["playerId"].ToString());
+            var playerNodes = parameters["playerNodes"] as Dictionary<int, PlayerNode> ?? throw new ArgumentException("playerNodes must be a dictionary of PlayerNode.");
+            PlayerNode target = playerNodes[playerId];
+            VFXNode vfx = new(TextureHolder.Get("Texture/Effect/Shield"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE), 6, 0.1f, isLooping: true, isInfinite: true);
             target.AttachChild(vfx);
             _activeEffects.Add(target, vfx);
         }

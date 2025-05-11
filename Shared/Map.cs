@@ -122,6 +122,16 @@ namespace Shared {
         }
     }
 
+    public class ActivePowerUp {
+        public PowerName PowerType { get; set; }
+        public DateTime StartTime { get; set; }
+
+        public ActivePowerUp(PowerName name, DateTime startTime) {
+            PowerType = name;
+            StartTime = startTime;
+        }
+    }
+
     public class Map {
         public int Height { get; private set; }
         public int Width { get; private set; }
@@ -129,7 +139,6 @@ namespace Shared {
         public Dictionary<int, PlayerIngameInfo> PlayerInfos { get; private set; }
         public List<Bomb> Bombs { get; private set; }
         public List<DroppedItem> Items { get; private set; }
-        public List<DroppedItem> ExpiredItems { get; private set; }
 
         public Map(int height, int width) {
             Height = height;
@@ -379,8 +388,9 @@ namespace Shared {
             }
 
             PowerName powerName = Items[itemId].Item;
-            if (PlayerInfos[playerId].PickUpItem(powerName)) {
-                Items.RemoveAt(itemId);
+            bool picked = PlayerInfos[playerId].PickUpItem(powerName);
+            if (picked) {
+                RemoveItem(x, y);
                 return powerName; // Item picked up successfully
             }
 
@@ -426,12 +436,12 @@ namespace Shared {
             Items.RemoveAt(itemId);
         }
 
-        public void UsePowerUp(int playerId, PowerName power) {
+        public bool UsePowerUp(int playerId, PowerName power) {
             if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
             }
 
-            PlayerInfos[playerId].UsePowerUp(power);
+            return PlayerInfos[playerId].UsePowerUp(power);
         }
 
         public override string ToString() {
@@ -459,7 +469,5 @@ namespace Shared {
 
             return map;
         }
-
-        public List<DroppedItem
     }
 }

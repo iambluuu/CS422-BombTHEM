@@ -47,10 +47,11 @@ namespace Shared {
         PlayerDied,
         GameResults,
         Error,
+        ItemExpired,
         PowerUpSpawned,
         PowerUpPickedUp,
         PowerUpUsed,
-        PowerUpRemoved,
+        PowerUpExpired,
     }
 
     public class MessageType {

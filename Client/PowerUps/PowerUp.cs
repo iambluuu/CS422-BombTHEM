@@ -7,7 +7,7 @@ namespace Client.PowerUps {
         public static PowerUp CreatePowerUp(PowerName type) {
             return type switch {
                 // PowerName.Ghost => new (),
-                // PowerName.Shield => new (),
+                PowerName.Shield => new Shield(),
                 _ => throw new ArgumentException($"Unknown power-up type: {type}")
             };
         }
@@ -16,7 +16,13 @@ namespace Client.PowerUps {
     public abstract class PowerUp {
         public static PowerUp Instance { get; private set; }
         public virtual void Apply(Dictionary<string, object> parameters) {
-            // Default implementation does nothing
+            try {
+                if (parameters == null || parameters.Count == 0) {
+                    throw new ArgumentException("Parameters cannot be null or empty.");
+                }
+            } catch (ArgumentException e) {
+                Console.WriteLine(e.Message);
+            }
         }
 
         public virtual void Remove(SceneNode target) {

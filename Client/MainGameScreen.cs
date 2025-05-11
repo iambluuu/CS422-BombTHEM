@@ -207,8 +207,13 @@ namespace Client {
                 case ServerMessageType.PowerUpUsed: {
                         string powerUpType = message.Data["powerUpType"];
                         Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
+                        parameters["vfxLayer"] = _vfxLayer;
+                        parameters["playerNodes"] = _playerNodes;
+                        parameters["map"] = _map;
                         PowerUp powerUp = PowerUpFactory.CreatePowerUp(Enum.Parse<PowerName>(powerUpType));
-                        powerUp.Apply(parameters);
+                        lock (_lock) {
+                            powerUp.Apply(parameters);
+                        }
                     }
                     break;
 
@@ -240,6 +245,16 @@ namespace Client {
                             if (playerId == NetworkManager.Instance.ClientId) {
                                 _powerSlot.ObtainPower(powerUpType);
                             }
+                        }
+                    }
+                    break;
+                case ServerMessageType.ItemExpired: {
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        lock (_lock) {
+                            _map.RemoveItem(x, y);
+                            _itemLayer.DetachChild(_itemNodes[(x, y)]);
+                            _itemNodes.Remove((x, y));
                         }
                     }
                     break;

@@ -49,6 +49,8 @@ namespace Client.Component {
                 throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
             }
 
+            // Console.WriteLine($"Using power: {_powers[index]}");
+
             if (_powers[index] != PowerName.None) {
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
                     { "powerUpType", _powers[index].ToString() },
