@@ -36,6 +36,7 @@ namespace Server {
 
         public void Stop() {
             _isGameStarted = false;
+            Console.WriteLine($"Bot {_botId} stopped");
         }
 
         public void Dispose() {

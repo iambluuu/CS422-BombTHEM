@@ -66,34 +66,42 @@ namespace Server {
             public string RoomId { get; set; }
             public int HostPlayerId { get; set; }
             public List<int> PlayerIds { get; set; } = [];
-            public Map Map { get; set; }
+            public Map Map { get; set; } = null!;
             public Dictionary<int, Position> InitialPositions { get; set; } = [];
             public Dictionary<int, int> PlayerScores { get; set; } = [];
             public Dictionary<int, DateTime> PlayerLastDied { get; set; } = [];
-            public readonly int GameDuration = 300;
+            public readonly int GameDuration = 5;
             public bool GameStarted { get; set; } = false;
             public Thread? BombThread { get; set; } = null;
             public CancellationTokenSource? BombCts { get; set; } = null;
             public System.Timers.Timer? GameTimer { get; set; } = null;
             public bool Closed { get; set; } = false;
 
-            public GameRoom(string roomId, int hostPlayerId, Map map) {
+            public GameRoom(string roomId, int hostPlayerId) {
                 RoomId = roomId;
                 HostPlayerId = hostPlayerId;
-                Map = map;
                 PlayerIds.Add(hostPlayerId);
                 PlayerScores.Add(hostPlayerId, 0);
             }
 
+            public void ClearData() {
+                Map = null!;
+                InitialPositions.Clear();
+                PlayerScores.Clear();
+                PlayerLastDied.Clear();
+                GameStarted = false;
+                BombThread = null;
+                BombCts = null;
+                GameTimer = null;
+            }
+
             public void AddPlayer(int playerId) {
                 PlayerIds.Add(playerId);
-                PlayerScores.Add(playerId, 0);
             }
 
             public void RemovePlayer(int playerId) {
                 PlayerIds.Remove(playerId);
                 if (!GameStarted) {
-                    PlayerScores.Remove(playerId);
                     Map?.PlayerPositions.Remove(playerId);
                 }
             }
@@ -156,7 +164,7 @@ namespace Server {
             }
         }
 
-        private bool isBot(int playerId) {
+        private bool IsBot(int playerId) {
             return playerId < 100000;
         }
 
@@ -412,7 +420,7 @@ namespace Server {
                         string newRoomId = GenerateRoomId();
 
                         lock (_lock) {
-                            GameRoom newRoom = new(newRoomId, playerId, GenerateRandomMap());
+                            GameRoom newRoom = new(newRoomId, playerId);
                             _rooms.Add(newRoomId, newRoom);
                             _roomLocks.Add(newRoomId, new object());
 
@@ -506,7 +514,7 @@ namespace Server {
 
                             RemovePlayerFromRoom(_idToPlayer[playerToKick]);
 
-                            if (!isBot(playerToKick)) {
+                            if (!IsBot(playerToKick)) {
                                 SendToClient(playerToKick, NetworkMessage.From(ServerMessageType.PlayerKicked, new() {
                                     { "message", "You have been kicked from the room" }
                                 }));
@@ -575,6 +583,9 @@ namespace Server {
                                 return;
                             }
 
+                            room.ClearData();
+                            room.Map = GenerateRandomMap();
+
                             room.BombCts = new CancellationTokenSource();
                             room.BombThread = new Thread(() => ProcessBombs(roomId!)) {
                                 IsBackground = true
@@ -611,6 +622,7 @@ namespace Server {
 
                                 room.InitialPositions.Add(pid, initialPosition);
                                 room.Map.SetPlayerPosition(pid, initialPosition.X, initialPosition.Y);
+                                room.PlayerScores.Add(pid, 0);
                             }
 
                             BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameStarted));
@@ -621,8 +633,30 @@ namespace Server {
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
 
-                            room.RemovePlayer(playerId);
                             _idToPlayer[playerId].InGame = false;
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeaved, new() {
+                                { "playerId", playerId.ToString() }
+                            }));
+
+                            bool allClientsLeft = true;
+                            foreach (var pid in room.PlayerIds) {
+                                if (!IsBot(pid) && _idToPlayer[pid].InGame) {
+                                    allClientsLeft = false;
+                                    break;
+                                }
+                            }
+
+                            if (allClientsLeft) {
+                                foreach (var pid in room.PlayerIds) {
+                                    if (IsBot(pid)) {
+                                        BotHandler bot = (BotHandler)_idToPlayer[pid];
+                                        bot.InGame = false;
+                                        BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeaved, new() {
+                                            { "playerId", pid.ToString() }
+                                        }));
+                                    }
+                                }
+                            }
                         }
                     }
                     break;
@@ -770,8 +804,9 @@ namespace Server {
             }
 
             foreach (var playerId in room.PlayerIds) {
-                if (isBot(playerId)) {
-                    ((BotHandler)_idToPlayer[playerId]).Bot.Stop();
+                if (IsBot(playerId)) {
+                    BotHandler bot = (BotHandler)_idToPlayer[playerId];
+                    bot.Bot.Stop();
                 }
             }
 
@@ -812,7 +847,7 @@ namespace Server {
             }
 
             lock (_lock) {
-                if (isBot(playerId)) {
+                if (IsBot(playerId)) {
                     ((BotHandler)_idToPlayer[playerId]).Bot.HandleResponse(message);
                 } else {
                     ClientHandler client = (ClientHandler)_idToPlayer[playerId];
@@ -854,7 +889,7 @@ namespace Server {
                 if (room.HostPlayerId == handler.PlayerId) {
                     room.HostPlayerId = -1;
                     for (int i = 0; i < room.PlayerIds.Count; i++) {
-                        if (!isBot(room.PlayerIds[i])) {
+                        if (!IsBot(room.PlayerIds[i])) {
                             room.HostPlayerId = room.PlayerIds[i];
                             break;
                         }
@@ -877,7 +912,7 @@ namespace Server {
             if (room.Closed) {
                 room.Dispose();
                 foreach (var playerId in room.PlayerIds) {
-                    if (isBot(playerId)) {
+                    if (IsBot(playerId)) {
                         lock (_lock) {
                             BotHandler bot = (BotHandler)_idToPlayer[playerId];
                             bot.Dispose();
@@ -894,7 +929,7 @@ namespace Server {
 
                 Console.WriteLine($"Room {room.RoomId} closed");
             } else {
-                if (isBot(handler.PlayerId)) {
+                if (IsBot(handler.PlayerId)) {
                     handler.Dispose();
                 }
             }

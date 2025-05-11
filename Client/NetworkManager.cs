@@ -47,41 +47,46 @@ namespace Client {
         private NetworkManager() { }
 
         public void Connect(string ip, int port) {
-            if (_connected) {
-                Console.WriteLine("Already connected to server");
-                return;
-            }
+            new Thread(() => {
+                if (_connected) {
+                    Console.WriteLine("Already connected to server");
+                    return;
+                }
 
-            try {
-                Console.WriteLine($"Connecting to {ip}:{port}");
-                _client = new TcpClient();
-                _client.Connect(ip, port);
-                _stream = _client.GetStream();
-                _connected = true;
-                _messageBuffer = new MemoryStream();
-                Console.WriteLine("Connected to server");
-            } catch (Exception ex) {
-                Console.WriteLine($"Error connecting to server: {ex.Message}");
-                return;
-            }
+                try {
+                    Console.WriteLine($"Connecting to {ip}:{port}");
+                    _client = new TcpClient();
+                    _client.Connect(ip, port);
+                    _stream = _client.GetStream();
+                    _connected = true;
+                    _messageBuffer = new MemoryStream();
+                    Console.WriteLine("Connected to server");
+                } catch (Exception ex) {
+                    Handlers?.Invoke(NetworkMessage.From(ServerMessageType.NotConnected));
+                    Console.WriteLine($"Error connecting to server: {ex.Message}");
+                    return;
+                }
 
-            _listenCts = new CancellationTokenSource();
-            _listenThread = new Thread(() => StartListening(_listenCts.Token)) {
+                _listenCts = new CancellationTokenSource();
+                _listenThread = new Thread(() => StartListening(_listenCts.Token)) {
+                    IsBackground = true,
+                };
+                _listenThread.Start();
+
+                _pingTimer = new System.Timers.Timer(5000) {
+                    AutoReset = true,
+                    Enabled = true
+                };
+                _pingTimer.Elapsed += (sender, e) => {
+                    _lastPing = DateTime.Now;
+                    Send(NetworkMessage.From(ClientMessageType.Ping));
+                };
+                _pingTimer.Start();
+
+                Handlers?.Invoke(NetworkMessage.From(ServerMessageType.Connected));
+            }) {
                 IsBackground = true,
-            };
-            _listenThread.Start();
-
-            _pingTimer = new System.Timers.Timer(5000) {
-                AutoReset = true,
-                Enabled = true
-            };
-            _pingTimer.Elapsed += (sender, e) => {
-                _lastPing = DateTime.Now;
-                Send(NetworkMessage.From(ClientMessageType.Ping));
-            };
-            _pingTimer.Start();
-
-            Handlers?.Invoke(NetworkMessage.From(ServerMessageType.Connected));
+            }.Start();
         }
 
         private async void StartListening(CancellationToken ct) {

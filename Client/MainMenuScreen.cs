@@ -12,6 +12,7 @@ namespace Client {
     public class MainMenuScreen : GameScreen {
         private LinearLayout _connectLayout, _mainLayout;
         private TextBox _addressBox, _portBox;
+        private Button _connectButton;
         private string _currentName = string.Empty;
         private TextBox _usernameBox;
 
@@ -86,13 +87,13 @@ namespace Client {
             };
             addressLayout.AddComponent(_portBox);
 
-            var connectButton = new Button() {
+            _connectButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
                 Text = "Connect",
-                OnClick = () => NetworkManager.Instance.Connect(_addressBox.Text, int.Parse(_portBox.Text)),
+                OnClick = Connect,
             };
-            _connectLayout.AddComponent(connectButton);
+            _connectLayout.AddComponent(_connectButton);
 
             _mainLayout = new() {
                 LayoutOrientation = Orientation.Vertical,
@@ -148,13 +149,20 @@ namespace Client {
 
             if (NetworkManager.Instance.IsConnected) {
                 _connectLayout.IsVisible = false;
+                _connectButton.IsEnabled = false;
                 _mainLayout.IsVisible = true;
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetUsername));
             } else {
                 _connectLayout.IsVisible = true;
+                _connectButton.IsEnabled = true;
                 _mainLayout.IsVisible = false;
                 _currentName = string.Empty;
             }
+        }
+
+        private void Connect() {
+            _connectButton.IsEnabled = false;
+            NetworkManager.Instance.Connect(_addressBox.Text, int.Parse(_portBox.Text));
         }
 
         private void CreateGame() {
@@ -169,12 +177,14 @@ namespace Client {
                     break;
                 case ServerMessageType.NotConnected: {
                         _connectLayout.IsVisible = true;
+                        _connectButton.IsEnabled = true;
                         _mainLayout.IsVisible = false;
                         _currentName = string.Empty;
                     }
                     break;
                 case ServerMessageType.ClientId: {
                         _connectLayout.IsVisible = false;
+                        _connectButton.IsEnabled = false;
                         _mainLayout.IsVisible = true;
                         NetworkManager.Instance.ClientId = int.Parse(message.Data["clientId"]);
                     }

@@ -5,6 +5,7 @@ using Shared;
 using SharpDX.Direct2D1.Effects;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Client.Component {
     public class Scoreboard : IComponent {
@@ -14,6 +15,8 @@ namespace Client.Component {
         private const int Spacing = 5; // spacing between entries
         private const int SeparatorHeight = 2; // height of the separator line
         private float ClockHeight = 30; // height of the clock display
+        private Stopwatch _stopwatch;
+        private double _lastElapsed;
 
         // For drawing entries
         private static Vector2 EntrySize;
@@ -64,6 +67,8 @@ namespace Client.Component {
 
         public void SetDuration(float duration) {
             _timer = duration;
+            _stopwatch = Stopwatch.StartNew();
+            _lastElapsed = 0;
         }
 
         public void SetPlayerData(List<(string, string, int)> playerData) {
@@ -94,7 +99,13 @@ namespace Client.Component {
         }
 
         public override void Update(GameTime gameTime) {
-            _timer = Math.Max(0, _timer - (float)gameTime.ElapsedGameTime.TotalSeconds);
+            if (_stopwatch != null) {
+                double currentElapsed = _stopwatch.Elapsed.TotalSeconds;
+                double delta = currentElapsed - _lastElapsed;
+                _lastElapsed = currentElapsed;
+                _timer = Math.Max(0, _timer - (float)delta);
+            }
+
             foreach (var entry in _entries) {
                 entry.Update(gameTime);
             }
@@ -285,7 +296,7 @@ namespace Client.Component {
                 // Draw the player name on top line
                 var font = FontHolder.Get("PressStart2P");
                 var nameText = Username;
-                var textScale = Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(nameText).X);
+                var textScale = Math.Min(Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(nameText).X), 1);
                 var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + centeringOffset + Spacing);
                 spriteBatch.DrawString(font, nameText, namePosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
 

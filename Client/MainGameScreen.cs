@@ -59,7 +59,7 @@ namespace Client {
                 Text = "Leave Game",
                 OnClick = () => {
                     NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
-                    ScreenManager.Instance.NavigateToRoot();
+                    ScreenManager.Instance.NavigateBack();
                 },
             });
             uiManager.AddComponent(_sidebar);
@@ -130,7 +130,8 @@ namespace Client {
                         }
                     }
                     break;
-                case ServerMessageType.PlayerLeft: {
+                case ServerMessageType.PlayerLeft:
+                case ServerMessageType.GameLeaved: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         lock (_lock) {
                             _map.PlayerPositions.Remove(playerId);
@@ -151,7 +152,7 @@ namespace Client {
                                 _map.RemoveBomb(x, y);
                             }
                             _map.AddBomb(x, y, type);
-                            _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Dynamite"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Bomb"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             });
                             _bombLayer.AttachChild(_bombNodes[(x, y)]);

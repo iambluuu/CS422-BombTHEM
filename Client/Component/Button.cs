@@ -95,12 +95,6 @@ namespace Client.Component {
         public int ShadowSize { get; set; } = 4;
         public Color ShadowColor { get; set; } = new Color(0, 0, 0, 60);
 
-        public Button() {
-            IsFocused = false;
-            IsVisible = true;
-            IsEnabled = true;
-        }
-
         // Override MeasureContentWidth for SizeMode.WrapContent
         protected override float MeasureContentWidth() {
             MeasureTextIfNeeded();
@@ -248,6 +242,12 @@ namespace Client.Component {
         }
 
         private void DrawButtonBackground(SpriteBatch spriteBatch) {
+            if (!IsEnabled) {
+                _state = StateOfButton.Disabled;
+            } else if (_state == StateOfButton.Disabled) {
+                _state = StateOfButton.Normal;
+            }
+
             var texture = GetButtonTexture();
 
             if (texture.Width == 1 && texture.Height == 1) {
@@ -407,7 +407,6 @@ namespace Client.Component {
 
         public override void HandleInput(UIEvent uiEvent) {
             if (!IsEnabled) {
-                _state = StateOfButton.Disabled;
                 return;
             }
 

@@ -10,10 +10,14 @@ using Shared;
 namespace Client {
     public class LobbyScreen : GameScreen {
         private bool _isHost = false;
-        private string _currentName = String.Empty;
+        private string _currentName = string.Empty;
         private readonly int[] _playerIds = new int[4];
+        private ImageView _crownIcon;
+        private readonly bool[] _inGames = new bool[4];
         private readonly TextBox[] _playerNames = new TextBox[4];
         private readonly Button[] _kickButtons = new Button[4];
+        private readonly ImageView[] _inGameIcons = new ImageView[4];
+        private readonly ImageView[] _blankIcons = new ImageView[4];
         private TextView _roomIdText;
         private Button _addBotButton;
         private Button _startButton;
@@ -80,20 +84,47 @@ namespace Client {
                     AllowedCharacters = CharacterSet.Alphanumeric | CharacterSet.Underscore,
                     Text = "",
                     PlaceholderText = $"Waiting...",
-                    TextColor = (i == 0) ? Color.Red : Color.Black,
+                    TextColor = Color.Black,
                     MaxLength = 10,
                     Gravity = Gravity.Center,
                 };
                 playerLayout.AddComponent(_playerNames[i]);
 
-                int index = i;
-                _kickButtons[i] = new Button() {
+                if (i == 0) {
+                    _crownIcon = new ImageView() {
+                        Width = 80,
+                        HeightMode = SizeMode.MatchParent,
+                        Texture = TextureHolder.Get("Item/Crown"),
+                        ScaleType = ScaleType.FitCenter,
+                    };
+                    playerLayout.AddComponent(_crownIcon);
+                } else {
+                    int index = i;
+                    _kickButtons[i] = new Button() {
+                        Width = 80,
+                        HeightMode = SizeMode.MatchParent,
+                        Text = "X",
+                        OnClick = () => KickPlayer(index),
+                        IsEnabled = false,
+                    };
+                    playerLayout.AddComponent(_kickButtons[i]);
+
+                    _blankIcons[i] = new ImageView() {
+                        Width = 80,
+                        HeightMode = SizeMode.MatchParent,
+                        Texture = TextureHolder.Get("Other/Blank"),
+                        ScaleType = ScaleType.FitCenter,
+                    };
+                    playerLayout.AddComponent(_blankIcons[i]);
+                }
+
+                _inGameIcons[i] = new ImageView() {
                     Width = 80,
                     HeightMode = SizeMode.MatchParent,
-                    Text = "X",
-                    OnClick = () => KickPlayer(index),
+                    Texture = TextureHolder.Get("Item/Bomb"),
+                    ScaleType = ScaleType.FitCenter,
                 };
-                playerLayout.AddComponent(_kickButtons[i]);
+                playerLayout.AddComponent(_inGameIcons[i]);
             }
 
             _addBotButton = new Button() {
@@ -141,7 +172,7 @@ namespace Client {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 1,
                 AllowedCharacters = CharacterSet.Alphanumeric | CharacterSet.Whitespace | CharacterSet.Dot,
-                Text = "Waiting for host to start game...",
+                Text = "",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 IsVisible = false,
@@ -155,11 +186,20 @@ namespace Client {
 
             for (int i = 0; i < _playerIds.Length; i++) {
                 _playerIds[i] = -1;
+                _inGames[i] = false;
             }
         }
 
         public override void Activate() {
             base.Activate();
+
+            for (int i = 0; i < 4; i++) {
+                _playerIds[i] = -1;
+                _playerNames[i].Text = "";
+                _playerNames[i].PlaceholderText = "Waiting...";
+                _inGames[i] = false;
+            }
+
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetRoomInfo));
         }
 
@@ -187,16 +227,31 @@ namespace Client {
         }
 
         private void ResetPermissions() {
-            for (int i = 0; i < _kickButtons.Length; i++) {
-                _kickButtons[i].IsVisible = _isHost;
+            _crownIcon.IsVisible = !_inGames[0];
+            _inGameIcons[0].IsVisible = _inGames[0];
+            for (int i = 1; i < 4; i++) {
+                _kickButtons[i].IsVisible = !_inGames[i] && _isHost;
+                _kickButtons[i].IsEnabled = _isHost && _playerIds[i] != -1;
+                _inGameIcons[i].IsVisible = _inGames[i];
+                _blankIcons[i].IsVisible = !_inGames[i] && !_isHost;
             }
 
             _addBotButton.IsVisible = _isHost;
             _startButton.IsVisible = _isHost;
             _waitText.IsVisible = !_isHost;
 
-            for (int i = 0; i < _playerNames.Length; i++) {
+            bool anyInGame = false;
+            for (int i = 0; i < 4; i++) {
                 _playerNames[i].IsReadOnly = _playerIds[i] != NetworkManager.Instance.ClientId;
+                anyInGame |= _inGames[i];
+            }
+
+            if (anyInGame) {
+                _waitText.Text = "Waiting for players to finish...";
+                _startButton.IsEnabled = false;
+            } else {
+                _waitText.Text = "Waiting for host to start game...";
+                _startButton.IsEnabled = true;
             }
         }
 
@@ -210,24 +265,25 @@ namespace Client {
                         string[] usernames = message.Data["usernames"].Split(';');
                         int hostId = int.Parse(message.Data["hostId"]);
                         _isHost = bool.Parse(message.Data["isHost"]);
+                        bool[] inGames = Array.ConvertAll(message.Data["inGames"].Split(';'), bool.Parse);
 
                         for (int i = 0; i < playerIds.Length; i++) {
                             _playerIds[i] = playerIds[i];
-                            if (i < playerIds.Length) {
-                                _playerNames[i].Text = usernames[i];
-                                _playerNames[i].PlaceholderText = "";
-                            }
+                            _playerNames[i].Text = usernames[i];
+                            _playerNames[i].PlaceholderText = "";
+                            _inGames[i] = inGames[i];
 
                             if (playerIds[i] == NetworkManager.Instance.ClientId) {
                                 _currentName = usernames[i];
                             }
                         }
 
-                        for (int i = 0; i < _playerIds.Length; i++) {
+                        for (int i = 0; i < 4; i++) {
                             if (_playerIds[i] == hostId) {
                                 (_playerIds[0], _playerIds[i]) = (_playerIds[i], _playerIds[0]);
                                 (_playerNames[0].Text, _playerNames[i].Text) = (_playerNames[i].Text, _playerNames[0].Text);
                                 (_playerNames[0].PlaceholderText, _playerNames[i].PlaceholderText) = (_playerNames[i].PlaceholderText, _playerNames[0].PlaceholderText);
+                                (_inGames[0], _inGames[i]) = (_inGames[i], _inGames[0]);
                             }
                         }
 
@@ -242,7 +298,7 @@ namespace Client {
                             return;
                         }
 
-                        for (int i = 0; i < _playerIds.Length; i++) {
+                        for (int i = 0; i < 4; i++) {
                             if (_playerIds[i] == playerId) {
                                 _playerNames[i].Text = username;
                                 break;
@@ -257,7 +313,7 @@ namespace Client {
                 case ServerMessageType.PlayerJoined: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         string username = message.Data["username"];
-                        for (int i = 0; i < _playerIds.Length; i++) {
+                        for (int i = 0; i < 4; i++) {
                             if (_playerIds[i] == -1) {
                                 _playerIds[i] = playerId;
                                 _playerNames[i].Text = username;
@@ -265,27 +321,46 @@ namespace Client {
                                 break;
                             }
                         }
+
+                        ResetPermissions();
                     }
                     break;
                 case ServerMessageType.PlayerLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
-                        for (int i = 0; i < _playerNames.Length; i++) {
+                        for (int i = 0; i < 4; i++) {
                             if (playerId == _playerIds[i]) {
                                 _playerIds[i] = -1;
                                 _playerNames[i].Text = "";
                                 _playerNames[i].PlaceholderText = "Waiting...";
+                                _kickButtons[i].IsEnabled = false;
                                 break;
                             }
                         }
 
-                        for (int i = 0; i < _playerIds.Length - 1; i++) {
+                        for (int i = 0; i < 3; i++) {
                             if (_playerIds[i] == -1 && _playerIds[i + 1] != -1) {
                                 _playerIds[i] = _playerIds[i + 1];
                                 _playerNames[i].Text = _playerNames[i + 1].Text;
                                 _playerNames[i].PlaceholderText = _playerNames[i + 1].PlaceholderText;
+                                _inGames[i] = _inGames[i + 1];
                                 _playerIds[i + 1] = -1;
                                 _playerNames[i + 1].Text = "";
                                 _playerNames[i + 1].PlaceholderText = "Waiting...";
+                                _kickButtons[i + 1].IsEnabled = false;
+                                _inGames[i + 1] = false;
+                            }
+                        }
+
+                        ResetPermissions();
+                    }
+                    break;
+                case ServerMessageType.GameLeaved: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+
+                        for (int i = 0; i < 4; i++) {
+                            if (playerId == _playerIds[i]) {
+                                _inGames[i] = false;
+                                break;
                             }
                         }
 
@@ -300,7 +375,7 @@ namespace Client {
                             _isHost = false;
                         }
 
-                        for (int i = 0; i < _playerIds.Length; i++) {
+                        for (int i = 0; i < 4; i++) {
                             if (_playerIds[i] == newHostId) {
                                 (_playerIds[0], _playerIds[i]) = (_playerIds[i], _playerIds[0]);
                                 (_playerNames[0].Text, _playerNames[i].Text) = (_playerNames[i].Text, _playerNames[0].Text);
@@ -324,6 +399,8 @@ namespace Client {
 
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
+
+            _addBotButton.IsEnabled = _playerIds[3] == -1;
 
             TextBox myUsernameBox = null;
             for (int i = 0; i < _playerNames.Length; i++) {

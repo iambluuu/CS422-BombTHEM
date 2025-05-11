@@ -55,14 +55,9 @@ namespace Client {
             base.Draw(gameTime, spriteBatch);
         }
 
-        private void NavigateToMainMenu() {
-            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
-            ScreenManager.Instance.NavigateToRoot();
-        }
-
         private void Rematch() {
-            // Maybe send a rematch request to the server here?
-            // ScreenManager.Instance.NavigateBackTo(ScreenName.LobbyScreen);
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
+            ScreenManager.Instance.NavigateBackTo(ScreenName.LobbyScreen);
         }
 
         public override void HandleResponse(NetworkMessage message) {
@@ -86,7 +81,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error joining room: {message.Data["message"]}");
+                        Console.WriteLine($"Error: {message.Data["message"]}");
                     }
                     break;
             }
@@ -162,7 +157,7 @@ namespace Client {
             var rematchButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
-                Text = "Rematch",
+                Text = "Back to Lobby",
                 TextColor = Color.White,
                 OnClick = Rematch,
                 PaddingTop = 10,
