@@ -6,16 +6,19 @@ using System.Collections.Generic;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Text.Json;
+
 
 using Shared;
 using Client.Component;
+using Client.PowerUps;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
         private readonly object _lock = new();
 
         private SceneNode _sceneGraph;
-        private SceneNode _mapLayer, _bombLayer, _playerLayer;
+        private SceneNode _mapLayer, _bombLayer, _playerLayer, _itemLayer, _vfxLayer;
 
         private readonly TextNode _pingText = new("Ping: ?ms");
 
@@ -25,10 +28,12 @@ namespace Client {
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
         private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
+        private readonly Dictionary<(int, int), ItemNode> _itemNodes = [];
         private Dictionary<int, int> _skinMapping = [];
 
         private LinearLayout _sidebar;
         private Scoreboard _scoreboard;
+        private PowerSlot _powerSlot;
 
         public MainGameScreen() { }
 
@@ -39,7 +44,8 @@ namespace Client {
                 Spacing = 0,
             };
 
-            _sidebar.AddComponent(new PowerSlot(), weight: 2);
+            _powerSlot = new PowerSlot();
+            _sidebar.AddComponent(_powerSlot, weight: 2);
             _sidebar.AddComponent(new Button() {
                 Text = "Leave Game",
                 OnClick = () => {
@@ -52,10 +58,14 @@ namespace Client {
             _sceneGraph = new SceneNode();
             _mapLayer = new SceneNode();
             _bombLayer = new SceneNode();
+            _itemLayer = new SceneNode();
             _playerLayer = new SceneNode();
+            _vfxLayer = new SceneNode();
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_bombLayer);
+            _sceneGraph.AttachChild(_itemLayer);
             _sceneGraph.AttachChild(_playerLayer);
+            _sceneGraph.AttachChild(_vfxLayer);
             _sceneGraph.AttachChild(_pingText);
 
             _sceneGraph.Position = new Vector2(240, 0);
@@ -108,7 +118,7 @@ namespace Client {
                         int y = int.Parse(message.Data["y"]);
                         Direction direction = Enum.Parse<Direction>(message.Data["d"]);
 
-                        if (x != _map.PlayerPositions[playerId].X || y != _map.PlayerPositions[playerId].Y) {
+                        if (x != _map.PlayerInfos[playerId].Position.X || y != _map.PlayerInfos[playerId].Position.Y) {
                             lock (_lock) {
                                 _map.SetPlayerPosition(playerId, x, y);
                                 _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
@@ -119,7 +129,7 @@ namespace Client {
                 case ServerMessageType.PlayerLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         lock (_lock) {
-                            _map.PlayerPositions.Remove(playerId);
+                            _map.PlayerInfos.Remove(playerId);
                             if (_playerNodes.ContainsKey(playerId)) {
                                 _playerLayer.DetachChild(_playerNodes[playerId]);
                                 _playerNodes.Remove(playerId);
@@ -193,6 +203,70 @@ namespace Client {
                         });
                     }
                     break;
+
+                case ServerMessageType.PowerUpUsed: {
+                        string powerUpType = message.Data["powerUpType"];
+                        Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
+                        parameters["vfxLayer"] = _vfxLayer;
+                        parameters["playerNodes"] = _playerNodes;
+                        parameters["map"] = _map;
+                        PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
+                        lock (_lock) {
+                            powerUp.Apply(parameters);
+                        }
+                    }
+                    break;
+
+                case ServerMessageType.PowerUpSpawned: {
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        lock (_lock) {
+                            ItemNode itemNode = new ItemNode(powerUpType) {
+                                Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE),
+                            };
+                            _map.AddItem(x, y, powerUpType);
+                            _itemNodes.Add((x, y), itemNode);
+                            _itemLayer.AttachChild(itemNode);
+                        }
+                    }
+                    break;
+
+                case ServerMessageType.PowerUpPickedUp: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        lock (_lock) {
+                            _map.RemoveItem(x, y);
+                            _map.PlayerInfos[playerId].PickUpItem(powerUpType);
+                            _itemLayer.DetachChild(_itemNodes[(x, y)]);
+                            _itemNodes.Remove((x, y));
+                            if (playerId == NetworkManager.Instance.ClientId) {
+                                _powerSlot.ObtainPower(powerUpType);
+                            }
+                        }
+                    }
+                    break;
+                case ServerMessageType.PowerUpExpired: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        lock (_lock) {
+                            PowerUp powerUp = PowerUpFactory.GetPowerUp(powerType);
+                            powerUp.Remove(_playerNodes[playerId]);
+                        }
+                    }
+                    break;
+                case ServerMessageType.ItemExpired: {
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        lock (_lock) {
+                            _map.RemoveItem(x, y);
+                            _itemLayer.DetachChild(_itemNodes[(x, y)]);
+                            _itemNodes.Remove((x, y));
+                        }
+                    }
+                    break;
             }
         }
 
@@ -254,7 +328,7 @@ namespace Client {
             }
 
             int playerId = NetworkManager.Instance.ClientId;
-            if (_map == null || !_map.PlayerPositions.ContainsKey(playerId) || !_playerNodes.ContainsKey(playerId)) {
+            if (_map == null || !_map.PlayerInfos.ContainsKey(playerId) || !_playerNodes.ContainsKey(playerId)) {
                 return;
             }
 
@@ -281,8 +355,8 @@ namespace Client {
 
                 if (direction != Direction.None) {
                     _map.MovePlayer(playerId, direction);
-                    int x = _map.PlayerPositions[playerId].X;
-                    int y = _map.PlayerPositions[playerId].Y;
+                    int x = _map.PlayerInfos[playerId].Position.X;
+                    int y = _map.PlayerInfos[playerId].Position.Y;
                     _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
                     NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
                         { "direction", direction.ToString() }
@@ -334,6 +408,10 @@ namespace Client {
                         }));
                     }
                 }
+            }
+
+            if (key.IsKeyDown(Keys.E) || key.IsKeyDown(Keys.Q)) {
+                _powerSlot.UsePower(key.IsKeyDown(Keys.E) ? 'E' : 'Q');
             }
         }
 

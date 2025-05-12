@@ -7,21 +7,12 @@ using System;
 using System.Collections.Generic;
 
 namespace Client.Component {
-    public enum PowerName {
-        None,
-        Ghost,
-        RandomBomb,
-        InstantBomb,
-        Shield,
-        Teleport,
-    }
-
     public class PowerSlot : IComponent {
         private const int Padding = 25; // surrounding padding
         private const int Spacing = 10; // spacing between entries
 
         // Nine-slice texture size
-        private static readonly Vector2 CornerSize = new Vector2(5, 5);
+        private static readonly Vector2 CornerSize = new Vector2(6, 6);
         private static readonly Rectangle TextureSize = new(0, 0, 16, 16); // Assuming the texture is 16x16 pixels
 
         private Color _textColor = Color.White;
@@ -30,7 +21,7 @@ namespace Client.Component {
         private readonly Texture2D _borderTexture;
         private readonly SpriteFont _font;
 
-        private PowerName[] _powers = new PowerName[2] { PowerName.Shield, PowerName.InstantBomb };
+        private PowerName[] _powers = { PowerName.None, PowerName.None };
 
         public PowerSlot() {
             _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
@@ -47,13 +38,23 @@ namespace Client.Component {
             }
         }
 
-        public void UsePower(int index) {
+        public void UsePower(char key) {
+            int index = key switch {
+                'Q' => 0,
+                'E' => 1,
+                _ => -1,
+            };
+
             if (index < 0 || index >= _powers.Length) {
                 throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
             }
 
+            // Console.WriteLine($"Using power: {_powers[index]}");
+
             if (_powers[index] != PowerName.None) {
-                // Use the power here (e.g., apply its effect)
+                NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
+                    { "powerUpType", _powers[index].ToString() },
+                }));
                 _powers[index] = PowerName.None; // Remove the power after use
             }
         }
@@ -102,14 +103,7 @@ namespace Client.Component {
         }
 
         private Texture2D GetPowerTexture(PowerName power) {
-            return power switch {
-                PowerName.Ghost => TextureHolder.Get("Texture/Power/ghost"),
-                PowerName.RandomBomb => TextureHolder.Get("Texture/Power/random_bomb"),
-                PowerName.Shield => TextureHolder.Get("Texture/Power/shield"),
-                PowerName.Teleport => TextureHolder.Get("Texture/Power/teleport"),
-                PowerName.InstantBomb => TextureHolder.Get("Texture/Power/instant_bomb"),
-                _ => TextureHolder.Get("Texture/Power/none"),
-            };
+            return TextureHolder.Get($"Texture/Power/{power}");
         }
 
         private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {
