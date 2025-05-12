@@ -1,7 +1,10 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Server.PowerHandler;
 using Shared;
 
 namespace Server {
@@ -70,10 +73,13 @@ namespace Server {
             public Dictionary<int, Position> InitialPositions { get; set; } = [];
             public Dictionary<int, int> PlayerScores { get; set; } = [];
             public Dictionary<int, DateTime> PlayerLastDied { get; set; } = [];
-            public readonly int GameDuration = 300;
             public bool GameStarted { get; set; } = false;
             public Thread? BombThread { get; set; } = null;
             public CancellationTokenSource? BombCts { get; set; } = null;
+            public Thread? ItemThread { get; set; } = null;
+            public CancellationTokenSource? ItemCts { get; set; } = null;
+            public Thread? PowerUpThread { get; set; } = null;
+            public CancellationTokenSource? PowerUpCts { get; set; } = null;
             public System.Timers.Timer? GameTimer { get; set; } = null;
             public bool Closed { get; set; } = false;
 
@@ -92,6 +98,10 @@ namespace Server {
                 GameStarted = false;
                 BombThread = null;
                 BombCts = null;
+                ItemThread = null;
+                ItemCts = null;
+                PowerUpThread = null;
+                PowerUpCts = null;
                 GameTimer = null;
             }
 
@@ -100,15 +110,18 @@ namespace Server {
             }
 
             public void RemovePlayer(int playerId) {
+                Console.WriteLine($"Removing player {playerId} from room {RoomId}");
                 PlayerIds.Remove(playerId);
+                Console.WriteLine("AMOGUS");
                 if (!GameStarted) {
-                    Map?.PlayerPositions.Remove(playerId);
+                    Map?.PlayerInfos.Remove(playerId);
                 }
             }
 
             public void StopGame() {
                 BombCts?.Cancel();
-                BombThread?.Join();
+                ItemCts?.Cancel();
+                PowerUpCts?.Cancel();
                 GameTimer?.Stop();
                 GameTimer?.Dispose();
             }
@@ -151,11 +164,13 @@ namespace Server {
                     clientHandler.Thread.Start();
 
                     clientHandler.AliveTimer = new System.Timers.Timer(10000) {
-                        Enabled = true
+                        Enabled = true,
+                        AutoReset = false
                     };
                     clientHandler.AliveTimer.Elapsed += (sender, e) => {
                         Console.WriteLine($"Client {playerId} is inactive, disconnecting...");
                         DisconnectPlayer(clientHandler);
+                        Console.WriteLine($"Client {playerId} disconnected due to inactivity");
                     };
                     clientHandler.AliveTimer.Start();
                 } catch (Exception ex) {
@@ -584,6 +599,9 @@ namespace Server {
                             }
 
                             room.ClearData();
+
+                            room.GameStarted = true;
+
                             room.Map = GenerateRandomMap();
 
                             room.BombCts = new CancellationTokenSource();
@@ -592,15 +610,25 @@ namespace Server {
                             };
                             room.BombThread.Start();
 
-                            room.GameTimer = new System.Timers.Timer(room.GameDuration * 1000) {
+                            room.ItemCts = new CancellationTokenSource();
+                            room.ItemThread = new Thread(() => ProcessDroppedItems(roomId!)) {
+                                IsBackground = true
+                            };
+                            room.ItemThread.Start();
+
+                            room.PowerUpCts = new CancellationTokenSource();
+                            room.PowerUpThread = new Thread(() => ProcessActivePowerUps(roomId!)) {
+                                IsBackground = true
+                            };
+                            room.PowerUpThread.Start();
+
+                            room.GameTimer = new System.Timers.Timer(GameplayConfig.GameDuration * 1000) {
                                 Enabled = true
                             };
                             room.GameTimer.Elapsed += (sender, e) => {
                                 StopGame(roomId!);
                             };
                             room.GameTimer.Start();
-
-                            room.GameStarted = true;
 
                             for (int i = 0; i < room.PlayerIds.Count; i++) {
                                 int pid = room.PlayerIds[i];
@@ -666,11 +694,11 @@ namespace Server {
                             if (_rooms.TryGetValue(roomId!, out GameRoom? room)) {
                                 SendToClient(playerId, NetworkMessage.From(ServerMessageType.GameInfo, new() {
                                     { "map", room.Map.ToString() },
-                                    { "duration", room.GameDuration.ToString() },
+                                    { "duration", GameplayConfig.GameDuration.ToString() },
                                     { "playerCount", room.PlayerIds.Count.ToString() },
                                     { "playerIds", string.Join(";", room.PlayerIds) },
                                     { "usernames", string.Join(";", room.PlayerIds.Select(id => _idToPlayer[id].Username)) },
-                                    { "playerPositions", string.Join(";", room.Map.PlayerPositions.Select(p => new Position(p.Value.X, p.Value.Y).ToString())) },
+                                    { "playerPositions", string.Join(";", room.Map.PlayerInfos.Select(p => new Position(p.Value.Position.X, p.Value.Position.Y).ToString())) },
                                 }));
                             }
                         }
@@ -682,13 +710,24 @@ namespace Server {
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
                             room.Map.MovePlayer(playerId, direction);
+                            Position playerPos = room.Map.GetPlayerPosition(playerId);
 
                             BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PlayerMoved, new() {
                                 { "playerId", playerId.ToString() },
-                                { "x", room.Map.GetPlayerPosition(playerId).X.ToString() },
-                                { "y", room.Map.GetPlayerPosition(playerId).Y.ToString() },
+                                { "x", playerPos.X.ToString() },
+                                { "y", playerPos.Y.ToString() },
                                 { "d", direction.ToString() }
                             }));
+
+                            PowerName pickedItem = room.Map.PickUpItem(playerId, playerPos.X, playerPos.Y);
+                            if (pickedItem != PowerName.None) {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpPickedUp, new() {
+                                    { "playerId", playerId.ToString() },
+                                    { "x", playerPos.X.ToString() },
+                                    { "y", playerPos.Y.ToString() },
+                                    { "powerUpType", pickedItem.ToString() }
+                                }));
+                            }
                         }
                     }
                     break;
@@ -726,6 +765,24 @@ namespace Server {
                         }
                     }
                     break;
+
+                case ClientMessageType.UsePowerUp: {
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        lock (_roomLocks[roomId!]) {
+                            if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
+                            var powerUpHandler = PowerUpHandlerFactory.CreatePowerUpHandler(powerUpType);
+                            var responseParams = powerUpHandler?.Apply(room.Map, playerId);
+                            if (responseParams != null) {
+                                Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
+                                Console.WriteLine($"Need to change: {responseParams["needToChange"]}");
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                    { "powerUpType", powerUpType.ToString() },
+                                    { "parameters", JsonSerializer.Serialize(responseParams) },
+                                }));
+                            }
+                        }
+                    }
+                    break;
             }
         }
 
@@ -737,22 +794,25 @@ namespace Server {
                 }
             }
 
-            while (room.BombCts != null && !room.BombCts.Token.IsCancellationRequested) {
+            while (room.GameStarted && !room.Closed && !room.BombCts!.Token.IsCancellationRequested) {
                 try {
                     lock (_roomLocks[roomId]) {
-                        if (room.Closed) {
-                            return;
-                        }
-
                         List<Bomb> explodedBombs = [];
                         foreach (var bomb in room.Map.Bombs) {
-                            if ((DateTime.Now - bomb.PlaceTime).TotalMilliseconds >= 2000) {
+                            if ((DateTime.Now - bomb.PlaceTime).TotalMilliseconds >= GameplayConfig.BombDuration) {
                                 explodedBombs.Add(bomb);
                             }
                         }
 
+                        HashSet<Position> explosionPositions = new();
+                        Random rand = new Random();
                         foreach (var bomb in explodedBombs) {
                             room.Map.ExplodeBomb(bomb.Position.X, bomb.Position.Y);
+                            foreach (var pos in bomb.ExplosionPositions) {
+                                if (room.Map.GetTile(pos.X, pos.Y) == TileType.Grass) {
+                                    explosionPositions.Add(pos);
+                                }
+                            }
 
                             BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.BombExploded, new() {
                                 { "x", bomb.Position.X.ToString() },
@@ -766,6 +826,20 @@ namespace Server {
 
                             room.Map.Bombs.Remove(bomb);
                         }
+
+                        foreach (var pos in explosionPositions) {
+                            room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
+                            if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
+                                // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
+                                PowerName powerUpType = PowerName.Shield;
+                                room.Map.AddItem(pos.X, pos.Y, powerUpType);
+                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
+                                    { "x", pos.X.ToString() },
+                                    { "y", pos.Y.ToString() },
+                                    { "powerUpType", powerUpType.ToString() }
+                                }));
+                            }
+                        }
                     }
                 } catch (Exception ex) {
                     Console.WriteLine($"Error processing bombs for room {roomId}: {ex.Message}");
@@ -775,10 +849,83 @@ namespace Server {
             }
         }
 
+        private void ProcessDroppedItems(string roomId) {
+            GameRoom? room;
+            lock (_roomLocks[roomId]) {
+                if (!_rooms.TryGetValue(roomId, out room) || !room.GameStarted) {
+                    return;
+                }
+            }
+
+            while (room.GameStarted && !room.Closed && !room.ItemCts!.Token.IsCancellationRequested) {
+                try {
+                    lock (_roomLocks[roomId]) {
+                        List<DroppedItem> expiredItems = [];
+                        foreach (var item in room.Map.Items) {
+                            if ((DateTime.Now - item.DropTime).TotalMilliseconds >= GameplayConfig.ItemExistDuration) {
+                                expiredItems.Add(item);
+                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.ItemExpired, new() {
+                                    { "x", item.Position.X.ToString() },
+                                    { "y", item.Position.Y.ToString() }
+                                }));
+                            }
+                        }
+
+                        foreach (var item in expiredItems) {
+                            room.Map.RemoveItem(item.Position.X, item.Position.Y);
+                        }
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine($"Error processing dropped items for room {roomId}: {ex.Message}");
+                }
+
+                Thread.Sleep(100);
+            }
+        }
+
+        private void ProcessActivePowerUps(string roomId) {
+            GameRoom? room;
+            lock (_roomLocks[roomId]) {
+                if (!_rooms.TryGetValue(roomId, out room) || !room.GameStarted) {
+                    return;
+                }
+            }
+
+            while (room.GameStarted && !room.Closed && !room.PowerUpCts!.Token.IsCancellationRequested) {
+                try {
+                    lock (_roomLocks[roomId]) {
+                        List<(int playerId, PowerName powerType)> expiredPowerUps = [];
+                        foreach (var player in room.Map.PlayerInfos) {
+                            int playerId = player.Key;
+                            PlayerIngameInfo playerInfo = player.Value;
+                            foreach (var powerUp in playerInfo.ActivePowerUps) {
+                                if ((DateTime.Now - powerUp.StartTime).TotalMilliseconds >= GameplayConfig.PowerUpDuration) {
+                                    expiredPowerUps.Add((playerId, powerUp.PowerType));
+                                    BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpExpired, new() {
+                                        { "playerId", playerId.ToString() },
+                                        { "powerUpType", powerUp.PowerType.ToString() }
+                                    }));
+                                }
+                            }
+
+                            foreach (var powerUp in expiredPowerUps) {
+                                room.Map.PlayerInfos[powerUp.playerId].ExpireActivePowerUp(powerUp.powerType);
+                            }
+                        }
+
+                    }
+                } catch (Exception ex) {
+                    Console.WriteLine($"Error processing active power-ups for room {roomId}: {ex.Message}");
+                }
+
+                Thread.Sleep(100);
+            }
+        }
+
         private void CheckForPlayersInExplosion(GameRoom room, int x, int y, int bombPlayerId) {
-            foreach (var player in room.Map.PlayerPositions) {
-                Position playerPos = player.Value;
-                if (bombPlayerId == player.Key) {
+            foreach (var player in room.Map.PlayerInfos) {
+                Position playerPos = player.Value.Position;
+                if (bombPlayerId == player.Key || player.Value.HasPowerUp(PowerName.Shield)) {
                     continue;
                 }
 
@@ -824,7 +971,6 @@ namespace Server {
         private void BroadcastToRoom(string roomId, NetworkMessage message) {
             lock (_lock) {
                 if (!_rooms.TryGetValue(roomId, out GameRoom? room)) return;
-
                 foreach (var playerId in room.PlayerIds) {
                     SendToClient(playerId, message);
                 }
@@ -883,6 +1029,8 @@ namespace Server {
         }
 
         private void RemovePlayerFromRoom(PlayerHandler handler) {
+            Console.WriteLine($"Removing player {handler.PlayerId} from room");
+
             if (handler == null || handler.RoomId == null) {
                 return;
             }
