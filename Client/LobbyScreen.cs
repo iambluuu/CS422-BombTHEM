@@ -150,8 +150,11 @@ namespace Client {
             var copyRoomIdButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
-                Text = "Copy Room ID",
-                OnClick = () => ClipboardService.SetText(_roomIdText.Text.Replace("Room ", "")),
+                Text = "Copy Code",
+                OnClick = () => {
+                    ClipboardService.SetText(_roomIdText.Text.Replace("Room ", ""));
+                    ToastManager.Instance.ShowToast("Room code copied");
+                },
             };
             rightLayout.AddComponent(copyRoomIdButton);
 
@@ -175,7 +178,6 @@ namespace Client {
             _waitText = new TextBox() {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 1,
-                AllowedCharacters = CharacterSet.Alphanumeric | CharacterSet.Whitespace | CharacterSet.Dot,
                 Text = "",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
@@ -325,6 +327,7 @@ namespace Client {
                     break;
                 case ServerMessageType.PlayerKicked: {
                         ScreenManager.Instance.NavigateBack();
+                        ToastManager.Instance.ShowToast("You have been kicked");
                     }
                     break;
                 case ServerMessageType.PlayerJoined: {
@@ -401,6 +404,10 @@ namespace Client {
                         }
 
                         ResetPermissions();
+
+                        if (_isHost) {
+                            ToastManager.Instance.ShowToast("You are now the host");
+                        }
                     }
                     break;
                 case ServerMessageType.GameStarted: {
@@ -408,7 +415,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error: {message.Data["message"]}");
+                        ToastManager.Instance.ShowToast(message.Data["message"]);
                     }
                     break;
             }

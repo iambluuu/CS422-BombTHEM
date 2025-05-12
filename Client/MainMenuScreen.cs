@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework.Input;
 
 using Client.Component;
 using Shared;
-using Microsoft.VisualBasic.Devices;
 
 namespace Client {
     public class MainMenuScreen : GameScreen {
@@ -154,6 +153,7 @@ namespace Client {
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetUsername));
             } else {
                 _connectLayout.IsVisible = true;
+                _connectButton.Text = "Connect";
                 _connectButton.IsEnabled = true;
                 _mainLayout.IsVisible = false;
                 _currentName = string.Empty;
@@ -162,6 +162,7 @@ namespace Client {
 
         private void Connect() {
             _connectButton.IsEnabled = false;
+            _connectButton.Text = "Connecting...";
             NetworkManager.Instance.Connect(_addressBox.Text, int.Parse(_portBox.Text));
         }
 
@@ -177,9 +178,11 @@ namespace Client {
                     break;
                 case ServerMessageType.NotConnected: {
                         _connectLayout.IsVisible = true;
+                        _connectButton.Text = "Connect";
                         _connectButton.IsEnabled = true;
                         _mainLayout.IsVisible = false;
                         _currentName = string.Empty;
+                        ToastManager.Instance.ShowToast("Failed to connect");
                     }
                     break;
                 case ServerMessageType.ClientId: {
@@ -187,6 +190,7 @@ namespace Client {
                         _connectButton.IsEnabled = false;
                         _mainLayout.IsVisible = true;
                         NetworkManager.Instance.ClientId = int.Parse(message.Data["clientId"]);
+                        ToastManager.Instance.ShowToast($"Connected to server");
                     }
                     break;
                 case ServerMessageType.UsernameSet: {
@@ -196,10 +200,6 @@ namespace Client {
                     break;
                 case ServerMessageType.RoomCreated: {
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
-                    }
-                    break;
-                case ServerMessageType.Error: {
-                        Console.WriteLine($"Error: {message.Data["message"]}");
                     }
                     break;
             }

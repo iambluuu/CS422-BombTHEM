@@ -24,7 +24,7 @@ namespace Client {
             var mainBox = new ContainerBox() {
                 LayoutOrientation = Orientation.Vertical,
                 HeightMode = SizeMode.WrapContent,
-                Width = 500,
+                Width = 600,
                 Spacing = 20,
             };
 
@@ -79,7 +79,7 @@ namespace Client {
                     {"roomId", roomId }
                 }));
             } else {
-                Console.WriteLine("Invalid room code. Please enter a 6-character code");
+                ToastManager.Instance.ShowToast("Code length must be 6");
             }
         }
 
@@ -96,7 +96,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error: {message.Data["message"]}");
+                        ToastManager.Instance.ShowToast(message.Data["message"]);
                     }
                     break;
             }

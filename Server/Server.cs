@@ -110,9 +110,7 @@ namespace Server {
             }
 
             public void RemovePlayer(int playerId) {
-                Console.WriteLine($"Removing player {playerId} from room {RoomId}");
                 PlayerIds.Remove(playerId);
-                Console.WriteLine("AMOGUS");
                 if (!GameStarted) {
                     Map?.PlayerInfos.Remove(playerId);
                 }
@@ -170,7 +168,6 @@ namespace Server {
                     clientHandler.AliveTimer.Elapsed += (sender, e) => {
                         Console.WriteLine($"Client {playerId} is inactive, disconnecting...");
                         DisconnectPlayer(clientHandler);
-                        Console.WriteLine($"Client {playerId} disconnected due to inactivity");
                     };
                     clientHandler.AliveTimer.Start();
                 } catch (Exception ex) {

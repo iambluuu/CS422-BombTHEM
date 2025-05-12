@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using Shared;
-using SharpDX.Direct3D9;
 using TextCopy;
 
 namespace Client.Component {
@@ -20,6 +18,7 @@ namespace Client.Component {
         Underscore = 0x80,
 
         Alphanumeric = Alpha | Numeric,
+        All = -1,
     }
 
     public class TextBox : IComponent {
@@ -28,8 +27,8 @@ namespace Client.Component {
         private const string TextureDir = "Theme/";
 
         private readonly List<char> _allowedCharacters = [];
-        private CharacterSet _allowedCharactersSet;
-        public required CharacterSet AllowedCharacters {
+        private CharacterSet _allowedCharactersSet = CharacterSet.All;
+        public CharacterSet AllowedCharacters {
             private get => _allowedCharactersSet;
             set {
                 _allowedCharactersSet = value;
@@ -69,7 +68,6 @@ namespace Client.Component {
             }
         }
 
-        // Text properties
         private string _text = string.Empty;
         private string InternalText {
             get => _text;
@@ -90,6 +88,7 @@ namespace Client.Component {
                 _caretPosition = InternalText.Length;
             }
         }
+
         public string PlaceholderText { get; set; } = string.Empty;
         public int MaxLength { get; set; } = 100;
         public bool IsMultiline { get; set; } = false;
@@ -97,23 +96,18 @@ namespace Client.Component {
         public bool IsReadOnly { get; set; } = false;
         public readonly bool HasBackground = true;
         public bool IsUppercase { get; set; } = false;
-
-        // Added text truncation properties (from TextView)
         public TruncateAt TruncateAt { get; set; } = TruncateAt.None;
         public int MaxLines { get; set; } = int.MaxValue;
         public bool SingleLine {
             get => MaxLines == 1;
             set => MaxLines = value ? 1 : int.MaxValue;
         }
-
-        // Appearance properties
         public Color TextColor { get; set; } = Color.Black;
         public Color PlaceholderColor { get; set; } = Color.Gray;
         public Color BackgroundColor { get; set; } = Color.White;
         public Color BorderColor { get; set; } = Color.Black;
         public int BorderWidth { get; set; } = 0;
 
-        // Font properties - added from TextView
         private float _textSize = 1.0f;
         public float TextSize {
             get => _textSize;
@@ -124,8 +118,6 @@ namespace Client.Component {
                 }
             }
         }
-
-        // Line spacing (similar to TextView)
         private float _lineSpacingMultiplier = 1.0f;
         public float LineSpacingMultiplier {
             get => _lineSpacingMultiplier;
@@ -147,34 +139,25 @@ namespace Client.Component {
                 }
             }
         }
-
-        // Use gravity for positioning (from TextView)
         public Gravity Gravity { get; set; } = Gravity.CenterLeft;
-
-        // Caret properties
-        private const int CaretBlinkRate = 1000; // milliseconds
+        private const int CaretBlinkRate = 1000;
         private double _caretBlinkTimer = 0;
-        public Color CaretColor { get; set; } = Color.Black;
         public int CaretWidth { get; set; } = 5;
-        private int _caretPosition = 0; // Tracks the cursor position within the text
-
-        // Font and texture
+        private int _caretPosition = 0;
         public SpriteFont Font { get; set; } = FontHolder.Get("PressStart2P");
         public Texture2D Texture { get; set; } = null!;
-
-        // Text layout properties (from TextView)
         private List<string> _lines = new List<string>();
         private bool _needsTextLayout = true;
         private float _contentWidth = 0;
         private float _contentHeight = 0;
-
-        // Tracking original character positions for caret positioning
         private List<int> _lineStartPositions = new List<int>();
-
-        // Ellipsis character
         private const string ELLIPSIS = "...";
 
         private string filterText(string text) {
+            if (_allowedCharactersSet == CharacterSet.All) {
+                return text;
+            }
+
             string filteredText = string.Empty;
             foreach (char c in text) {
                 if (_allowedCharacters.Contains(c)) {
@@ -241,17 +224,14 @@ namespace Client.Component {
                 } else if (uiEvent.Key == Keys.End) {
                     _caretPosition = InternalText.Length;
                 } else if (uiEvent.Key == Keys.Enter && IsMultiline && _allowedCharacters.Contains('\n')) {
-                    // Add newline if multiline
                     if (InternalText.Length < MaxLength) {
                         InternalText = InternalText.Insert(_caretPosition, "\n");
                         _caretPosition++;
                         _needsTextLayout = true;
                     }
                 } else if (uiEvent.Key == Keys.Enter && (!IsMultiline || !_allowedCharacters.Contains('\n'))) {
-                    // Handle Enter key for non-multiline text box
                     IsFocused = false;
                 } else if (uiEvent.Key == Keys.Tab) {
-                    // Handle Tab key for focus change
                     IsFocused = false;
                 }
 
@@ -261,8 +241,6 @@ namespace Client.Component {
 
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
-
-            // Layout text if needed
             if (_needsTextLayout) {
                 LayoutText();
             }
@@ -277,8 +255,6 @@ namespace Client.Component {
 
         public override void Draw(SpriteBatch spriteBatch) {
             if (!IsVisible) return;
-
-            // Draw background
             if (HasBackground) {
                 Texture2D texture = GetTexture();
                 if (texture != null) {
@@ -289,24 +265,17 @@ namespace Client.Component {
                     spriteBatch.Draw(texture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y), BackgroundColor);
                 }
             }
-
-            // Draw border
             if (BorderWidth > 0) {
                 var borderTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
                 borderTexture.SetData(new[] { BorderColor });
 
-                spriteBatch.Draw(borderTexture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, BorderWidth), BorderColor); // Top border
-                spriteBatch.Draw(borderTexture, new Rectangle((int)Position.X, (int)(Position.Y + Size.Y - BorderWidth), (int)Size.X, BorderWidth), BorderColor); // Bottom border
-                spriteBatch.Draw(borderTexture, new Rectangle((int)Position.X, (int)Position.Y, BorderWidth, (int)Size.Y), BorderColor); // Left border
-                spriteBatch.Draw(borderTexture, new Rectangle((int)(Position.X + Size.X - BorderWidth), (int)Position.Y, BorderWidth, (int)Size.Y), BorderColor); // Right border
+                spriteBatch.Draw(borderTexture, new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, BorderWidth), BorderColor);
+                spriteBatch.Draw(borderTexture, new Rectangle((int)Position.X, (int)(Position.Y + Size.Y - BorderWidth), (int)Size.X, BorderWidth), BorderColor);
+                spriteBatch.Draw(borderTexture, new Rectangle((int)Position.X, (int)Position.Y, BorderWidth, (int)Size.Y), BorderColor);
+                spriteBatch.Draw(borderTexture, new Rectangle((int)(Position.X + Size.X - BorderWidth), (int)Position.Y, BorderWidth, (int)Size.Y), BorderColor);
             }
-
-            // Calculate line height for both text and caret
             float lineHeight = CalculateLineHeight();
-
-            // Check if text is empty or if we should show placeholder
             if (string.IsNullOrEmpty(InternalText) && (!IsFocused || IsReadOnly) && !string.IsNullOrEmpty(PlaceholderText)) {
-                // Draw placeholder text
                 Vector2 textPosition = CalculateTextPosition(Font.MeasureString(PlaceholderText) * TextSize);
                 spriteBatch.DrawString(
                     Font,
@@ -317,30 +286,19 @@ namespace Client.Component {
                     SpriteEffects.None, 0f
                 );
             } else if (_lines.Count > 0) {
-                // Draw actual text (wrapped/laid out)
                 float startY = Position.Y + PaddingTop;
                 float totalTextHeight = _lines.Count * lineHeight;
-
-                // Calculate vertical positioning based on gravity
                 if ((Gravity & Gravity.Bottom) != 0) {
                     startY = Position.Y + Size.Y - totalTextHeight - PaddingBottom;
                 } else if ((Gravity & Gravity.CenterVertical) != 0) {
                     startY = Position.Y + (Size.Y - totalTextHeight) / 2;
                 }
-
-                // Find which line the caret is on
                 int caretLine = 0;
                 int caretLinePosition = 0;
-
-                // Find which line and position the caret should be at
                 LocateCaretPosition(out caretLine, out caretLinePosition);
-
-                // Draw each line
                 for (int i = 0; i < _lines.Count; i++) {
                     string line = _lines[i];
                     string displayLine = IsPassword ? new string('*', line.Length) : line;
-
-                    // Calculate horizontal positioning based on gravity
                     float lineWidth = Font.MeasureString(displayLine).X * TextSize;
                     float lineX = Position.X + PaddingLeft;
 
@@ -352,8 +310,6 @@ namespace Client.Component {
 
                     float lineY = startY + i * lineHeight;
                     Vector2 linePosition = new Vector2(lineX, lineY);
-
-                    // Draw the line
                     spriteBatch.DrawString(
                         Font,
                         displayLine,
@@ -362,10 +318,7 @@ namespace Client.Component {
                         0f, Vector2.Zero, TextSize,
                         SpriteEffects.None, 0f
                     );
-
-                    // Draw caret if on this line
                     if (i == caretLine && IsFocused && !IsReadOnly && _caretBlinkTimer < CaretBlinkRate / 2) {
-                        // Calculate caret position on this line
                         string textBeforeCaret = IsPassword
                             ? new string('*', caretLinePosition)
                             : displayLine.Substring(0, Math.Min(caretLinePosition, displayLine.Length));
@@ -377,7 +330,7 @@ namespace Client.Component {
                         );
 
                         var caretTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
-                        caretTexture.SetData(new[] { CaretColor });
+                        caretTexture.SetData(new[] { TextColor });
                         spriteBatch.Draw(
                             caretTexture,
                             new Rectangle(
@@ -386,14 +339,12 @@ namespace Client.Component {
                                 CaretWidth,
                                 (int)(Font.LineSpacing * TextSize)
                             ),
-                            CaretColor * Opacity
+                            TextColor * Opacity
                         );
                     }
                 }
             }
         }
-
-        // Helper method to locate which line and position the caret is at
         private void LocateCaretPosition(out int line, out int positionInLine) {
             line = 0;
             positionInLine = 0;
@@ -401,8 +352,6 @@ namespace Client.Component {
             if (_lineStartPositions.Count == 0 || _caretPosition == 0) {
                 return;
             }
-
-            // Find which line contains the caret
             for (int i = 1; i < _lineStartPositions.Count; i++) {
                 if (_caretPosition < _lineStartPositions[i]) {
                     line = i - 1;
@@ -410,8 +359,6 @@ namespace Client.Component {
                     return;
                 }
             }
-
-            // If we get here, the caret is on the last line
             line = _lineStartPositions.Count - 1;
             positionInLine = _caretPosition - _lineStartPositions[line];
         }
@@ -420,15 +367,11 @@ namespace Client.Component {
             Vector2 position = Position + new Vector2(PaddingLeft, PaddingTop);
             float availableWidth = Size.X - PaddingLeft - PaddingRight;
             float availableHeight = Size.Y - PaddingTop - PaddingBottom;
-
-            // Apply horizontal gravity
             if ((Gravity & Gravity.Right) != 0) {
                 position.X = Position.X + Size.X - textSize.X - PaddingRight;
             } else if ((Gravity & Gravity.CenterHorizontal) != 0) {
                 position.X = Position.X + (Size.X - textSize.X) / 2;
             }
-
-            // Apply vertical gravity
             if ((Gravity & Gravity.Bottom) != 0) {
                 position.Y = Position.Y + Size.Y - textSize.Y - PaddingBottom;
             } else if ((Gravity & Gravity.CenterVertical) != 0) {
@@ -437,19 +380,13 @@ namespace Client.Component {
 
             return position;
         }
-
-        // Override MeasureContentWidth for SizeMode.WrapContent
         protected override float MeasureContentWidth() {
             if (string.IsNullOrEmpty(InternalText) && string.IsNullOrEmpty(PlaceholderText))
                 return PaddingLeft + PaddingRight;
 
             if (_needsTextLayout) LayoutText();
-
-            // Use the maximum line width for width calculation
             return _contentWidth + PaddingLeft + PaddingRight;
         }
-
-        // Override MeasureContentHeight for SizeMode.WrapContent
         protected override float MeasureContentHeight() {
             if (_needsTextLayout) LayoutText();
 
@@ -458,20 +395,16 @@ namespace Client.Component {
             if (SingleLine || _lines.Count == 0) {
                 return lineHeight + PaddingTop + PaddingBottom;
             }
-
-            // For multiple lines, calculate total height
             return _lines.Count * lineHeight + PaddingTop + PaddingBottom;
         }
 
         private float CalculateLineHeight() {
             return Font.LineSpacing * TextSize * LineSpacingMultiplier + LineSpacingExtra;
         }
-
-        // Layout the text when properties change or width constraints change
         private void LayoutText() {
             _lines.Clear();
             _lineStartPositions.Clear();
-            _lineStartPositions.Add(0); // First line always starts at position 0
+            _lineStartPositions.Add(0);
 
             if (string.IsNullOrEmpty(InternalText) && string.IsNullOrEmpty(PlaceholderText)) {
                 _lines.Add(string.Empty);
@@ -483,11 +416,8 @@ namespace Client.Component {
 
             float availableWidth = Size.X - PaddingLeft - PaddingRight;
             if (availableWidth <= 0) availableWidth = float.MaxValue;
-
-            // Handle case where automatic text wrapping should occur
             if (IsMultiline && TruncateAt == TruncateAt.None && !SingleLine) {
-                // Split into paragraphs by explicit newlines
-                string[] paragraphs = InternalText.Split(new[] { '\n', '\r' }, StringSplitOptions.None); // Use None to preserve empty lines
+                string[] paragraphs = InternalText.Split(new[] { '\n', '\r' }, StringSplitOptions.None);
                 int runningPosition = 0;
 
                 foreach (string paragraph in paragraphs) {
@@ -495,25 +425,22 @@ namespace Client.Component {
 
                     if (string.IsNullOrEmpty(paragraph)) {
                         _lines.Add(string.Empty);
-                        runningPosition++; // Count the newline
+                        runningPosition++;
                         if (_lines.Count < MaxLines) {
                             _lineStartPositions.Add(runningPosition);
                         }
                     } else if (availableWidth == float.MaxValue) {
-                        // No width constraint
                         _lines.Add(paragraph);
-                        runningPosition += paragraph.Length + 1; // +1 for the newline
+                        runningPosition += paragraph.Length + 1;
                         if (_lines.Count < MaxLines) {
                             _lineStartPositions.Add(runningPosition);
                         }
                     } else {
-                        // Word wrap based on available width
                         int paraStartPos = runningPosition;
                         WrapParagraph(paragraph, availableWidth / TextSize, paraStartPos, ref runningPosition);
                     }
                 }
             } else {
-                // Handle single line or truncation cases
                 if (SingleLine || !IsMultiline) {
                     string line = InternalText;
                     if (TruncateAt != TruncateAt.None) {
@@ -521,7 +448,6 @@ namespace Client.Component {
                     }
                     _lines.Add(line);
                 } else {
-                    // Just split by explicit newlines, without word wrapping
                     string[] paragraphs = InternalText.Split(new[] { '\n', '\r' }, StringSplitOptions.None);
                     int runningPosition = 0;
 
@@ -529,13 +455,11 @@ namespace Client.Component {
                         if (_lines.Count >= MaxLines) break;
 
                         _lines.Add(paragraph);
-                        runningPosition += paragraph.Length + 1; // +1 for the newline
+                        runningPosition += paragraph.Length + 1;
                         if (_lines.Count < MaxLines) {
                             _lineStartPositions.Add(runningPosition);
                         }
                     }
-
-                    // Apply truncation if needed
                     if (TruncateAt != TruncateAt.None) {
                         for (int i = 0; i < _lines.Count; i++) {
                             _lines[i] = TruncateText(_lines[i], availableWidth / TextSize);
@@ -543,8 +467,6 @@ namespace Client.Component {
                     }
                 }
             }
-
-            // Calculate content dimensions
             _contentWidth = 0;
             foreach (var line in _lines) {
                 _contentWidth = Math.Max(_contentWidth, Font.MeasureString(line).X * TextSize);
@@ -557,7 +479,7 @@ namespace Client.Component {
         private void WrapParagraph(string paragraph, float maxLineWidth, int startPos, ref int runningPosition) {
             if (string.IsNullOrEmpty(paragraph)) {
                 _lines.Add(string.Empty);
-                runningPosition++; // Count the newline
+                runningPosition++;
                 if (_lines.Count < MaxLines) {
                     _lineStartPositions.Add(runningPosition);
                 }
@@ -577,10 +499,9 @@ namespace Client.Component {
                 } else {
                     _lines.Add(currentLine);
                     int lineLength = currentLine.Length;
-                    runningPosition = currentLineStartPos + lineLength + 1; // +1 for the space that will be removed in the next line
+                    runningPosition = currentLineStartPos + lineLength + 1;
 
                     if (_lines.Count >= MaxLines) {
-                        // Apply ellipsis to the last line if needed
                         if (TruncateAt == TruncateAt.End && _lines.Count > 0) {
                             string lastLine = _lines[_lines.Count - 1];
                             _lines[_lines.Count - 1] = TruncateText(lastLine, maxLineWidth);
@@ -596,7 +517,7 @@ namespace Client.Component {
 
             if (currentLine.Length > 0) {
                 _lines.Add(currentLine);
-                runningPosition = currentLineStartPos + currentLine.Length + 1; // +1 for the implicit newline
+                runningPosition = currentLineStartPos + currentLine.Length + 1;
                 if (_lines.Count < MaxLines) {
                     _lineStartPositions.Add(runningPosition);
                 }
@@ -614,7 +535,6 @@ namespace Client.Component {
                 case TruncateAt.End:
                     return TruncateEnd(text, maxWidth);
                 case TruncateAt.Marquee:
-                    // Marquee would require animation, for now just truncate at end
                     return TruncateEnd(text, maxWidth);
                 default:
                     return text;
@@ -714,12 +634,10 @@ namespace Client.Component {
             spriteBatch.Draw(texture, dstMiddleRight, srcMiddleRight, Color.White);
         }
 
-        // Method to force text layout to be recalculated
         public void RequestLayout() {
             _needsTextLayout = true;
         }
 
-        // Method to get current content width and height
         public float GetTextWidth() {
             if (_needsTextLayout) LayoutText();
             return _contentWidth;
@@ -730,7 +648,6 @@ namespace Client.Component {
             return _contentHeight;
         }
 
-        // Override to ensure text layout updates when size changes
         public override Vector2 Size {
             get => base.Size;
             set {
@@ -741,7 +658,6 @@ namespace Client.Component {
             }
         }
 
-        // Auto-size the TextBox based on its content
         public void AutoSize(bool horizontal = false, bool vertical = true) {
             if (_needsTextLayout) LayoutText();
 

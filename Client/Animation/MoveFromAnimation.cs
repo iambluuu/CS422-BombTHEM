@@ -18,7 +18,7 @@ namespace Client.Animation {
             _startPosition = start;
             _duration = duration;
             _easingFunction = easingFunction ?? Easing.Linear;
-            _isFinished = true; // Animation is not started yet
+            _isFinished = true;
         }
 
         public void OnStart(IComponent component) {

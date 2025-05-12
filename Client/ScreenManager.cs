@@ -39,14 +39,13 @@ namespace Client {
         }
 
         public override void Update(GameTime gameTime) {
-            // Copy screens to a temporary list to avoid modification issues during update
             var screens = screenStack.ToArray();
             int index = 0;
             for (int i = 0; i < screens.Length; i++) {
                 var screen = screens[i];
                 if (screen.IsExclusive) {
                     index = i;
-                    break; // Stop updating if the screen is exclusive
+                    break;
                 }
             }
 
@@ -68,7 +67,7 @@ namespace Client {
                 var screen = screens[i];
                 if (screen.IsExclusive) {
                     index = i;
-                    break; // Stop drawing if the screen is exclusive
+                    break;
                 }
             }
 
@@ -80,26 +79,13 @@ namespace Client {
             }
             spriteBatch.End();
         }
-
-        // Navigate to a screen using an enum
         public void NavigateTo(ScreenName screenType, bool isOverlay = false, Dictionary<string, object> parameters = null) {
             GameScreen screen;
-
-            // Check if screen exists in cache
-            // if (screenCache.ContainsKey(screenType)) {
-            //     screen = screenCache[screenType];
-            // } else {
-            // Create new screen based on enum type
             screen = CreateScreen(screenType);
             screenCache[screenType] = screen;
-            // }
-
-            // Set whether this screen should overlay or replace current screens
             screen.IsExclusive = !isOverlay;
             PushScreen(screen, parameters);
         }
-
-        // Create screen instance based on enum type
         private GameScreen CreateScreen(ScreenName screenType) {
             switch (screenType) {
                 case ScreenName.MainMenu:
@@ -140,13 +126,10 @@ namespace Client {
         }
 
         private void PushScreen(GameScreen screen, Dictionary<string, object> parameters = null) {
-            // Optionally deactivate the current top screen
             if (screenStack.Count > 0) {
                 var currentScreen = screenStack.Peek();
                 currentScreen.Deactivate();
             }
-
-            // Only initialize if it's a new screen
             if (!screen.IsInitialized) {
                 screen.ScreenManager = this;
                 screen.LoadContent();
@@ -163,19 +146,12 @@ namespace Client {
                 var screen = screenStack.Pop();
                 screen.Deactivate();
                 screen.IsVisible = false;
-
-                // Don't unload content if the screen is cached
-                // Content will be unloaded when the game exits or explicitly
-
-                // Reactivate the new top screen if there is one
                 if (screenStack.Count > 0) {
                     var currentScreen = screenStack.Peek();
                     currentScreen.Activate();
                 }
             }
         }
-
-        // Call this when exiting the game or when you need to free up memory
         public void UnloadScreen(ScreenName screenType) {
             if (screenCache.TryGetValue(screenType, out GameScreen screen)) {
                 screen.UnloadContent();
@@ -202,7 +178,7 @@ namespace Client {
         private MouseState previousMouseState;
 
         public ScreenManager ScreenManager { get; set; }
-        public bool IsExclusive { get; set; } = false; // If true, screens below won't be visible/active
+        public bool IsExclusive { get; set; } = false;
         public bool IsVisible { get; set; } = true;
         public bool IsActive { get; set; } = true;
         public bool IsFocused { get; set; } = true;
@@ -252,26 +228,18 @@ namespace Client {
 
             if (IsFocused) {
                 bool ctrlHeld = keyboardState.IsKeyDown(Keys.LeftControl) || keyboardState.IsKeyDown(Keys.RightControl);
-
-                // Handle mouse movement
                 if (mouseState.Position != previousMouseState.Position) {
                     UIEvent mouseMoveEvent = new UIEvent(UIEventType.MouseMove, mousePosition: mouseState.Position);
                     uiManager.DispatchEvent(mouseMoveEvent);
                 }
-
-                // Handle mouse button up
                 if (mouseState.LeftButton == ButtonState.Released && previousMouseState.LeftButton == ButtonState.Pressed) {
                     UIEvent clickEvent = new UIEvent(UIEventType.MouseUp, mousePosition: mouseState.Position);
                     uiManager.DispatchEvent(clickEvent);
                 }
-
-                // Handle mouse button down
                 if (mouseState.LeftButton == ButtonState.Pressed && previousMouseState.LeftButton == ButtonState.Released) {
                     UIEvent mouseDownEvent = new UIEvent(UIEventType.MouseDown, mousePosition: mouseState.Position);
                     uiManager.DispatchEvent(mouseDownEvent);
                 }
-
-                // Handle key presses (new keys this frame)
                 Keys[] currentKeys = keyboardState.GetPressedKeys();
                 Keys[] previousKeys = previousKeyboardState.GetPressedKeys();
 
@@ -282,17 +250,13 @@ namespace Client {
                     }
                 }
             }
-
-            // Update UI components
             uiManager.Update(gameTime);
-
-            // Update previous states
+            ToastManager.Instance.Update(gameTime);
             previousMouseState = mouseState;
             previousKeyboardState = keyboardState;
         }
 
         private void DispatchTextInput(object sender, TextInputEventArgs e) {
-            // Handle text input event
             UIEvent textInputEvent = new(UIEventType.TextInput, character: e.Character);
             uiManager.DispatchEvent(textInputEvent);
         }
@@ -300,6 +264,7 @@ namespace Client {
         public virtual void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             if (!IsVisible) return;
             uiManager.Draw(spriteBatch);
+            ToastManager.Instance.Draw(spriteBatch);
         }
     }
 }
