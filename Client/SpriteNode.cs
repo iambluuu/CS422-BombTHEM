@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace Client {
     public class SpriteNode : SceneNode {
+        
         protected Texture2D _texture;
         protected Vector2 _origin;
         protected Vector2 _size;

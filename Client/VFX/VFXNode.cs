@@ -14,7 +14,7 @@ namespace Client {
         private float _elapsedFrameTime;
         private float _elapsedTime;
 
-        public VFXNode(Texture2D texture, Vector2 size, int frameCount, float frameTime = 0.1f, float duration = 1f, bool isLooping = true, bool isInfinite = false) : base(texture, size) {
+        public VFXNode(Texture2D texture, Vector2 size, int frameCount, float frameTime = 0.1f, float duration = 1f, bool isLooping = false, bool isInfinite = false) : base(texture, size) {
             _frameTime = frameTime;
             _elapsedFrameTime = 0f;
             _currentFrame = 0;
