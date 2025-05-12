@@ -12,8 +12,10 @@ namespace Server.PowerHandler {
 
             // if already active, renew time and signal the client not to change anything
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
+                Console.WriteLine($"Active power: {activePowerUp.PowerType}");
                 if (activePowerUp.PowerType == PowerName.Shield) {
                     activePowerUp.StartTime = DateTime.Now;
+                    Console.WriteLine($"Renewed shield for player {playerId}");
                     return new Dictionary<string, object> {
                         { "playerId", playerId },
                         { "needToChange", false }

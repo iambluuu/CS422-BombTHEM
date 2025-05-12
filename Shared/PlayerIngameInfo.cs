@@ -33,7 +33,6 @@ namespace Server {
         }
 
         public bool UsePowerUp(PowerName powerUp) {
-            Console.WriteLine($"Slots: {_powerUps[0]}, {_powerUps[1]}");
             for (int i = 0; i < _powerUps.Length; i++) {
                 if (_powerUps[i] == powerUp) {
                     _powerUps[i] = PowerName.None;

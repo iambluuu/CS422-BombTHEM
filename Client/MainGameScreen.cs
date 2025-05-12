@@ -210,7 +210,7 @@ namespace Client {
                         parameters["vfxLayer"] = _vfxLayer;
                         parameters["playerNodes"] = _playerNodes;
                         parameters["map"] = _map;
-                        PowerUp powerUp = PowerUpFactory.CreatePowerUp(Enum.Parse<PowerName>(powerUpType));
+                        PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
                         lock (_lock) {
                             powerUp.Apply(parameters);
                         }
@@ -245,6 +245,15 @@ namespace Client {
                             if (playerId == NetworkManager.Instance.ClientId) {
                                 _powerSlot.ObtainPower(powerUpType);
                             }
+                        }
+                    }
+                    break;
+                case ServerMessageType.PowerUpExpired: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        lock (_lock) {
+                            PowerUp powerUp = PowerUpFactory.GetPowerUp(powerType);
+                            powerUp.Remove(_playerNodes[playerId]);
                         }
                     }
                     break;

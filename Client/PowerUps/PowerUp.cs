@@ -4,6 +4,17 @@ using Shared;
 
 namespace Client.PowerUps {
     public static class PowerUpFactory {
+        private static readonly Dictionary<PowerName, PowerUp> _powerUps = new();
+        public static PowerUp GetPowerUp(PowerName type) {
+            if (_powerUps.TryGetValue(type, out var powerUp)) {
+                return powerUp;
+            }
+
+            powerUp = CreatePowerUp(type);
+            _powerUps[type] = powerUp;
+            return powerUp;
+        }
+
         public static PowerUp CreatePowerUp(PowerName type) {
             return type switch {
                 // PowerName.Ghost => new (),

@@ -147,7 +147,9 @@ namespace Client {
                         }
                     }
                 } catch (Exception ex) {
-                    Console.WriteLine($"Error processing message: {ex.Message}");
+                    NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+
+                    Console.WriteLine($"Error processing message {messageObj.Type.Name}: {ex.Message}");
                 }
                 processedPosition = delimiterIndex + 1;
             }
