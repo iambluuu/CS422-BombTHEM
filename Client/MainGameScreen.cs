@@ -131,7 +131,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.PlayerLeft:
-                case ServerMessageType.GameLeaved: {
+                case ServerMessageType.GameLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         lock (_lock) {
                             _map.PlayerPositions.Remove(playerId);

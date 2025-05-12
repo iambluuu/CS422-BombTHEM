@@ -70,7 +70,7 @@ namespace Server {
             public Dictionary<int, Position> InitialPositions { get; set; } = [];
             public Dictionary<int, int> PlayerScores { get; set; } = [];
             public Dictionary<int, DateTime> PlayerLastDied { get; set; } = [];
-            public readonly int GameDuration = 5;
+            public readonly int GameDuration = 300;
             public bool GameStarted { get; set; } = false;
             public Thread? BombThread { get; set; } = null;
             public CancellationTokenSource? BombCts { get; set; } = null;
@@ -634,7 +634,7 @@ namespace Server {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
 
                             _idToPlayer[playerId].InGame = false;
-                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeaved, new() {
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeft, new() {
                                 { "playerId", playerId.ToString() }
                             }));
 
@@ -647,11 +647,12 @@ namespace Server {
                             }
 
                             if (allClientsLeft) {
+                                StopGame(roomId!);
                                 foreach (var pid in room.PlayerIds) {
                                     if (IsBot(pid)) {
                                         BotHandler bot = (BotHandler)_idToPlayer[pid];
                                         bot.InGame = false;
-                                        BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeaved, new() {
+                                        BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeft, new() {
                                             { "playerId", pid.ToString() }
                                         }));
                                     }
@@ -800,6 +801,10 @@ namespace Server {
         private void StopGame(string roomId) {
             _rooms.TryGetValue(roomId, out GameRoom? room);
             if (room == null) {
+                return;
+            }
+
+            if (room.GameStarted == false) {
                 return;
             }
 

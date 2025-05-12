@@ -41,7 +41,7 @@ namespace Shared {
         PlayerKicked,
         GameStarted,
         GameStopped,
-        GameLeaved,
+        GameLeft,
         NewHost,
         PlayerLeft,
         GameInfo,

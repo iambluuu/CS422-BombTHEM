@@ -106,6 +106,7 @@ namespace Client {
                         Text = "X",
                         OnClick = () => KickPlayer(index),
                         IsEnabled = false,
+                        IsVisible = false,
                     };
                     playerLayout.AddComponent(_kickButtons[i]);
 
@@ -123,6 +124,7 @@ namespace Client {
                     HeightMode = SizeMode.MatchParent,
                     Texture = TextureHolder.Get("Item/Bomb"),
                     ScaleType = ScaleType.FitCenter,
+                    IsVisible = false,
                 };
                 playerLayout.AddComponent(_inGameIcons[i]);
             }
@@ -132,6 +134,7 @@ namespace Client {
                 Height = 80,
                 Text = "Add Bot",
                 OnClick = AddBot,
+                IsVisible = false,
             };
             leftLayout.AddComponent(_addBotButton);
 
@@ -165,6 +168,7 @@ namespace Client {
                 Weight = 1,
                 Text = "Start Game",
                 OnClick = StartGame,
+                IsVisible = false,
             };
             rightLayout.AddComponent(_startButton);
 
@@ -175,7 +179,7 @@ namespace Client {
                 Text = "",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
-                IsVisible = false,
+                IsVisible = true,
                 IsReadOnly = true,
                 IsMultiline = true,
                 Padding = 20,
@@ -199,6 +203,18 @@ namespace Client {
                 _playerNames[i].PlaceholderText = "Waiting...";
                 _inGames[i] = false;
             }
+
+            _crownIcon.IsVisible = true;
+            _inGameIcons[0].IsVisible = false;
+            for (int i = 1; i < 4; i++) {
+                _kickButtons[i].IsVisible = false;
+                _kickButtons[i].IsEnabled = false;
+                _inGameIcons[i].IsVisible = false;
+                _blankIcons[i].IsVisible = true;
+            }
+
+            _startButton.IsVisible = false;
+            _waitText.IsVisible = true;
 
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetRoomInfo));
         }
@@ -354,7 +370,7 @@ namespace Client {
                         ResetPermissions();
                     }
                     break;
-                case ServerMessageType.GameLeaved: {
+                case ServerMessageType.GameLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
 
                         for (int i = 0; i < 4; i++) {
