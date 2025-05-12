@@ -21,6 +21,7 @@ namespace Client {
         private event Action<NetworkMessage> Handlers;
 
         private DateTime _lastPing;
+        private bool _pingReceived = true;
         private System.Timers.Timer _pingTimer;
 
         private byte[] _receiveBuffer = new byte[4096];
@@ -78,8 +79,11 @@ namespace Client {
                     Enabled = true
                 };
                 _pingTimer.Elapsed += (sender, e) => {
-                    _lastPing = DateTime.Now;
-                    Send(NetworkMessage.From(ClientMessageType.Ping));
+                    if (_pingReceived) {
+                        _lastPing = DateTime.Now;
+                        Send(NetworkMessage.From(ClientMessageType.Ping));
+                        _pingReceived = false;
+                    }
                 };
                 _pingTimer.Start();
 
@@ -148,12 +152,15 @@ namespace Client {
                 string messageString = Encoding.UTF8.GetString(messageData);
 
                 try {
+                    // Console.WriteLine($"Received message from server: {messageString}");
+
                     NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
 
                     if (messageObj.Type.Direction != MessageDirection.Server) {
                         Console.WriteLine("The received message must be from the server side");
                     } else {
                         if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
+                            _pingReceived = true;
                             DateTime now = DateTime.Now;
                             Ping = (int)(now - _lastPing).TotalMilliseconds;
                             // Console.WriteLine($"Ping: {Ping} ms");
@@ -162,7 +169,9 @@ namespace Client {
                         }
                     }
                 } catch (Exception ex) {
-                    Console.WriteLine($"Error processing message: {ex.Message}");
+                    NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+
+                    Console.WriteLine($"Error processing message {messageObj.Type.Name}: {ex.Message}");
                 }
                 processedPosition = delimiterIndex + 1;
             }

@@ -246,10 +246,10 @@ namespace Client {
             _crownIcon.IsVisible = !_inGames[0];
             _inGameIcons[0].IsVisible = _inGames[0];
             for (int i = 1; i < 4; i++) {
-                _kickButtons[i].IsVisible = !_inGames[i] && _isHost;
+                _kickButtons[i].IsVisible = _playerIds[i] != -1 && !_inGames[i] && _isHost;
                 _kickButtons[i].IsEnabled = _isHost && _playerIds[i] != -1;
                 _inGameIcons[i].IsVisible = _inGames[i];
-                _blankIcons[i].IsVisible = !_inGames[i] && !_isHost;
+                _blankIcons[i].IsVisible = _playerIds[i] == -1 || (!_inGames[i] && !_isHost);
             }
 
             _addBotButton.IsVisible = _isHost;
@@ -259,6 +259,7 @@ namespace Client {
             bool anyInGame = false;
             for (int i = 0; i < 4; i++) {
                 _playerNames[i].IsReadOnly = _playerIds[i] != NetworkManager.Instance.ClientId;
+                _playerNames[i].TextColor = _playerIds[i] == NetworkManager.Instance.ClientId ? Color.Red : Color.Black;
                 anyInGame |= _inGames[i];
             }
 

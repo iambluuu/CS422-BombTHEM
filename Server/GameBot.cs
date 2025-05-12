@@ -41,7 +41,6 @@ namespace Server {
 
         public void Dispose() {
             _cts.Cancel();
-            // _thread.Join(); fuck this, fuck deadlock
         }
 
         private void Run() {
@@ -66,8 +65,8 @@ namespace Server {
 
                 if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(20) == 0 || movableDirections.Count == 0)) {
                     SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
-                        {"x", _map.PlayerPositions[BotId].X.ToString() },
-                        {"y", _map.PlayerPositions[BotId].Y.ToString() },
+                        {"x", _map.PlayerInfos[BotId].Position.X.ToString() },
+                        {"y", _map.PlayerInfos[BotId].Position.Y.ToString() },
                         {"type", BombType.Normal.ToString() },
                     }));
                 }
@@ -118,7 +117,7 @@ namespace Server {
                 case ServerMessageType.PlayerLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         if (_isGameStarted) {
-                            _map.PlayerPositions.Remove(playerId);
+                            _map.PlayerInfos.Remove(playerId);
                         }
                     }
                     break;
