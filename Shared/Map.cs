@@ -311,12 +311,8 @@ namespace Shared {
                         int newX = bomb.Position.X + direction.X * i;
                         int newY = bomb.Position.Y + direction.Y * i;
 
-                        if (IsInBounds(newX, newY)) {
-                            if (GetTile(newX, newY) == TileType.Empty || GetTile(newX, newY) == TileType.Grass) {
-                                bomb.ExplosionPositions.Add(new Position(newX, newY));
-                            } else {
-                                break;
-                            }
+                        if (IsInBounds(newX, newY) && (GetTile(newX, newY) == TileType.Empty || GetTile(newX, newY) == TileType.Grass)) {
+                            bomb.ExplosionPositions.Add(new Position(newX, newY));
                         } else {
                             break;
                         }
@@ -468,6 +464,17 @@ namespace Shared {
             }
 
             return map;
+        }
+
+        public Position GetSafePosition(int playerId) {
+            Position newPos = new Position(0, 0);
+            while (true) {
+                newPos.X = Utils.RandomInt(Height);
+                newPos.Y = Utils.RandomInt(Width);
+                if (IsInBounds(newPos.X, newPos.Y) && GetTile(newPos.X, newPos.Y) == TileType.Empty) {
+                    return newPos;
+                }
+            }
         }
     }
 }

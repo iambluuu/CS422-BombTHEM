@@ -6,6 +6,7 @@ namespace Server.PowerHandler {
         public static PowerUpHandler CreatePowerUpHandler(PowerName type) {
             return type switch {
                 // PowerName.Ghost => new (),
+                PowerName.Teleport => new TeleportHandler(),
                 PowerName.Shield => new ShieldHandler(),
                 _ => throw new ArgumentException($"Unknown power-up type: {type}")
             };
