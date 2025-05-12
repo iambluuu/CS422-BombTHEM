@@ -38,19 +38,35 @@ namespace Client {
         public MainGameScreen() { }
 
         public override void Initialize() {
-            _sidebar = new LinearLayout(LinearLayout.Orientation.Vertical, hasBackground: false, padding: 0) {
+            _sidebar = new LinearLayout() {
+                LayoutOrientation = Orientation.Vertical,
                 Position = new Vector2(0, 0),
-                Size = new Vector2(240, 720),
+                Width = 240,
+                Height = ScreenSize.Y,
                 Spacing = 0,
             };
 
-            _powerSlot = new PowerSlot();
-            _sidebar.AddComponent(_powerSlot, weight: 2);
+            _powerSlot = new PowerSlot() {
+                WidthMode = SizeMode.MatchParent,
+                Weight = 2,
+            };
+            _scoreboard = new Scoreboard() {
+                Position = new Vector2(0, 0),
+                Width = 240, /// ???
+                Height = ScreenSize.Y, /// ???
+                Weight = 6,
+            };
+
+            _sidebar.AddComponent(_scoreboard);
+            _sidebar.AddComponent(_powerSlot);
+
             _sidebar.AddComponent(new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
                 Text = "Leave Game",
                 OnClick = () => {
-                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
-                    ScreenManager.Instance.NavigateToRoot();
+                    NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
+                    ScreenManager.Instance.NavigateBack();
                 },
             });
             uiManager.AddComponent(_sidebar);
@@ -78,9 +94,12 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.GameInfo: {
                         _map = Map.FromString(message.Data["map"]);
+                        int duration = int.Parse(message.Data["duration"]);
                         int playerCount = int.Parse(message.Data["playerCount"]);
                         int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
                         string[] usernames = message.Data["usernames"].Split(';');
@@ -94,7 +113,7 @@ namespace Client {
                             int y = playerPositions[i].Y;
                             _map.SetPlayerPosition(playerId, x, y);
 
-                            PlayerNode playerNode = new(TextureHolder.Get($"Texture/Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            PlayerNode playerNode = new(TextureHolder.Get($"Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             };
 
@@ -104,12 +123,8 @@ namespace Client {
                             playerData.Add((playerId.ToString(), username, i));
                         }
 
-                        _scoreboard = new Scoreboard(playerData) {
-                            Position = new Vector2(0, 0),
-                            Size = new Vector2(240, Client.Instance.GraphicsDevice.Viewport.Height)
-                        };
-
-                        _sidebar.AddComponent(_scoreboard, 6, 0);
+                        _scoreboard.SetDuration(duration);
+                        _scoreboard.SetPlayerData(playerData);
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {
@@ -126,7 +141,8 @@ namespace Client {
                         }
                     }
                     break;
-                case ServerMessageType.PlayerLeft: {
+                case ServerMessageType.PlayerLeft:
+                case ServerMessageType.GameLeft: {
                         int playerId = int.Parse(message.Data["playerId"]);
                         lock (_lock) {
                             _map.PlayerInfos.Remove(playerId);
@@ -147,7 +163,7 @@ namespace Client {
                                 _map.RemoveBomb(x, y);
                             }
                             _map.AddBomb(x, y, type);
-                            _bombNodes.Add((x, y), new(TextureHolder.Get("Texture/Item/Dynamite"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Bomb"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             });
                             _bombLayer.AttachChild(_bombNodes[(x, y)]);
@@ -164,7 +180,7 @@ namespace Client {
                                 int ex = Position.FromString(pos).X;
                                 int ey = Position.FromString(pos).Y;
 
-                                _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Texture/Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                                _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                     Position = new Vector2(ey * TILE_SIZE, ex * TILE_SIZE)
                                 });
 
@@ -197,7 +213,6 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.GameStopped: {
-                        Console.WriteLine("Game stopped");
                         ScreenManager.Instance.NavigateTo(ScreenName.EndGameScreen, isOverlay: true, new(){
                             { "skinMapping", _skinMapping },
                         });
@@ -273,13 +288,13 @@ namespace Client {
         private void ProcessMap() {
             for (int i = 0; i < _map.Height; i++) {
                 for (int j = 0; j < _map.Width; j++) {
-                    SpriteNode cellSprite = new(TextureHolder.Get("Texture/Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                    SpriteNode cellSprite = new(TextureHolder.Get("Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
                         Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                     };
                     _mapLayer.AttachChild(cellSprite);
 
                     if (_map.GetTile(i, j) == TileType.Grass) {
-                        SpriteNode grassSprite = new(TextureHolder.Get("Texture/Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                        SpriteNode grassSprite = new(TextureHolder.Get("Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
                             Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                         };
 
@@ -305,7 +320,7 @@ namespace Client {
                     }
 
                     (int, int) p = BitmaskReferences.GetPosition(localArea);
-                    SpriteNode wallSprite = new(TextureHolder.Get("Texture/Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                    SpriteNode wallSprite = new(TextureHolder.Get("Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
                         Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
                     };
                     _mapLayer.AttachChild(wallSprite);
@@ -366,27 +381,21 @@ namespace Client {
 
             if (key.IsKeyDown(Keys.Space) || key.IsKeyDown(Keys.Enter)) {
                 var currentPos = _playerNodes[playerId].Position;
-                var nearestCell = GetNearestEmptyCell(currentPos.X, currentPos.Y);
-
-                Position GetNearestEmptyCell(float startX, float startY) {
-                    Position nearest = null;
-                    float minDistance = float.MaxValue;
-
-                    lock (_lock) {
-                        for (int i = 0; i < _map.Height; i++) {
-                            for (int j = 0; j < _map.Width; j++) {
-                                if (_map.GetTile(i, j) == TileType.Empty && !_map.HasBomb(i, j)) {
-                                    float distance = Math.Abs(startX - (j * TILE_SIZE)) + Math.Abs(startY - (i * TILE_SIZE));
-                                    if (distance < TILE_SIZE / 3 && distance < minDistance) {
-                                        minDistance = distance;
-                                        nearest = new Position(i, j);
-                                    }
+                var currentIdx = _map.PlayerInfos[playerId].Position;
+                Position nearestCell = null;
+                float minDistance = float.MaxValue;
+                lock (_lock) {
+                    for (int i = currentIdx.X - 2; i <= currentIdx.X + 2; i++) {
+                        for (int j = currentIdx.Y - 2; j <= currentIdx.Y + 2; j++) {
+                            if (_map.IsInBounds(i, j) && _map.GetTile(i, j) == TileType.Empty && !_map.HasBomb(i, j)) {
+                                float distance = Math.Abs(currentPos.Y - (i * TILE_SIZE)) + Math.Abs(currentPos.X - (j * TILE_SIZE));
+                                if (distance < TILE_SIZE / 3 && distance < minDistance) {
+                                    minDistance = distance;
+                                    nearestCell = new Position(i, j);
                                 }
                             }
                         }
                     }
-
-                    return nearest;
                 }
 
                 if (nearestCell != null) {

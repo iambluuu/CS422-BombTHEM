@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 namespace Client {
     public class TextNode : SceneNode {
         public string Text { get; set; }
-        public SpriteFont Font { get; set; } = FontHolder.Get("Font/PressStart2P");
+        public SpriteFont Font { get; set; } = FontHolder.Get("PressStart2P");
         public Color Color { get; set; } = Color.White;
 
         public TextNode(string text) {

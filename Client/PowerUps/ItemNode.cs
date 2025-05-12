@@ -14,7 +14,7 @@ namespace Client.PowerUps {
 
         public ItemNode(PowerName name) {
             // Constructor logic here
-            _texture = TextureHolder.Get($"Texture/Power/{name}");
+            _texture = TextureHolder.Get($"Power/{name}");
             _size = new Vector2(GameValues.TILE_SIZE * 0.7f, GameValues.TILE_SIZE * 0.7f);
         }
 

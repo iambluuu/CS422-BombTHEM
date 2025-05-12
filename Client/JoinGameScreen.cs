@@ -9,46 +9,71 @@ using Shared;
 
 namespace Client {
     public class JoinGameScreen : GameScreen {
-        private TextBox roomIdTextBox = null!;
+        private TextBox _roomIdBox;
 
         public override void Initialize() {
             base.Initialize();
 
-            var layout = new LinearLayout(LinearLayout.Orientation.Vertical, new List<IComponent>(), spacing: 30) {
-                Position = new Vector2(50, 50),
-                Size = new Vector2(300, 400),
-                Padding = new Padding(25),
+            var layout = new LinearLayout() {
+                LayoutOrientation = Orientation.Vertical,
+                Width = ScreenSize.X,
+                Height = ScreenSize.Y,
+                Gravity = Gravity.Center,
             };
-            roomIdTextBox = new TextBox() {
-                PlaceholderText = "Enter Room Code",
+
+            var mainBox = new ContainerBox() {
+                LayoutOrientation = Orientation.Vertical,
+                HeightMode = SizeMode.WrapContent,
+                Width = 500,
+                Spacing = 20,
+            };
+
+            var title = new TextView() {
+                WidthMode = SizeMode.MatchParent,
+                HeightMode = SizeMode.WrapContent,
+                Text = "Join Game",
+                TextSize = 2f,
+                TextColor = Color.White,
+                Gravity = Gravity.Center,
+                PaddingBottom = 20,
+            };
+
+            _roomIdBox = new TextBox() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
+                AllowedCharacters = CharacterSet.Alpha,
+                PlaceholderText = "Enter room ID",
+                TextColor = Color.Black,
+                Gravity = Gravity.Center,
                 MaxLength = 6,
-                TextAlignment = ContentAlignment.MiddleCenter,
                 IsUppercase = true,
             };
 
-            var connectButton = new Button() {
+            var joinButton = new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
                 Text = "Join",
-                Position = new Vector2(0, 0),
-                Size = new Vector2(100, 200),
                 OnClick = Connect,
             };
 
             var backButton = new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
                 Text = "Back",
-                Position = new Vector2(0, 0),
-                Size = new Vector2(100, 200),
-                OnClick = () => ScreenManager.Instance.NavigateBack(),
+                OnClick = ScreenManager.Instance.NavigateBack,
             };
 
-            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
-            layout.AddComponent(roomIdTextBox);
-            layout.AddComponent(connectButton);
-            layout.AddComponent(backButton);
-            uiManager.AddComponent(layout);
+            layout.AddComponent(mainBox);
+            mainBox.AddComponent(title);
+            mainBox.AddComponent(_roomIdBox);
+            mainBox.AddComponent(joinButton);
+            mainBox.AddComponent(backButton);
+
+            uiManager.AddComponent(layout, 0);
         }
 
         private void Connect() {
-            string roomId = roomIdTextBox.Text.ToUpperInvariant();
+            string roomId = _roomIdBox.Text.ToUpperInvariant();
             if (ValidateRoomCode(roomId)) {
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.JoinRoom, new() {
                     {"roomId", roomId }
@@ -63,6 +88,8 @@ namespace Client {
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);

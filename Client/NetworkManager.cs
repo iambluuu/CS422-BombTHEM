@@ -21,6 +21,7 @@ namespace Client {
         private event Action<NetworkMessage> Handlers;
 
         private DateTime _lastPing;
+        private bool _pingReceived = true;
         private System.Timers.Timer _pingTimer;
 
         private byte[] _receiveBuffer = new byte[4096];
@@ -42,38 +43,54 @@ namespace Client {
         }
 
         public int Ping { get; private set; } = 0;
+        public bool IsConnected => _connected;
 
         private NetworkManager() { }
 
         public void Connect(string ip, int port) {
-            try {
-                Console.WriteLine($"Connecting to {ip}:{port}");
-                _client = new TcpClient();
-                _client.Connect(ip, port);
-                _stream = _client.GetStream();
-                _connected = true;
-                _messageBuffer = new MemoryStream();
-                Console.WriteLine("Connected to server");
-            } catch (Exception ex) {
-                Console.WriteLine($"Error connecting to server: {ex.Message}");
-                return;
-            }
+            new Thread(() => {
+                if (_connected) {
+                    Console.WriteLine("Already connected to server");
+                    return;
+                }
 
-            _listenCts = new CancellationTokenSource();
-            _listenThread = new Thread(() => StartListening(_listenCts.Token)) {
+                try {
+                    Console.WriteLine($"Connecting to {ip}:{port}");
+                    _client = new TcpClient();
+                    _client.Connect(ip, port);
+                    _stream = _client.GetStream();
+                    _connected = true;
+                    _messageBuffer = new MemoryStream();
+                    Console.WriteLine("Connected to server");
+                } catch (Exception ex) {
+                    Handlers?.Invoke(NetworkMessage.From(ServerMessageType.NotConnected));
+                    Console.WriteLine($"Error connecting to server: {ex.Message}");
+                    return;
+                }
+
+                _listenCts = new CancellationTokenSource();
+                _listenThread = new Thread(() => StartListening(_listenCts.Token)) {
+                    IsBackground = true,
+                };
+                _listenThread.Start();
+
+                _pingTimer = new System.Timers.Timer(5000) {
+                    AutoReset = true,
+                    Enabled = true
+                };
+                _pingTimer.Elapsed += (sender, e) => {
+                    if (_pingReceived) {
+                        _lastPing = DateTime.Now;
+                        Send(NetworkMessage.From(ClientMessageType.Ping));
+                        _pingReceived = false;
+                    }
+                };
+                _pingTimer.Start();
+
+                Handlers?.Invoke(NetworkMessage.From(ServerMessageType.Connected));
+            }) {
                 IsBackground = true,
-            };
-            _listenThread.Start();
-
-            _pingTimer = new System.Timers.Timer(5000) {
-                AutoReset = true,
-                Enabled = true
-            };
-            _pingTimer.Elapsed += (sender, e) => {
-                _lastPing = DateTime.Now;
-                Send(NetworkMessage.From(ClientMessageType.Ping));
-            };
-            _pingTimer.Start();
+            }.Start();
         }
 
         private async void StartListening(CancellationToken ct) {
@@ -85,7 +102,9 @@ namespace Client {
                         var readTask = _stream.ReadAsync(_receiveBuffer, 0, _receiveBuffer.Length, ct);
                         bytesRead = await readTask;
                     } catch (Exception ex) {
-                        Console.WriteLine($"Error reading from stream: {ex.Message}");
+                        if (!ct.IsCancellationRequested && _connected) {
+                            Console.WriteLine($"Error reading from stream: {ex.Message}");
+                        }
                         break;
                     }
 
@@ -133,15 +152,18 @@ namespace Client {
                 string messageString = Encoding.UTF8.GetString(messageData);
 
                 try {
+                    // Console.WriteLine($"Received message from server: {messageString}");
+
                     NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
 
                     if (messageObj.Type.Direction != MessageDirection.Server) {
                         Console.WriteLine("The received message must be from the server side");
                     } else {
                         if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
+                            _pingReceived = true;
                             DateTime now = DateTime.Now;
                             Ping = (int)(now - _lastPing).TotalMilliseconds;
-                            Console.WriteLine($"Ping: {Ping} ms");
+                            // Console.WriteLine($"Ping: {Ping} ms");
                         } else {
                             Handlers?.Invoke(messageObj);
                         }
@@ -195,6 +217,7 @@ namespace Client {
                     Disconnect();
                 }
             } else {
+                Handlers?.Invoke(NetworkMessage.From(ServerMessageType.NotConnected));
                 Console.WriteLine("Not connected to server");
             }
         }
@@ -205,11 +228,10 @@ namespace Client {
             }
 
             _connected = false;
+            _clientId = -1;
 
-            if (_listenThread?.IsAlive == true) {
-                _listenCts?.Cancel();
-                _listenThread?.Join();
-            }
+            _listenCts?.Cancel();
+            _listenThread?.Join();
 
             _stream?.Close();
             _client?.Close();

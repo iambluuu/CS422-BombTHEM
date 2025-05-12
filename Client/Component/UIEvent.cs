@@ -26,12 +26,14 @@ namespace Client.Component {
         public Point MousePosition { get; }
         public Keys Key { get; }
         public char Character { get; }
+        public bool CtrlDown { get; }
 
-        public UIEvent(UIEventType type, Point mousePosition = default, Keys key = Keys.None, char character = '\0') {
+        public UIEvent(UIEventType type, Point mousePosition = default, Keys key = Keys.None, char character = '\0', bool ctrlDown = false) {
             Type = type;
             MousePosition = mousePosition;
             Key = key;
             Character = character;
+            CtrlDown = ctrlDown;
         }
     }
 }

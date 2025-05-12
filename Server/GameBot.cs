@@ -36,11 +36,11 @@ namespace Server {
 
         public void Stop() {
             _isGameStarted = false;
+            Console.WriteLine($"Bot {_botId} stopped");
         }
 
         public void Dispose() {
             _cts.Cancel();
-            // _thread.Join(); fuck this, fuck deadlock
         }
 
         private void Run() {

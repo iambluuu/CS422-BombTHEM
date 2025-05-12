@@ -43,7 +43,6 @@ namespace Client {
         protected override void LoadContent() {
             TextureHolder.SetContentManager(Content);
             FontHolder.SetContentManager(Content);
-            NetworkManager.Instance.Connect("localhost", 5000);
         }
 
         protected override void UnloadContent() {

@@ -8,10 +8,10 @@ using Microsoft.Xna.Framework.Input;
 using Client.Component;
 using Shared;
 using Client.Animation;
+using System.Text.RegularExpressions;
 
 namespace Client {
     public class EndGameScreen : GameScreen {
-        private LinearLayout layout;
         private (int, string, int)[] _gameResults = Array.Empty<(int, string, int)>();
         private Dictionary<int, int> _skinMapping = [];
         private bool hasResultArrived = false;
@@ -44,6 +44,7 @@ namespace Client {
             if (_elapsedTime < ScreenDarkenDuration) {
                 _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
             }
+
             float t = MathHelper.Clamp(_elapsedTime / ScreenDarkenDuration, 0f, 1f);
             float opacity = MathHelper.Lerp(0f, ScreenDarkenOpacity, t);
             var blackTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
@@ -54,17 +55,14 @@ namespace Client {
             base.Draw(gameTime, spriteBatch);
         }
 
-        private void NavigateToMainMenu() {
-            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
-            ScreenManager.Instance.NavigateToRoot();
-        }
-
         private void Rematch() {
-            // Maybe send a rematch request to the server here?
-            // ScreenManager.Instance.NavigateBackTo(ScreenName.LobbyScreen);
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
+            ScreenManager.Instance.NavigateBackTo(ScreenName.LobbyScreen);
         }
 
         public override void HandleResponse(NetworkMessage message) {
+            base.HandleResponse(message);
+
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen, isOverlay: false);
@@ -79,12 +77,11 @@ namespace Client {
                             _gameResults[i] = (int.Parse(playerIds[i]), playerNames[i], playerScores[i]);
                         }
 
-                        Console.WriteLine($"Game results: {string.Join(", ", _gameResults)}");
                         OnResultsArrived();
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error joining room: {message.Data["message"]}");
+                        Console.WriteLine($"Error: {message.Data["message"]}");
                     }
                     break;
             }
@@ -92,66 +89,82 @@ namespace Client {
 
         private void OnResultsArrived() {
             hasResultArrived = true;
-            Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3)); // Sort by score descending
+            Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3));
             var winner = _gameResults[0];
 
-            layout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 10) {
-                Position = new Vector2(50, 50),
-                Size = new Vector2(400, 600),
-                Padding = new Padding(30),
+            var layout = new LinearLayout() {
+                LayoutOrientation = Orientation.Vertical,
+                Width = ScreenSize.X,
+                Height = ScreenSize.Y,
+                Gravity = Gravity.Center,
             };
-
-            var screenTitle = new TextBox(hasBackground: false) {
-                Text = "Finished!",
-                FontSize = 60,
-                TextColor = Color.White,
-                Padding = new Padding(0),
-                TextAlignment = ContentAlignment.MiddleCenter,
-            };
-
-            var winnerImage = new ImageComponent(TextureHolder.Get($"Texture/Character/{(PlayerSkin)_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)), ScaleMode.Fit);
-            var winnerName = new TextBox(hasBackground: false) {
-                Text = $"Winner: {winner.Item2}",
-                FontSize = 40,
-                TextColor = Color.White,
-                Padding = new Padding(0),
-                TextAlignment = ContentAlignment.MiddleCenter,
-            };
-            var winnerScore = new TextBox(hasBackground: false) {
-                Text = $"Score: {winner.Item3}",
-                FontSize = 40,
-                Padding = new Padding(0),
-                TextColor = Color.White,
-                TextAlignment = ContentAlignment.TopCenter,
-            };
-
-            var buttonLayout = new LinearLayout(LinearLayout.Orientation.Vertical, spacing: 10, hasBackground: false) {
-                Size = new Vector2(400, 100),
-                Padding = new Padding(0, 60),
-            };
-            var rematchButton = new Button() {
-                Size = new Vector2(100, 200),
-                OnClick = Rematch,
-                Text = "Rematch",
-            };
-
-            var mainMenuButton = new Button() {
-                Size = new Vector2(100, 200),
-                OnClick = NavigateToMainMenu,
-                Text = "Main Menu",
-            };
-
-            layout.AddComponent(screenTitle, 2);
-            layout.AddComponent(winnerImage, 2);
-            layout.AddComponent(winnerName, 1);
-            layout.AddComponent(winnerScore, 1);
-            buttonLayout.AddComponent(rematchButton);
-            buttonLayout.AddComponent(mainMenuButton);
-            layout.AddComponent(buttonLayout, 3);
-            layout.Center(new Rectangle(0, 0, Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height));
-            uiManager.AddComponent(layout, 0);
-
             layout.AddAnimation(new MoveFromAnimation(layout.Position + new Vector2(0, StartingPositionOffset), 2f, Easing.QuadraticEaseInOut));
+
+            var mainBox = new ContainerBox() {
+                LayoutOrientation = Orientation.Vertical,
+                Width = 500,
+                HeightMode = SizeMode.WrapContent,
+                Spacing = 10,
+            };
+            layout.AddComponent(mainBox);
+
+            var screenTitle = new TextView() {
+                WidthMode = SizeMode.MatchParent,
+                HeightMode = SizeMode.WrapContent,
+                Text = "Winner",
+                TextSize = 2,
+                TextColor = Color.White,
+                Gravity = Gravity.CenterHorizontal,
+            };
+            mainBox.AddComponent(screenTitle);
+
+            var winnerImage = new ImageView() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 100,
+                Texture = TextureHolder.Get($"Character/{(PlayerSkin)_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)),
+                ScaleType = ScaleType.FitCenter,
+                Gravity = Gravity.CenterHorizontal,
+            };
+            mainBox.AddComponent(winnerImage);
+
+            var winnerName = new TextView() {
+                WidthMode = SizeMode.MatchParent,
+                HeightMode = SizeMode.WrapContent,
+                Text = $"{winner.Item2}",
+                TextColor = Color.White,
+                Gravity = Gravity.CenterHorizontal,
+            };
+            mainBox.AddComponent(winnerName);
+
+            var winnerScore = new TextView() {
+                WidthMode = SizeMode.MatchParent,
+                HeightMode = SizeMode.WrapContent,
+                Text = $"Score: {winner.Item3}",
+                TextColor = Color.White,
+                Gravity = Gravity.CenterHorizontal,
+            };
+            mainBox.AddComponent(winnerScore);
+
+            var boxesLayout = new LinearLayout() {
+                LayoutOrientation = Orientation.Vertical,
+                WidthMode = SizeMode.MatchParent,
+                HeightMode = SizeMode.WrapContent,
+                Spacing = 10,
+                PaddingTop = 20,
+            };
+            mainBox.AddComponent(boxesLayout);
+
+            var rematchButton = new Button() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 80,
+                Text = "Back to Lobby",
+                TextColor = Color.White,
+                OnClick = Rematch,
+                PaddingTop = 10,
+            };
+            boxesLayout.AddComponent(rematchButton);
+
+            uiManager.AddComponent(layout, 0);
         }
     }
 }

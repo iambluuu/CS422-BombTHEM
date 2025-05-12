@@ -18,7 +18,7 @@ namespace Client {
                 if (_content == null)
                     throw new System.Exception("ContentManager not set in FontHolder");
 
-                SpriteFont font = _content.Load<SpriteFont>(name);
+                SpriteFont font = _content.Load<SpriteFont>("Font/" + name);
                 _fonts[name] = font;
                 return font;
             }

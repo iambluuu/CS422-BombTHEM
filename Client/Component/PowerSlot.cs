@@ -8,7 +8,7 @@ using System.Collections.Generic;
 
 namespace Client.Component {
     public class PowerSlot : IComponent {
-        private const int Padding = 25; // surrounding padding
+        private const int Paddings = 25; // surrounding padding
         private const int Spacing = 10; // spacing between entries
 
         // Nine-slice texture size
@@ -24,9 +24,9 @@ namespace Client.Component {
         private PowerName[] _powers = { PowerName.None, PowerName.None };
 
         public PowerSlot() {
-            _backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
-            _borderTexture = TextureHolder.Get("Texture/Theme/scoreboard_border");
-            _font = FontHolder.Get("Font/PressStart2P");
+            _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
+            _borderTexture = TextureHolder.Get("Theme/scoreboard_border");
+            _font = FontHolder.Get("PressStart2P");
         }
 
         public void ObtainPower(PowerName power) {
@@ -69,19 +69,19 @@ namespace Client.Component {
             DrawNineSlice(spriteBatch, _borderTexture);
 
             var textSize = _font.MeasureString("Power");
-            var textScale = (Size.X - Padding * 2) / textSize.X / 2;
+            var textScale = (Size.X - Paddings * 2) / textSize.X / 2;
             textSize *= textScale;
 
-            var textPosition = new Vector2(Position.X + (Size.X - textSize.X) / 2, Position.Y + Padding);
+            var textPosition = new Vector2(Position.X + (Size.X - textSize.X) / 2, Position.Y + Paddings);
             spriteBatch.DrawString(_font, "Power", textPosition, _textColor, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
 
-            var slotSize = Math.Min((Size.X - Padding * 2 - Spacing) / 2, Size.Y - Padding * 2 - textSize.Y - Spacing);
+            var slotSize = Math.Min((Size.X - Paddings * 2 - Spacing) / 2, Size.Y - Paddings * 2 - textSize.Y - Spacing);
             var leftMargin = (Size.X - slotSize * 2 - Spacing) / 2;
             for (int i = 0; i < _powers.Length; i++) {
                 var power = _powers[i];
                 var texture = GetPowerTexture(power);
                 var scale = slotSize / texture.Width;
-                var position = new Vector2(Position.X + leftMargin + (slotSize + Spacing) * i, Position.Y + Padding + textSize.Y + Spacing);
+                var position = new Vector2(Position.X + leftMargin + (slotSize + Spacing) * i, Position.Y + Paddings + textSize.Y + Spacing);
                 spriteBatch.Draw(texture, position, null, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
             }
 
@@ -89,9 +89,9 @@ namespace Client.Component {
             var keySize = slotSize / 4;
             var charSize = _font.MeasureString("Q") * textScale;
             var charScale = (keySize - 6) / Math.Min(charSize.X, charSize.Y);
-            var qPosition = new Vector2(Position.X + leftMargin, Position.Y + Padding + textSize.Y + Spacing);
-            var ePosition = new Vector2(Position.X + leftMargin + slotSize + Spacing, Position.Y + Padding + textSize.Y + Spacing);
-            var backgroundTexture = TextureHolder.Get("Texture/Theme/nine_path_bg_2");
+            var qPosition = new Vector2(Position.X + leftMargin, Position.Y + Paddings + textSize.Y + Spacing);
+            var ePosition = new Vector2(Position.X + leftMargin + slotSize + Spacing, Position.Y + Paddings + textSize.Y + Spacing);
+            var backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
             var backgroundScale = keySize / backgroundTexture.Width;
 
             spriteBatch.Draw(backgroundTexture, qPosition, null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
@@ -103,11 +103,11 @@ namespace Client.Component {
         }
 
         private Texture2D GetPowerTexture(PowerName power) {
-            return TextureHolder.Get($"Texture/Power/{power}");
+            return TextureHolder.Get($"Power/{power}");
         }
 
         private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {
-            var scale = (Padding - 5) / CornerSize.X; // Scale factor based on padding and corner size
+            var scale = (Paddings - 5) / CornerSize.X; // Scale factor based on padding and corner size
             var scaledCornerSize = CornerSize * scale;
 
             Rectangle srcTopLeft = new Rectangle(0, 0, (int)CornerSize.X, (int)CornerSize.Y);
