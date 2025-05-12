@@ -794,7 +794,7 @@ namespace Server {
                 }
             }
 
-            while (room.GameStarted && !room.Closed && room.BombCts!.Token.IsCancellationRequested) {
+            while (room.GameStarted && !room.Closed && !room.BombCts!.Token.IsCancellationRequested) {
                 try {
                     lock (_roomLocks[roomId]) {
                         List<Bomb> explodedBombs = [];
@@ -857,7 +857,7 @@ namespace Server {
                 }
             }
 
-            while (room.GameStarted && !room.Closed && room.ItemCts!.Token.IsCancellationRequested) {
+            while (room.GameStarted && !room.Closed && !room.ItemCts!.Token.IsCancellationRequested) {
                 try {
                     lock (_roomLocks[roomId]) {
                         List<DroppedItem> expiredItems = [];
@@ -891,7 +891,7 @@ namespace Server {
                 }
             }
 
-            while (room.GameStarted && !room.Closed && room.PowerUpCts!.Token.IsCancellationRequested) {
+            while (room.GameStarted && !room.Closed && !room.PowerUpCts!.Token.IsCancellationRequested) {
                 try {
                     lock (_roomLocks[roomId]) {
                         List<(int playerId, PowerName powerType)> expiredPowerUps = [];
