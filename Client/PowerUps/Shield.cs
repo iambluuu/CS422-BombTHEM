@@ -18,7 +18,9 @@ namespace Client.PowerUps {
             int playerId = int.Parse(parameters["playerId"].ToString());
             var playerNodes = parameters["playerNodes"] as Dictionary<int, PlayerNode> ?? throw new ArgumentException("playerNodes must be a dictionary of PlayerNode.");
             PlayerNode target = playerNodes[playerId];
-            VFXNode vfx = new(TextureHolder.Get("Texture/Effect/Shield"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE), 6, 0.1f, isLooping: true, isInfinite: true);
+            VFXNode vfx = new(TextureHolder.Get("Texture/Effect/Shield"), new Vector2(GameValues.TILE_SIZE * 1.1f, GameValues.TILE_SIZE), 6, 0.1f, isLooping: true, isInfinite: true) {
+                Position = new Vector2(-0.1f * GameValues.TILE_SIZE, GameValues.TILE_SIZE),
+            };
             target.AttachChild(vfx);
             _activeEffects.Add(target, vfx);
         }

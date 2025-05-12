@@ -29,7 +29,7 @@ namespace Server {
         }
 
         public bool HasPowerUp(PowerName powerUp) {
-            return _powerUps.Contains(powerUp);
+            return ActivePowerUps.Exists(p => p.PowerType == powerUp);
         }
 
         public bool UsePowerUp(PowerName powerUp) {
