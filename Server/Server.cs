@@ -773,8 +773,8 @@ namespace Server {
                             var powerUpHandler = PowerUpHandlerFactory.CreatePowerUpHandler(powerUpType);
                             var responseParams = powerUpHandler?.Apply(room.Map, playerId);
                             if (responseParams != null) {
-                                Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
-                                Console.WriteLine($"Need to change: {responseParams["needToChange"]}");
+                                // Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
+                                // Console.WriteLine($"Need to change: {responseParams["needToChange"]}");
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "powerUpType", powerUpType.ToString() },
                                     { "parameters", JsonSerializer.Serialize(responseParams) },

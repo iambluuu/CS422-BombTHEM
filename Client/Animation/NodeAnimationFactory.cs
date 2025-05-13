@@ -43,7 +43,6 @@ namespace Client.Animation {
         public static INodeAnimation CreateLaunchAnimation(AnimatedNode node, float yOffset, float duration) {
             var sequence = new SequenceAnimation();
             var initPos = node.Position;
-            Console.WriteLine($"Initial Position: {initPos}");
             var peakPos = new Vector2(initPos.X, initPos.Y - yOffset);
             sequence.AddAnimation(new MoveAnimation(node, peakPos, duration / 2, false, Easing.QuadraticEaseOut));
             sequence.AddAnimation(new MoveAnimation(node, initPos, duration / 2, false, Easing.QuadraticEaseIn, startPosition: peakPos));
