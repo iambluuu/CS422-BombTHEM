@@ -7,7 +7,6 @@ namespace Client.Component {
         private readonly Vector2 CornerSize = new(6, 6);
         private readonly Rectangle TextureSize = new(0, 0, 16, 16);
         private const string TextureDir = "Theme/";
-        public Color BackgroundColor { get; set; } = Color.White;
         public string TextureName { get; set; } = "nine_path_panel_2";
         public int TextureScale { get; set; } = 5;
         public bool DrawBorder { get; set; } = false;

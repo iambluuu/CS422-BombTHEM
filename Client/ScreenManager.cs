@@ -22,11 +22,12 @@ namespace Client {
 
     public class ScreenManager : DrawableGameComponent {
         private readonly Stack<GameScreen> screenStack = new Stack<GameScreen>();
+        private RenderTarget2D _snapshot;
         private readonly SpriteBatch spriteBatch;
         private LoadingScreen _loadingScreen;
 
         public bool IsFocused { get; set; } = true;
-        public bool IsLoading => _loadingScreen.IsActive;
+        public bool IsLoading => _loadingScreen.IsLoading;
 
         public static ScreenManager Instance { get; private set; }
 
@@ -37,40 +38,40 @@ namespace Client {
             _loadingScreen.LoadContent();
             _loadingScreen.Initialize();
             _loadingScreen.IsActive = false;
+            _snapshot = new RenderTarget2D(GraphicsDevice, GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
         }
 
         public override void Update(GameTime gameTime) {
-            if (IsLoading) {
-                _loadingScreen.Update(gameTime);
-            } else {
-                var screens = screenStack.ToArray();
-                int index = 0;
-                for (int i = 0; i < screens.Length; i++) {
-                    var screen = screens[i];
-                    if (screen.IsExclusive) {
-                        index = i;
-                        break;
-                    }
+            var screens = screenStack.ToArray();
+            int index = 0;
+            for (int i = 0; i < screens.Length; i++) {
+                var screen = screens[i];
+                if (screen.IsExclusive) {
+                    index = i;
+                    break;
                 }
+            }
 
-                for (int i = index; i >= 0; i--) {
-                    var screen = screens[i];
-                    screen.IsFocused = IsFocused;
-                    if (screen.IsActive) {
-                        screen.Update(gameTime);
-                    }
+            for (int i = index; i >= 0; i--) {
+                var screen = screens[i];
+                screen.IsFocused = IsFocused && !IsLoading;
+                if (screen.IsActive) {
+                    screen.Update(gameTime);
                 }
             }
 
             ToastManager.Instance.Update(gameTime);
+
+            _loadingScreen.Update(gameTime);
         }
 
         public override void Draw(GameTime gameTime) {
-            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            if (!IsLoading) {
+                GraphicsDevice.SetRenderTarget(_snapshot);
+                GraphicsDevice.Clear(new Color(255, 173, 93, 255));
 
-            if (IsLoading) {
-                _loadingScreen.Draw(gameTime, spriteBatch);
-            } else {
+                spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+
                 var screens = screenStack.ToArray();
                 int index = 0;
                 for (int i = 0; i < screens.Length; i++) {
@@ -87,10 +88,18 @@ namespace Client {
                         screen.Draw(gameTime, spriteBatch);
                     }
                 }
+
+                ToastManager.Instance.Draw(spriteBatch);
+
+                spriteBatch.End();
+
+                GraphicsDevice.SetRenderTarget(null);
             }
 
-            ToastManager.Instance.Draw(spriteBatch);
-
+            GraphicsDevice.Clear(new Color(255, 173, 93, 255));
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            spriteBatch.Draw(_snapshot, Vector2.Zero, Color.White);
+            _loadingScreen.Draw(gameTime, spriteBatch);
             spriteBatch.End();
         }
 
@@ -164,13 +173,12 @@ namespace Client {
             }
         }
 
-        public void ShowLoadingScreen(string message) {
-            _loadingScreen.SetMessage(message);
-            _loadingScreen.IsActive = true;
+        public void StartLoading() {
+            _loadingScreen.RequestClose();
         }
 
-        public void HideLoadingScreen() {
-            _loadingScreen.IsActive = false;
+        public void StopLoading() {
+            _loadingScreen.RequestOpen();
         }
 
         public SpriteBatch SpriteBatch => spriteBatch;

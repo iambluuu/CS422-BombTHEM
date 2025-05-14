@@ -15,6 +15,7 @@ namespace Client.Component {
         private const int Spacing = 5;
         private const int SeparatorHeight = 2;
         private float ClockHeight = 30;
+        private object _lock = new();
         private Stopwatch _stopwatch;
         private double _lastElapsed;
         private static Vector2 EntrySize;
@@ -66,10 +67,13 @@ namespace Client.Component {
         }
 
         public void SetPlayerData(List<(string, string, int)> playerData) {
-            _entries.Clear();
-            for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
-                _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
+            lock (_lock) {
+                _entries.Clear();
+                for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
+                    _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
+                }
             }
+
             UpdateRanks();
         }
 
@@ -84,10 +88,12 @@ namespace Client.Component {
         }
 
         private void UpdateRanks() {
-            _entries.Sort((a, b) => b.Score.CompareTo(a.Score));
-            for (int i = 0; i < _entries.Count; i++) {
-                if (_entries[i].Rank != i) {
-                    _entries[i].Rank = i;
+            lock (_lock) {
+                _entries.Sort((a, b) => b.Score.CompareTo(a.Score));
+                for (int i = 0; i < _entries.Count; i++) {
+                    if (_entries[i].Rank != i) {
+                        _entries[i].Rank = i;
+                    }
                 }
             }
         }
@@ -100,8 +106,10 @@ namespace Client.Component {
                 _timer = Math.Max(0, _timer - (float)delta);
             }
 
-            foreach (var entry in _entries) {
-                entry.Update(gameTime);
+            lock (_lock) {
+                foreach (var entry in _entries) {
+                    entry.Update(gameTime);
+                }
             }
         }
 
@@ -116,10 +124,12 @@ namespace Client.Component {
             Texture2D separatorTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
             separatorTexture.SetData(new[] { Color.Black * 0.6f });
 
-            for (int i = 0; i < _entries.Count; i++) {
-                var separatorPosition = new Vector2(Position.X + Paddings, TopLeftPosition.Y + (EntrySize.Y + Spacing) * i);
-                spriteBatch.Draw(separatorTexture, new Rectangle((int)separatorPosition.X, (int)separatorPosition.Y, (int)Size.X - Paddings * 2, SeparatorHeight), Color.White);
-                _entries[i].Draw(spriteBatch);
+            lock (_lock) {
+                for (int i = 0; i < _entries.Count; i++) {
+                    var separatorPosition = new Vector2(Position.X + Paddings, TopLeftPosition.Y + (EntrySize.Y + Spacing) * i);
+                    spriteBatch.Draw(separatorTexture, new Rectangle((int)separatorPosition.X, (int)separatorPosition.Y, (int)Size.X - Paddings * 2, SeparatorHeight), Color.White);
+                    _entries[i].Draw(spriteBatch);
+                }
             }
         }
 

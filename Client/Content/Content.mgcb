@@ -20,18 +20,6 @@
 /processorParam:TextureFormat=Compressed
 /build:Font/PressStart2P.spritefont
 
-#begin Texture/Animal/Cat.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:Texture/Animal/Cat.png
-
 #begin Texture/Character/NinjaBlue.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -211,6 +199,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Texture/Other/Blank.png
+
+#begin Texture/Other/White.jpg
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Other/White.jpg
 
 #begin Texture/Power/Ghost.png
 /importer:TextureImporter

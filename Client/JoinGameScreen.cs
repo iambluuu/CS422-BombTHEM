@@ -90,7 +90,7 @@ namespace Client {
 
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
-                        ScreenManager.Instance.ShowLoadingScreen("Joining room");
+                        ScreenManager.Instance.StartLoading();
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;

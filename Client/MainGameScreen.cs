@@ -1,18 +1,13 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System;
+using System.Collections.Generic;
+using System.Text.Json;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System;
-using System.Collections.Generic;
-using System.Net.Sockets;
-using System.Text;
-using System.Threading;
-using System.Text.Json;
-
 
 using Shared;
 using Client.Component;
 using Client.PowerUps;
-using System.Diagnostics;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
@@ -68,6 +63,7 @@ namespace Client {
                 Height = 80,
                 Text = "Leave Game",
                 OnClick = () => {
+                    ScreenManager.Instance.StartLoading();
                     NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
                     ScreenManager.Instance.NavigateBack();
                 },
@@ -127,6 +123,8 @@ namespace Client {
 
                         _scoreboard.SetDuration(duration);
                         _scoreboard.SetPlayerData(playerData);
+
+                        ScreenManager.Instance.StopLoading();
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {

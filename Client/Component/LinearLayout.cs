@@ -12,6 +12,7 @@ namespace Client.Component {
 
     public class LinearLayout : IComponent {
         public required Orientation LayoutOrientation { get; set; }
+        public Color BackgroundColor { get; set; } = Color.Transparent;
         public int Spacing { get; set; } = 0;
         public List<IComponent> Components { get; set; } = [];
         public Gravity Gravity { get; set; } = Gravity.TopLeft;
@@ -27,6 +28,7 @@ namespace Client.Component {
                 ArrangeComponents();
             }
         }
+
         protected override float MeasureContentWidth() {
             if (Components.Count == 0) return PaddingLeft + PaddingRight;
 
@@ -237,6 +239,11 @@ namespace Client.Component {
 
         public override void Draw(SpriteBatch spriteBatch) {
             if (!IsVisible) return;
+
+            if (BackgroundColor != Color.Transparent) {
+                spriteBatch.Draw(TextureHolder.Get("Other/White"), Position, null, BackgroundColor, 0f, Vector2.Zero, Size, SpriteEffects.None, 0f);
+            }
+
             for (int i = 0; i < Components.Count; i++) {
                 if (Components[i].IsVisible) {
                     Components[i].Draw(spriteBatch);

@@ -308,7 +308,7 @@ namespace Client {
 
                         ResetPermissions();
 
-                        ScreenManager.Instance.HideLoadingScreen();
+                        ScreenManager.Instance.StopLoading();
                     }
                     break;
                 case ServerMessageType.UsernameSet: {
@@ -413,6 +413,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.GameStarted: {
+                        ScreenManager.StartLoading();
                         ScreenManager.Instance.NavigateTo(ScreenName.MainGameScreen);
                     }
                     break;

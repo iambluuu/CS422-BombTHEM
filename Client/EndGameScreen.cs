@@ -8,7 +8,6 @@ using Microsoft.Xna.Framework.Input;
 using Client.Component;
 using Shared;
 using Client.Animation;
-using System.Text.RegularExpressions;
 
 namespace Client {
     public class EndGameScreen : GameScreen {
@@ -56,6 +55,7 @@ namespace Client {
         }
 
         private void Rematch() {
+            ScreenManager.Instance.StartLoading();
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveGame));
             ScreenManager.Instance.NavigateBackTo(ScreenName.LobbyScreen);
         }
