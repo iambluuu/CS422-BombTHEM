@@ -740,7 +740,7 @@ namespace Server {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
 
                             if (!room.Map.HasBomb(x, y) && room.Map.GetTile(x, y) == TileType.Empty) {
-                                room.Map.AddBomb(x, y, type, playerId);
+                                if (!room.Map.AddBomb(x, y, type, playerId)) return;
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
                                     { "x", x.ToString() },
                                     { "y", y.ToString() },
@@ -817,7 +817,8 @@ namespace Server {
                             BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.BombExploded, new() {
                                 { "x", bomb.Position.X.ToString() },
                                 { "y", bomb.Position.Y.ToString() },
-                                { "positions", string.Join(";", bomb.ExplosionPositions) }
+                                { "positions", string.Join(";", bomb.ExplosionPositions) },
+                                { "byPlayerId", bomb.PlayerId.ToString() }
                             }));
 
                             foreach (var pos in bomb.ExplosionPositions) {
@@ -831,7 +832,7 @@ namespace Server {
                             room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
                             if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
                                 // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
-                                PowerName powerUpType = PowerName.Teleport;
+                                PowerName powerUpType = PowerName.MoreBombs;
                                 room.Map.AddItem(pos.X, pos.Y, powerUpType);
                                 BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
                                     { "x", pos.X.ToString() },

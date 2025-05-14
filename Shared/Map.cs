@@ -4,7 +4,7 @@ namespace Shared {
     public enum PowerName {
         None,
         Ghost,
-        RandomBomb,
+        MoreBombs,
         InstantBomb,
         Shield,
         Teleport,
@@ -99,14 +99,16 @@ namespace Shared {
         public DateTime PlaceTime { get; set; }
         public DateTime ExplodeTime { get; set; }
         public List<Position> ExplosionPositions { get; set; }
+        public bool IsCounted { get; set; } = true; // Indicates if the bomb is counted for the player Bomb count
 
-        public Bomb(Position position, BombType type, int playerId = -1) {
+        public Bomb(Position position, BombType type, int playerId = -1, bool isCounted = true) {
             PlayerId = playerId;
             Position = position;
             Type = type;
             PlaceTime = DateTime.Now;
             ExplodeTime = DateTime.MinValue;
             ExplosionPositions = new List<Position>();
+            IsCounted = isCounted;
         }
     }
 
@@ -241,16 +243,23 @@ namespace Shared {
             return false;
         }
 
-        public void AddBomb(int x, int y, BombType bombType, int playerId = -1) {
+        public bool AddBomb(int x, int y, BombType bombType, int playerId = -1) {
             if (!IsInBounds(x, y)) {
                 throw new ArgumentOutOfRangeException($"Map.AddBomb: Coordinate ({x}, {y}) is out of bounds");
             }
 
             if (HasBomb(x, y) || GetTile(x, y) != TileType.Empty) {
-                return;
+                return false;
             }
 
-            Bombs.Add(new Bomb(new Position(x, y), bombType, playerId));
+            var byPlayer = PlayerInfos.TryGetValue(playerId, out PlayerIngameInfo? player) ? player : null;
+            if (byPlayer != null && !byPlayer.CanPlaceBomb()) {
+                return false;
+            }
+
+            bool isCounted = byPlayer != null && !byPlayer.HasPowerUp(PowerName.MoreBombs);
+            Bombs.Add(new Bomb(new Position(x, y), bombType, playerId, isCounted));
+            return true;
         }
 
         public void RemoveBomb(int x, int y) {
@@ -271,6 +280,10 @@ namespace Shared {
                 throw new ArgumentOutOfRangeException($"Map.RemoveBomb: Bomb ID {bombId} is out of bounds");
             }
 
+            Bomb targetBomb = Bombs[bombId];
+            if (targetBomb.IsCounted) {
+                PlayerInfos[targetBomb.PlayerId].DecreaseBombCount();
+            }
             Bombs.RemoveAt(bombId);
         }
 
