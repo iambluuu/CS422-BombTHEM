@@ -24,6 +24,7 @@ namespace Client {
         private readonly TextNode _pingText = new("Ping: ?ms");
 
         private const int TILE_SIZE = 48;
+        private int _bombCount = 0;
 
         private Map _map = null;
         private readonly Dictionary<int, PlayerNode> _playerNodes = [];
@@ -157,13 +158,17 @@ namespace Client {
                 case ServerMessageType.BombPlaced: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
+                        int byPlayerId = int.Parse(message.Data["byPlayerId"]);
                         BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
                         lock (_lock) {
                             if (_map.HasBomb(x, y)) {
                                 _map.RemoveBomb(x, y);
                             }
-                            // _map.AddBomb(x, y, type);
+                            _map.AddBomb(x, y, type);
+                            if (byPlayerId == NetworkManager.Instance.ClientId) {
+                                _bombCount++;
+                            }
                             _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Bomb"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             });
@@ -192,7 +197,10 @@ namespace Client {
                                     _map.SetTile(ex, ey, TileType.Empty);
                                 }
                             }
-                            // _map.RemoveBomb(x, y);
+                            _map.RemoveBomb(x, y);
+                            if (byPlayerId == NetworkManager.Instance.ClientId) {
+                                _bombCount--;
+                            }
                             _bombLayer.DetachChild(_bombNodes[(x, y)]);
                             _bombNodes.Remove((x, y));
                         }
@@ -401,14 +409,12 @@ namespace Client {
                 }
 
                 if (nearestCell != null) {
-                    // if (_map.PlayerInfos[playerId].CanPlaceBomb() == false) {
-                    //     return;
-                    // }
-
-                    // lock (_lock) {
-                    //     Console.WriteLine($"Bomb placed at {nearestCell.X}, {nearestCell.Y}");
-                    //     _map.AddBomb(nearestCell.X, nearestCell.Y, BombType.Normal);
-                    // }
+                    lock (_lock) {
+                        if (_bombCount >= GameplayConfig.MaxBombs && !_map.PlayerInfos[playerId].HasPowerUp(PowerName.MoreBombs)) {
+                            return;
+                        }
+                        _map.AddBomb(nearestCell.X, nearestCell.Y, BombType.Normal);
+                    }
 
                     if (key.IsKeyDown(Keys.Space)) {
                         NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {

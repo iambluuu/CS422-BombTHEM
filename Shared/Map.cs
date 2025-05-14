@@ -281,7 +281,7 @@ namespace Shared {
             }
 
             Bomb targetBomb = Bombs[bombId];
-            if (targetBomb.IsCounted) {
+            if (targetBomb.IsCounted && PlayerInfos.ContainsKey(targetBomb.PlayerId)) {
                 PlayerInfos[targetBomb.PlayerId].DecreaseBombCount();
             }
             Bombs.RemoveAt(bombId);

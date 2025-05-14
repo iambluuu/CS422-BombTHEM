@@ -744,7 +744,8 @@ namespace Server {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
                                     { "x", x.ToString() },
                                     { "y", y.ToString() },
-                                    { "type", type.ToString() }
+                                    { "type", type.ToString() },
+                                    { "byPlayerId", playerId.ToString() }
                                 }));
                             }
                         }
@@ -825,7 +826,7 @@ namespace Server {
                                 CheckForPlayersInExplosion(room, pos.X, pos.Y, bomb.PlayerId);
                             }
 
-                            room.Map.Bombs.Remove(bomb);
+                            room.Map.RemoveBomb(bomb.Position.X, bomb.Position.Y);
                         }
 
                         foreach (var pos in explosionPositions) {
