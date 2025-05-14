@@ -20,6 +20,7 @@ namespace Client {
                 Height = ScreenSize.Y,
                 Gravity = Gravity.Center,
             };
+            uiManager.AddComponent(layout);
 
             var mainBox = new ContainerBox() {
                 LayoutOrientation = Orientation.Vertical,
@@ -27,6 +28,7 @@ namespace Client {
                 Width = 600,
                 Spacing = 20,
             };
+            layout.AddComponent(mainBox);
 
             var title = new TextView() {
                 WidthMode = SizeMode.MatchParent,
@@ -37,6 +39,7 @@ namespace Client {
                 Gravity = Gravity.Center,
                 PaddingBottom = 20,
             };
+            mainBox.AddComponent(title);
 
             _roomIdBox = new TextBox() {
                 WidthMode = SizeMode.MatchParent,
@@ -48,6 +51,7 @@ namespace Client {
                 MaxLength = 6,
                 IsUppercase = true,
             };
+            mainBox.AddComponent(_roomIdBox);
 
             var joinButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
@@ -55,6 +59,7 @@ namespace Client {
                 Text = "Join",
                 OnClick = Connect,
             };
+            mainBox.AddComponent(joinButton);
 
             var backButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
@@ -62,14 +67,7 @@ namespace Client {
                 Text = "Back",
                 OnClick = ScreenManager.Instance.NavigateBack,
             };
-
-            layout.AddComponent(mainBox);
-            mainBox.AddComponent(title);
-            mainBox.AddComponent(_roomIdBox);
-            mainBox.AddComponent(joinButton);
             mainBox.AddComponent(backButton);
-
-            uiManager.AddComponent(layout, 0);
         }
 
         private void Connect() {
@@ -92,6 +90,7 @@ namespace Client {
 
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
+                        ScreenManager.Instance.ShowLoadingScreen("Joining room");
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;

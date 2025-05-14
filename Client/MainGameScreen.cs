@@ -47,6 +47,7 @@ namespace Client {
                 Height = ScreenSize.Y,
                 Spacing = 0,
             };
+            uiManager.AddComponent(_sidebar);
 
             _powerSlot = new PowerSlot() {
                 WidthMode = SizeMode.MatchParent,
@@ -71,7 +72,6 @@ namespace Client {
                     ScreenManager.Instance.NavigateBack();
                 },
             });
-            uiManager.AddComponent(_sidebar);
 
             _sceneGraph = new SceneNode();
             _mapLayer = new SceneNode();

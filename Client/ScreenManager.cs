@@ -21,86 +21,95 @@ namespace Client {
     }
 
     public class ScreenManager : DrawableGameComponent {
-        private Stack<GameScreen> screenStack = new Stack<GameScreen>();
-        private List<GameScreen> screensToUpdate = new List<GameScreen>();
-        private Dictionary<ScreenName, GameScreen> screenCache = new Dictionary<ScreenName, GameScreen>();
-
-        private ContentManager content;
-        private SpriteBatch spriteBatch;
+        private readonly Stack<GameScreen> screenStack = new Stack<GameScreen>();
+        private readonly SpriteBatch spriteBatch;
+        private LoadingScreen _loadingScreen;
 
         public bool IsFocused { get; set; } = true;
+        public bool IsLoading => _loadingScreen.IsActive;
 
         public static ScreenManager Instance { get; private set; }
 
         public ScreenManager(Game game) : base(game) {
             Instance = this;
-            content = new ContentManager(game.Services, "Content");
             spriteBatch = new SpriteBatch(game.GraphicsDevice);
+            _loadingScreen = new LoadingScreen();
+            _loadingScreen.LoadContent();
+            _loadingScreen.Initialize();
+            _loadingScreen.IsActive = false;
         }
 
         public override void Update(GameTime gameTime) {
-            var screens = screenStack.ToArray();
-            int index = 0;
-            for (int i = 0; i < screens.Length; i++) {
-                var screen = screens[i];
-                if (screen.IsExclusive) {
-                    index = i;
-                    break;
+            if (IsLoading) {
+                _loadingScreen.Update(gameTime);
+            } else {
+                var screens = screenStack.ToArray();
+                int index = 0;
+                for (int i = 0; i < screens.Length; i++) {
+                    var screen = screens[i];
+                    if (screen.IsExclusive) {
+                        index = i;
+                        break;
+                    }
+                }
+
+                for (int i = index; i >= 0; i--) {
+                    var screen = screens[i];
+                    screen.IsFocused = IsFocused;
+                    if (screen.IsActive) {
+                        screen.Update(gameTime);
+                    }
                 }
             }
 
-            for (int i = index; i >= 0; i--) {
-                var screen = screens[i];
-                screen.IsFocused = IsFocused;
-                if (screen.IsActive) {
-                    screen.Update(gameTime);
-                    screensToUpdate.Add(screen);
-                }
-            }
+            ToastManager.Instance.Update(gameTime);
         }
 
         public override void Draw(GameTime gameTime) {
-            var screens = screenStack.ToArray();
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            int index = 0;
-            for (int i = 0; i < screens.Length; i++) {
-                var screen = screens[i];
-                if (screen.IsExclusive) {
-                    index = i;
-                    break;
+
+            if (IsLoading) {
+                _loadingScreen.Draw(gameTime, spriteBatch);
+            } else {
+                var screens = screenStack.ToArray();
+                int index = 0;
+                for (int i = 0; i < screens.Length; i++) {
+                    var screen = screens[i];
+                    if (screen.IsExclusive) {
+                        index = i;
+                        break;
+                    }
+                }
+
+                for (int i = index; i >= 0; i--) {
+                    var screen = screens[i];
+                    if (screen.IsVisible) {
+                        screen.Draw(gameTime, spriteBatch);
+                    }
                 }
             }
 
-            for (int i = index; i >= 0; i--) {
-                var screen = screens[i];
-                if (screen.IsVisible) {
-                    screen.Draw(gameTime, spriteBatch);
-                }
-            }
+            ToastManager.Instance.Draw(spriteBatch);
+
             spriteBatch.End();
         }
+
         public void NavigateTo(ScreenName screenType, bool isOverlay = false, Dictionary<string, object> parameters = null) {
             GameScreen screen;
             screen = CreateScreen(screenType);
-            screenCache[screenType] = screen;
             screen.IsExclusive = !isOverlay;
             PushScreen(screen, parameters);
         }
+
         private GameScreen CreateScreen(ScreenName screenType) {
-            switch (screenType) {
-                case ScreenName.MainMenu:
-                    return new MainMenuScreen();
-                case ScreenName.LobbyScreen:
-                    return new LobbyScreen();
-                case ScreenName.JoinGameScreen:
-                    return new JoinGameScreen();
-                case ScreenName.MainGameScreen:
-                    return new MainGameScreen();
-                case ScreenName.EndGameScreen:
-                    return new EndGameScreen();
-                default:
-                    throw new ArgumentException($"Unknown screen type: {screenType}");
-            }
+            return screenType switch {
+                ScreenName.MainMenu => new MainMenuScreen(),
+                ScreenName.LobbyScreen => new LobbyScreen(),
+                ScreenName.JoinGameScreen => new JoinGameScreen(),
+                ScreenName.MainGameScreen => new MainGameScreen(),
+                ScreenName.EndGameScreen => new EndGameScreen(),
+                _ => throw new ArgumentException($"Unknown screen type: {screenType}"),
+            };
         }
 
         public void NavigateBack() {
@@ -130,12 +139,14 @@ namespace Client {
                 var currentScreen = screenStack.Peek();
                 currentScreen.Deactivate();
             }
+
             if (!screen.IsInitialized) {
                 screen.ScreenManager = this;
                 screen.LoadContent();
                 screen.Initialize();
                 screen.IsInitialized = true;
             }
+
             screen.Activate();
             screen.LoadParameters(parameters);
             screenStack.Push(screen);
@@ -152,22 +163,16 @@ namespace Client {
                 }
             }
         }
-        public void UnloadScreen(ScreenName screenType) {
-            if (screenCache.TryGetValue(screenType, out GameScreen screen)) {
-                screen.UnloadContent();
-                screenCache.Remove(screenType);
-            }
+
+        public void ShowLoadingScreen(string message) {
+            _loadingScreen.SetMessage(message);
+            _loadingScreen.IsActive = true;
         }
 
-        public void UnloadAllScreens() {
-            foreach (var screen in screenCache.Values) {
-                screen.UnloadContent();
-            }
-            screenCache.Clear();
-            screenStack.Clear();
+        public void HideLoadingScreen() {
+            _loadingScreen.IsActive = false;
         }
 
-        public ContentManager Content => content;
         public SpriteBatch SpriteBatch => spriteBatch;
     }
 
@@ -184,11 +189,7 @@ namespace Client {
         public bool IsFocused { get; set; } = true;
         public bool IsInitialized { get; set; } = false;
 
-        public static Vector2 ScreenSize {
-            get {
-                return new Vector2(Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height);
-            }
-        }
+        public static Vector2 ScreenSize => new(Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height);
 
         public virtual void Initialize() { }
 
@@ -250,8 +251,8 @@ namespace Client {
                     }
                 }
             }
+
             uiManager.Update(gameTime);
-            ToastManager.Instance.Update(gameTime);
             previousMouseState = mouseState;
             previousKeyboardState = keyboardState;
         }
@@ -264,7 +265,6 @@ namespace Client {
         public virtual void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             if (!IsVisible) return;
             uiManager.Draw(spriteBatch);
-            ToastManager.Instance.Draw(spriteBatch);
         }
     }
 }

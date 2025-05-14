@@ -22,6 +22,7 @@ namespace Client {
                 Height = ScreenSize.Y,
                 Gravity = Gravity.Center,
             };
+            uiManager.AddComponent(layout);
 
             var mainBox = new ContainerBox() {
                 LayoutOrientation = Orientation.Vertical,
@@ -139,8 +140,6 @@ namespace Client {
                 OnClick = ExitGame,
             };
             mainBox.AddComponent(exitButton);
-
-            uiManager.AddComponent(layout, 0);
         }
 
         public override void Activate() {
@@ -148,25 +147,22 @@ namespace Client {
 
             if (NetworkManager.Instance.IsConnected) {
                 _connectLayout.IsVisible = false;
-                _connectButton.IsEnabled = false;
                 _mainLayout.IsVisible = true;
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetUsername));
             } else {
                 _connectLayout.IsVisible = true;
-                _connectButton.Text = "Connect";
-                _connectButton.IsEnabled = true;
                 _mainLayout.IsVisible = false;
                 _currentName = string.Empty;
             }
         }
 
         private void Connect() {
-            _connectButton.IsEnabled = false;
-            _connectButton.Text = "Connecting...";
+            ScreenManager.Instance.ShowLoadingScreen("Connecting to server");
             NetworkManager.Instance.Connect(_addressBox.Text, int.Parse(_portBox.Text));
         }
 
         private void CreateGame() {
+            ScreenManager.Instance.ShowLoadingScreen("Creating game");
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.CreateRoom));
         }
 
@@ -178,18 +174,17 @@ namespace Client {
                     break;
                 case ServerMessageType.NotConnected: {
                         _connectLayout.IsVisible = true;
-                        _connectButton.Text = "Connect";
-                        _connectButton.IsEnabled = true;
                         _mainLayout.IsVisible = false;
                         _currentName = string.Empty;
+                        ScreenManager.Instance.HideLoadingScreen();
                         ToastManager.Instance.ShowToast("Failed to connect");
                     }
                     break;
                 case ServerMessageType.ClientId: {
                         _connectLayout.IsVisible = false;
-                        _connectButton.IsEnabled = false;
                         _mainLayout.IsVisible = true;
                         NetworkManager.Instance.ClientId = int.Parse(message.Data["clientId"]);
+                        ScreenManager.Instance.HideLoadingScreen();
                         ToastManager.Instance.ShowToast($"Connected to server");
                     }
                     break;

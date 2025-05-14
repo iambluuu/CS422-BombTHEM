@@ -6,6 +6,7 @@ using TextCopy;
 
 using Client.Component;
 using Shared;
+using Microsoft.VisualBasic.Devices;
 
 namespace Client {
     public class LobbyScreen : GameScreen {
@@ -30,6 +31,7 @@ namespace Client {
                 Height = ScreenSize.Y,
                 Gravity = Gravity.Center,
             };
+            uiManager.AddComponent(layout);
 
             var mainBox = new ContainerBox() {
                 LayoutOrientation = Orientation.Vertical,
@@ -188,8 +190,6 @@ namespace Client {
             };
             rightLayout.AddComponent(_waitText);
 
-            uiManager.AddComponent(layout, 0);
-
             for (int i = 0; i < _playerIds.Length; i++) {
                 _playerIds[i] = -1;
                 _inGames[i] = false;
@@ -307,6 +307,8 @@ namespace Client {
                         }
 
                         ResetPermissions();
+
+                        ScreenManager.Instance.HideLoadingScreen();
                     }
                     break;
                 case ServerMessageType.UsernameSet: {
