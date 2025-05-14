@@ -12,6 +12,7 @@ using System.Text.Json;
 using Shared;
 using Client.Component;
 using Client.PowerUps;
+using System.Diagnostics;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
@@ -162,7 +163,7 @@ namespace Client {
                             if (_map.HasBomb(x, y)) {
                                 _map.RemoveBomb(x, y);
                             }
-                            _map.AddBomb(x, y, type);
+                            // _map.AddBomb(x, y, type);
                             _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Bomb"), new Vector2(TILE_SIZE, TILE_SIZE)) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             });
@@ -174,6 +175,7 @@ namespace Client {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         string[] positions = message.Data["positions"].Split(';');
+                        int byPlayerId = int.Parse(message.Data["byPlayerId"]);
 
                         lock (_lock) {
                             foreach (var pos in positions) {
@@ -190,7 +192,7 @@ namespace Client {
                                     _map.SetTile(ex, ey, TileType.Empty);
                                 }
                             }
-                            _map.RemoveBomb(x, y);
+                            // _map.RemoveBomb(x, y);
                             _bombLayer.DetachChild(_bombNodes[(x, y)]);
                             _bombNodes.Remove((x, y));
                         }
@@ -399,9 +401,14 @@ namespace Client {
                 }
 
                 if (nearestCell != null) {
-                    lock (_lock) {
-                        _map.AddBomb(nearestCell.X, nearestCell.Y, BombType.Normal);
-                    }
+                    // if (_map.PlayerInfos[playerId].CanPlaceBomb() == false) {
+                    //     return;
+                    // }
+
+                    // lock (_lock) {
+                    //     Console.WriteLine($"Bomb placed at {nearestCell.X}, {nearestCell.Y}");
+                    //     _map.AddBomb(nearestCell.X, nearestCell.Y, BombType.Normal);
+                    // }
 
                     if (key.IsKeyDown(Keys.Space)) {
                         NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {

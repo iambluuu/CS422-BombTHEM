@@ -15,7 +15,6 @@ namespace Server.PowerHandler {
                 Console.WriteLine($"Active power: {activePowerUp.PowerType}");
                 if (activePowerUp.PowerType == PowerName.Shield) {
                     activePowerUp.StartTime = DateTime.Now;
-                    Console.WriteLine($"Renewed shield for player {playerId}");
                     return new Dictionary<string, object> {
                         { "playerId", playerId },
                         { "needToChange", false }

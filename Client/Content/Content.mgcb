@@ -68,6 +68,18 @@
 /processorParam:TextureFormat=Color
 /build:Texture/Character/NinjaYellow.png
 
+#begin Texture/Effect/Aura.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Effect/Aura.png
+
 #begin Texture/Effect/Explosion.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -164,30 +176,6 @@
 /processorParam:TextureFormat=Color
 /build:Texture/Item/Dynamite.png
 
-#begin Texture/Other/Blank.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:Texture/Other/Blank.png
-
-#begin Texture/Other/Blank.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:Texture/Other/Blank.png
-
 #begin Texture/Item/Wood.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -199,6 +187,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Texture/Item/Wood.png
+
+#begin Texture/Other/Blank.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Other/Blank.png
 
 #begin Texture/Power/Ghost.png
 /importer:TextureImporter
@@ -212,7 +212,7 @@
 /processorParam:TextureFormat=Color
 /build:Texture/Power/Ghost.png
 
-#begin Texture/Power/InstantBomb.png
+#begin Texture/Power/MoreBombs.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -222,7 +222,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Texture/Power/InstantBomb.png
+/build:Texture/Power/MoreBombs.png
 
 #begin Texture/Power/None.png
 /importer:TextureImporter
@@ -236,7 +236,7 @@
 /processorParam:TextureFormat=Color
 /build:Texture/Power/None.png
 
-#begin Texture/Power/RandomBomb.png
+#begin Texture/Power/Nuke.png
 /importer:TextureImporter
 /processor:TextureProcessor
 /processorParam:ColorKeyColor=255,0,255,255
@@ -246,7 +246,7 @@
 /processorParam:ResizeToPowerOfTwo=False
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
-/build:Texture/Power/RandomBomb.png
+/build:Texture/Power/Nuke.png
 
 #begin Texture/Power/Shield.png
 /importer:TextureImporter

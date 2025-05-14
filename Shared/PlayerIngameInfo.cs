@@ -6,6 +6,7 @@ namespace Server {
     public class PlayerIngameInfo {
         public string Name { get; set; }
         public int Score { get; set; }
+        private int _bombCount { get; set; } = 0;
         public Position Position { get; set; }
         private PowerName[] _powerUps = { PowerName.None, PowerName.None };
         public List<ActivePowerUp> ActivePowerUps { get; set; } = new List<ActivePowerUp>();
@@ -43,6 +44,11 @@ namespace Server {
             return false;
         }
 
+        public void DecreaseBombCount() {
+            // Console.WriteLine($"Bomb exploded, current bomb count: {_bombCount}");
+            _bombCount = Math.Max(_bombCount - 1, 0);
+        }
+
         public void ExpireActivePowerUp(PowerName powerUp) {
             for (int i = 0; i < ActivePowerUps.Count; i++) {
                 if (ActivePowerUps[i].PowerType == powerUp) {
@@ -50,6 +56,18 @@ namespace Server {
                     break;
                 }
             }
+        }
+
+        public bool CanPlaceBomb() {
+            if (HasPowerUp(PowerName.MoreBombs)) {
+                return true;
+            }
+            if (_bombCount < GameplayConfig.MaxBombs) {
+                _bombCount = Math.Min(_bombCount + 1, GameplayConfig.MaxBombs);
+                return true;
+            }
+
+            return false;
         }
     }
 }
