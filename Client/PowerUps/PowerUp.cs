@@ -18,6 +18,7 @@ namespace Client.PowerUps {
         public static PowerUp CreatePowerUp(PowerName type) {
             return type switch {
                 // PowerName.Ghost => new (),
+                PowerName.Nuke => new Nuke(),
                 PowerName.MoreBombs => new MoreBombs(),
                 PowerName.Teleport => new Teleport(),
                 PowerName.Shield => new Shield(),

@@ -76,8 +76,8 @@ namespace Client {
             _playerLayer = new SceneNode();
             _vfxLayer = new SceneNode();
             _sceneGraph.AttachChild(_mapLayer);
-            _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_itemLayer);
+            _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_playerLayer);
             _sceneGraph.AttachChild(_vfxLayer);
             _sceneGraph.AttachChild(_pingText);
@@ -167,9 +167,9 @@ namespace Client {
                             if (byPlayerId == NetworkManager.Instance.ClientId) {
                                 _bombCount++;
                             }
-                            _bombNodes.Add((x, y), new(TextureHolder.Get("Item/Bomb"), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                                Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
-                            });
+                            var newBomb = BombNodeFactory.CreateNode(type);
+                            newBomb.Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE);
+                            _bombNodes.Add((x, y), newBomb);
                             _bombLayer.AttachChild(_bombNodes[(x, y)]);
                         }
                     }

@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Server;
 
 namespace Shared {
@@ -5,7 +6,7 @@ namespace Shared {
         None,
         Ghost,
         MoreBombs,
-        InstantBomb,
+        Nuke,
         Shield,
         Teleport,
     }
@@ -19,6 +20,7 @@ namespace Shared {
     public enum BombType {
         Normal,
         Special,
+        Nuke
     }
 
     public enum PlayerSkin {
@@ -324,9 +326,11 @@ namespace Shared {
                         int newX = bomb.Position.X + direction.X * i;
                         int newY = bomb.Position.Y + direction.Y * i;
 
-                        if (IsInBounds(newX, newY) && (GetTile(newX, newY) == TileType.Empty || GetTile(newX, newY) == TileType.Grass)) {
+                        if (IsInBounds(newX, newY) && GetTile(newX, newY) != TileType.Wall) {
                             bomb.ExplosionPositions.Add(new Position(newX, newY));
-                        } else {
+                        }
+
+                        if (GetTile(newX, newY) != TileType.Empty) {
                             break;
                         }
                     }
@@ -379,6 +383,20 @@ namespace Shared {
                 // for (int i = 0; i < bomb.ExplosionPositions.Count; i++) {
                 //     SetTile(bomb.ExplosionPositions[i].X, bomb.ExplosionPositions[i].Y, TileType.Empty);
                 // }
+            } else if (bomb.Type == BombType.Nuke) {
+                bomb.ExplosionPositions.Add(bomb.Position);
+                foreach (var direction in directions) {
+                    for (int i = 1; i <= Math.Max(Width, Height); i++) {
+                        int newX = bomb.Position.X + direction.X * i;
+                        int newY = bomb.Position.Y + direction.Y * i;
+
+                        if (IsInBounds(newX, newY) && (GetTile(newX, newY) == TileType.Empty || GetTile(newX, newY) == TileType.Grass)) {
+                            bomb.ExplosionPositions.Add(new Position(newX, newY));
+                        } else {
+                            break;
+                        }
+                    }
+                }
             }
         }
 
