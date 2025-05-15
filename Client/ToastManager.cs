@@ -11,27 +11,34 @@ namespace Client {
         public static ToastManager Instance => _instance ??= new ToastManager();
 
         private List<ToastNotification> _activeToasts = new List<ToastNotification>();
+        private object _lock = new();
 
         private ToastManager() { }
 
         public void ShowToast(string message) {
             var toast = new ToastNotification(message);
-            _activeToasts.Add(toast);
+            lock (_lock) {
+                _activeToasts.Add(toast);
+            }
         }
 
         public void Update(GameTime gameTime) {
-            for (int i = _activeToasts.Count - 1; i >= 0; i--) {
-                _activeToasts[i].Update(gameTime);
+            lock (_lock) {
+                for (int i = _activeToasts.Count - 1; i >= 0; i--) {
+                    _activeToasts[i].Update(gameTime);
 
-                if (_activeToasts[i].IsFinished) {
-                    _activeToasts.RemoveAt(i);
+                    if (_activeToasts[i].IsFinished) {
+                        _activeToasts.RemoveAt(i);
+                    }
                 }
             }
         }
 
         public void Draw(SpriteBatch spriteBatch) {
-            foreach (var toast in _activeToasts) {
-                toast.Draw(spriteBatch);
+            lock (_lock) {
+                foreach (var toast in _activeToasts) {
+                    toast.Draw(spriteBatch);
+                }
             }
         }
     }

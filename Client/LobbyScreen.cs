@@ -329,6 +329,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.PlayerKicked: {
+                        ScreenManager.Instance.StartLoading();
                         ScreenManager.Instance.NavigateBack();
                         ToastManager.Instance.ShowToast("You have been kicked");
                     }

@@ -160,6 +160,16 @@ namespace Client {
         }
 
         private void Connect() {
+            if (string.IsNullOrEmpty(_addressBox.Text)) {
+                ToastManager.Instance.ShowToast("Address cant be empty");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(_portBox.Text)) {
+                ToastManager.Instance.ShowToast("Port cant be empty");
+                return;
+            }
+
             _connectButton.IsEnabled = false;
             _connectButton.Text = "Connecting...";
             NetworkManager.Instance.Connect(_addressBox.Text, int.Parse(_portBox.Text));

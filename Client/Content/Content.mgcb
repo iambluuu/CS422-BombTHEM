@@ -368,6 +368,18 @@
 /processorParam:TextureFormat=Color
 /build:Texture/Theme/arrow_right.png
 
+#begin Texture/Theme/Background.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Theme/Background.png
+
 #begin Texture/Theme/button_checked_disabled.png
 /importer:TextureImporter
 /processor:TextureProcessor
