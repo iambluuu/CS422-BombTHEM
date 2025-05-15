@@ -15,9 +15,11 @@ namespace Client {
             Opening,
         }
 
-        private LinearLayout _leftDoor;
-        private LinearLayout _rightDoor;
-        private float _doorMoveTime = 0.5f;
+        private LinearLayout _leftDoorText;
+        private ImageView _leftDoor;
+        private LinearLayout _rightDoorText;
+        private ImageView _rightDoor;
+        private readonly float _doorMoveTime = 0.5f;
         private float _currentDoorTime = 0f;
         private DoorState _doorState = DoorState.None;
         private bool _requestOpen = false;
@@ -25,43 +27,61 @@ namespace Client {
         public bool IsLoading => _doorState == DoorState.Closing || _doorState == DoorState.Waiting;
 
         public override void Initialize() {
-            _leftDoor = new() {
-                LayoutOrientation = Orientation.Vertical,
+            _leftDoor = new ImageView() {
                 Width = ScreenSize.X / 2,
                 Height = ScreenSize.Y,
+                Texture = TextureHolder.Get("Theme/door_left"),
                 Position = new Vector2(-ScreenSize.X / 2, 0),
-                BackgroundColor = new Color(240, 103, 51),
-                Gravity = Gravity.CenterRight,
+                ScaleType = ScaleType.FitCenter,
             };
             uiManager.AddComponent(_leftDoor);
 
-            _rightDoor = new() {
-                LayoutOrientation = Orientation.Vertical,
+            _rightDoor = new ImageView() {
                 Width = ScreenSize.X / 2,
                 Height = ScreenSize.Y,
+                Texture = TextureHolder.Get("Theme/door_right"),
                 Position = new Vector2(ScreenSize.X, 0),
-                BackgroundColor = new Color(240, 103, 51),
-                Gravity = Gravity.CenterLeft,
+                ScaleType = ScaleType.FitCenter,
             };
             uiManager.AddComponent(_rightDoor);
 
-            var leftDoorText = new TextView() {
-                WidthMode = SizeMode.WrapContent,
-                HeightMode = SizeMode.WrapContent,
-                Text = "Bomb",
-                TextSize = 4.0f,
-                PaddingRight = 20,
+            _leftDoorText = new() {
+                LayoutOrientation = Orientation.Vertical,
+                Width = ScreenSize.X / 2,
+                Height = ScreenSize.Y - 100,
+                Position = new Vector2(-ScreenSize.X / 2, 0),
+                Gravity = Gravity.CenterRight,
             };
-            _leftDoor.AddComponent(leftDoorText);
+            uiManager.AddComponent(_leftDoorText);
 
-            var rightDoorText = new TextView() {
-                WidthMode = SizeMode.WrapContent,
-                HeightMode = SizeMode.WrapContent,
-                Text = "THEM",
-                TextSize = 4.0f,
-                PaddingLeft = 20,
+            _rightDoorText = new() {
+                LayoutOrientation = Orientation.Vertical,
+                Width = ScreenSize.X / 2,
+                Height = ScreenSize.Y - 100,
+                Position = new Vector2(ScreenSize.X, 0),
+                Gravity = Gravity.CenterLeft,
             };
-            _rightDoor.AddComponent(rightDoorText);
+            uiManager.AddComponent(_rightDoorText);
+
+            var leftDoorText = new ImageView() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 130,
+                Texture = TextureHolder.Get("Logo", new Rectangle(0, 0, 900, 250)),
+                Gravity = Gravity.CenterRight,
+                ScaleType = ScaleType.FitEnd,
+                PaddingRight = 70,
+            };
+            _leftDoorText.AddComponent(leftDoorText);
+
+            var rightDoorText = new ImageView() {
+                WidthMode = SizeMode.MatchParent,
+                Height = 130,
+                Texture = TextureHolder.Get("Logo", new Rectangle(900, 0, 900, 250)),
+                Gravity = Gravity.CenterLeft,
+                ScaleType = ScaleType.FitStart,
+                PaddingLeft = 70,
+            };
+            _rightDoorText.AddComponent(rightDoorText);
         }
 
         public void RequestClose() {
@@ -70,7 +90,9 @@ namespace Client {
         }
 
         public void RequestOpen() {
-            _requestOpen = true;
+            if (_doorState != DoorState.None && _doorState != DoorState.Opening) {
+                _requestOpen = true;
+            }
         }
 
         public override void Update(GameTime gameTime) {
@@ -81,11 +103,56 @@ namespace Client {
             float progress = Math.Min(_currentDoorTime / _doorMoveTime, 1f);
 
             if (_doorState == DoorState.Closing) {
-                _leftDoor.X = MathHelper.Lerp(-ScreenSize.X / 2, 0, Easing.CubicEaseIn(progress));
-                _rightDoor.X = MathHelper.Lerp(ScreenSize.X, ScreenSize.X / 2, Easing.CubicEaseIn(progress));
+                if (progress < 0.8f) {
+                    progress /= 0.8f;
+                    _leftDoor.X = _leftDoorText.X = MathHelper.Lerp(-ScreenSize.X / 2, 0, Easing.CubicEaseIn(progress));
+                    _rightDoor.X = _rightDoorText.X = MathHelper.Lerp(ScreenSize.X, ScreenSize.X / 2, Easing.CubicEaseIn(progress));
+                } else {
+                    float bounceNormalProgress = (progress - 0.8f) / 0.2f;
+
+                    float leftDoorClosedX = 0;
+                    float rightDoorClosedX = ScreenSize.X / 2;
+
+                    float bounce1_amplitude = ScreenSize.X * 0.03f;
+                    float bounce2_amplitude = ScreenSize.X * 0.01f;
+
+                    const float t_phase1_end = 0.4f;
+                    const float t_phase2_end = 0.7f;
+                    const float t_phase3_end = 0.85f;
+                    const float t_phase4_end = 1.0f;
+
+                    float currentLeftX, currentRightX;
+
+                    if (bounceNormalProgress < t_phase1_end) {
+                        float phaseProgress = bounceNormalProgress / t_phase1_end;
+
+                        currentLeftX = MathHelper.Lerp(leftDoorClosedX, leftDoorClosedX - bounce1_amplitude, Easing.SineEaseOut(phaseProgress));
+                        currentRightX = MathHelper.Lerp(rightDoorClosedX, rightDoorClosedX + bounce1_amplitude, Easing.SineEaseOut(phaseProgress));
+
+                    } else if (bounceNormalProgress < t_phase2_end) {
+                        float phaseProgress = (bounceNormalProgress - t_phase1_end) / (t_phase2_end - t_phase1_end);
+
+                        currentLeftX = MathHelper.Lerp(leftDoorClosedX - bounce1_amplitude, leftDoorClosedX, Easing.SineEaseIn(phaseProgress));
+                        currentRightX = MathHelper.Lerp(rightDoorClosedX + bounce1_amplitude, rightDoorClosedX, Easing.SineEaseIn(phaseProgress));
+
+                    } else if (bounceNormalProgress < t_phase3_end) {
+                        float phaseProgress = (bounceNormalProgress - t_phase2_end) / (t_phase3_end - t_phase2_end);
+
+                        currentLeftX = MathHelper.Lerp(leftDoorClosedX, leftDoorClosedX - bounce2_amplitude, Easing.SineEaseOut(phaseProgress));
+                        currentRightX = MathHelper.Lerp(rightDoorClosedX, rightDoorClosedX + bounce2_amplitude, Easing.SineEaseOut(phaseProgress));
+                    } else {
+                        float phaseProgress = (bounceNormalProgress - t_phase3_end) / (t_phase4_end - t_phase3_end);
+
+                        currentLeftX = MathHelper.Lerp(leftDoorClosedX - bounce2_amplitude, leftDoorClosedX, Easing.SineEaseIn(phaseProgress));
+                        currentRightX = MathHelper.Lerp(rightDoorClosedX + bounce2_amplitude, rightDoorClosedX, Easing.SineEaseIn(phaseProgress));
+                    }
+
+                    _leftDoor.X = _leftDoorText.X = currentLeftX;
+                    _rightDoor.X = _rightDoorText.X = currentRightX;
+                }
             } else if (_doorState == DoorState.Opening) {
-                _leftDoor.X = MathHelper.Lerp(0, -ScreenSize.X / 2, Easing.CubicEaseIn(progress));
-                _rightDoor.X = MathHelper.Lerp(ScreenSize.X / 2, ScreenSize.X, Easing.CubicEaseIn(progress));
+                _leftDoor.X = _leftDoorText.X = MathHelper.Lerp(0, -ScreenSize.X / 2, Easing.CubicEaseIn(progress));
+                _rightDoor.X = _rightDoorText.X = MathHelper.Lerp(ScreenSize.X / 2, ScreenSize.X, Easing.CubicEaseIn(progress));
             }
 
             if (_currentDoorTime >= _doorMoveTime) {

@@ -31,14 +31,11 @@ namespace Client {
             };
             layout.AddComponent(mainBox);
 
-            var title = new TextView() {
+            var title = new ImageView() {
                 WidthMode = SizeMode.MatchParent,
-                HeightMode = SizeMode.WrapContent,
-                Text = "Bomb THEM",
-                TextSize = 2f,
-                TextColor = Color.White,
+                Height = 100,
+                Texture = TextureHolder.Get("Logo"),
                 Gravity = Gravity.Center,
-                PaddingBottom = 20,
             };
             mainBox.AddComponent(title);
 
@@ -158,6 +155,8 @@ namespace Client {
                 _mainLayout.IsVisible = false;
                 _currentName = string.Empty;
             }
+
+            ScreenManager.Instance.StopLoading();
         }
 
         private void Connect() {

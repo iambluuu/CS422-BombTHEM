@@ -48,6 +48,7 @@ namespace Client.Component {
         private bool _needsLayout = true;
         private Rectangle _sourceRectangle;
         private Rectangle _destinationRectangle;
+        private Vector2 _rotationOriginVector = Vector2.Zero;
 
         public override Vector2 Size {
             get => base.Size;
@@ -99,6 +100,17 @@ namespace Client.Component {
             }
         }
 
+        // Fix for positioning - Override Position property
+        public override Vector2 Position {
+            get => base.Position;
+            set {
+                if (value != base.Position) {
+                    base.Position = value;
+                    _needsLayout = true;
+                }
+            }
+        }
+
         protected override float MeasureContentWidth() {
             if (Texture == null)
                 return PaddingLeft + PaddingRight;
@@ -127,7 +139,9 @@ namespace Client.Component {
 
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
-            PerformLayout();
+            if (_needsLayout) {
+                PerformLayout();
+            }
         }
 
         private void PerformLayout() {
@@ -137,17 +151,22 @@ namespace Client.Component {
                 _needsLayout = false;
                 return;
             }
+
+            // Get available content area dimensions
             float contentWidth = Width - PaddingLeft - PaddingRight;
             float contentHeight = Height - PaddingTop - PaddingBottom;
+
+            // Set source rectangle to the full texture
             _sourceRectangle = new Rectangle(0, 0, Texture.Width, Texture.Height);
+
             float destWidth = 0;
             float destHeight = 0;
-            float destX = Position.X + PaddingLeft;
-            float destY = Position.Y + PaddingTop;
 
+            // Calculate aspect ratios
             float srcAspectRatio = (float)Texture.Width / Texture.Height;
             float destAspectRatio = contentWidth / contentHeight;
 
+            // Determine destination dimensions based on ScaleType
             switch (ScaleType) {
                 case ScaleType.Center:
                     destWidth = Texture.Width;
@@ -201,14 +220,21 @@ namespace Client.Component {
                     destHeight = contentHeight;
                     break;
             }
+
+            // Calculate the destination X position
+            float destX = Position.X + PaddingLeft;
             if ((Gravity & Gravity.CenterHorizontal) != 0 || ScaleType == ScaleType.Center ||
                 ScaleType == ScaleType.CenterCrop || ScaleType == ScaleType.CenterInside ||
                 ScaleType == ScaleType.FitCenter) {
                 destX = Position.X + PaddingLeft + (contentWidth - destWidth) / 2;
             } else if ((Gravity & Gravity.Right) != 0 || ScaleType == ScaleType.FitEnd) {
                 destX = Position.X + Width - PaddingRight - destWidth;
+            } else if ((Gravity & Gravity.Left) != 0 || ScaleType == ScaleType.FitStart) {
+                destX = Position.X + PaddingLeft;
             }
 
+            // Calculate the destination Y position
+            float destY = Position.Y + PaddingTop;
             if ((Gravity & Gravity.CenterVertical) != 0 || ScaleType == ScaleType.Center ||
                 ScaleType == ScaleType.CenterCrop || ScaleType == ScaleType.CenterInside ||
                 ScaleType == ScaleType.FitCenter) {
@@ -224,51 +250,114 @@ namespace Client.Component {
                 (int)destHeight
             );
 
+            // Calculate rotation origin vector for proper rotation
+            _rotationOriginVector = new Vector2(
+                _sourceRectangle.Width * RotationOrigin.X,
+                _sourceRectangle.Height * RotationOrigin.Y
+            );
+
             _needsLayout = false;
         }
 
         public override void Draw(SpriteBatch spriteBatch) {
             if (Texture == null || !IsVisible || Alpha <= 0) return;
+
             if (_needsLayout) {
                 PerformLayout();
             }
-            Vector2 origin = new Vector2(
-                _sourceRectangle.Width * RotationOrigin.X,
-                _sourceRectangle.Height * RotationOrigin.Y
-            );
+
+            // Calculate rotation origin point in destination coordinates
+            Vector2 origin = Vector2.Zero; // Default for drawing without rotation
+
+            if (Rotation != 0) {
+                // Only calculate an origin if rotation is used
+                origin = new Vector2(
+                    _destinationRectangle.Width * RotationOrigin.X,
+                    _destinationRectangle.Height * RotationOrigin.Y
+                );
+            }
+
+            // Draw shadow if enabled
             if (DrawShadow) {
                 for (int i = 0; i < ShadowSoftness; i++) {
                     float softnessScale = (i + 1) / ShadowSoftness;
                     Vector2 shadowOffset = ShadowOffset * softnessScale;
-                    Rectangle shadowRect = new Rectangle(
-                        _destinationRectangle.X + (int)shadowOffset.X,
-                        _destinationRectangle.Y + (int)shadowOffset.Y,
-                        _destinationRectangle.Width,
-                        _destinationRectangle.Height
-                    );
 
-                    spriteBatch.Draw(
-                        Texture,
-                        shadowRect,
-                        _sourceRectangle,
-                        ShadowColor * Opacity * Alpha * (1 - 0.3f * softnessScale),
-                        Rotation,
-                        Vector2.Zero,
-                        SpriteEffects,
-                        0.01f
-                    );
+                    if (Rotation == 0) {
+                        // For non-rotated images, just offset the rectangle
+                        Rectangle shadowRect = new Rectangle(
+                            _destinationRectangle.X + (int)shadowOffset.X,
+                            _destinationRectangle.Y + (int)shadowOffset.Y,
+                            _destinationRectangle.Width,
+                            _destinationRectangle.Height
+                        );
+
+                        spriteBatch.Draw(
+                            Texture,
+                            shadowRect,
+                            _sourceRectangle,
+                            ShadowColor * Opacity * Alpha * (1 - 0.3f * softnessScale),
+                            0,
+                            Vector2.Zero,
+                            SpriteEffects,
+                            0.01f
+                        );
+                    } else {
+                        // For rotated images, use the overload that takes a Vector2 for position
+                        Vector2 shadowPos = new Vector2(
+                            _destinationRectangle.X + shadowOffset.X,
+                            _destinationRectangle.Y + shadowOffset.Y
+                        );
+
+                        spriteBatch.Draw(
+                            Texture,
+                            shadowPos,
+                            _sourceRectangle,
+                            ShadowColor * Opacity * Alpha * (1 - 0.3f * softnessScale),
+                            Rotation,
+                            _rotationOriginVector,
+                            new Vector2((float)_destinationRectangle.Width / Texture.Width,
+                                       (float)_destinationRectangle.Height / Texture.Height),
+                            SpriteEffects,
+                            0.01f
+                        );
+                    }
                 }
             }
-            spriteBatch.Draw(
-                Texture,
-                _destinationRectangle,
-                _sourceRectangle,
-                Tint * Opacity * Alpha,
-                Rotation,
-                Vector2.Zero,
-                SpriteEffects,
-                0f
-            );
+
+            // Draw the main image
+            if (Rotation == 0) {
+                // Use rectangle overload for non-rotated images for efficiency
+                spriteBatch.Draw(
+                    Texture,
+                    _destinationRectangle,
+                    _sourceRectangle,
+                    Tint * Opacity * Alpha,
+                    0,
+                    Vector2.Zero,
+                    SpriteEffects,
+                    0f
+                );
+            } else {
+                // Use Vector2 position overload for rotated images
+                Vector2 position = new Vector2(_destinationRectangle.X, _destinationRectangle.Y);
+                Vector2 scale = new Vector2(
+                    (float)_destinationRectangle.Width / Texture.Width,
+                    (float)_destinationRectangle.Height / Texture.Height
+                );
+
+                spriteBatch.Draw(
+                    Texture,
+                    position,
+                    _sourceRectangle,
+                    Tint * Opacity * Alpha,
+                    Rotation,
+                    Vector2.Zero,
+                    scale,
+                    SpriteEffects,
+                    0f
+                );
+            }
         }
 
         public void SetAdjustViewBounds(bool adjustViewBounds) {

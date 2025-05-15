@@ -35,7 +35,7 @@ namespace Client {
                 HeightMode = SizeMode.WrapContent,
                 Text = "Join Game",
                 TextSize = 2f,
-                TextColor = Color.White,
+                TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 PaddingBottom = 20,
             };
@@ -45,7 +45,7 @@ namespace Client {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
                 AllowedCharacters = CharacterSet.Alpha,
-                PlaceholderText = "Enter room ID",
+                PlaceholderText = "Enter room code",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 MaxLength = 6,
@@ -68,6 +68,11 @@ namespace Client {
                 OnClick = ScreenManager.Instance.NavigateBack,
             };
             mainBox.AddComponent(backButton);
+        }
+
+        public override void Activate() {
+            base.Activate();
+            ScreenManager.Instance.StopLoading();
         }
 
         private void Connect() {
@@ -95,6 +100,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.Error: {
+                        ScreenManager.Instance.StopLoading();
                         ToastManager.Instance.ShowToast(message.Data["message"]);
                     }
                     break;

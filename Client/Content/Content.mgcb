@@ -188,6 +188,18 @@
 /processorParam:TextureFormat=Color
 /build:Texture/Item/Wood.png
 
+#begin Texture/Logo.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Logo.png
+
 #begin Texture/Other/Blank.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -451,6 +463,30 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:Texture/Theme/checked.png
+
+#begin Texture/Theme/door_left.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Theme/door_left.png
+
+#begin Texture/Theme/door_right.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:Texture/Theme/door_right.png
 
 #begin Texture/Theme/h_slidder_grabber_disabled.png
 /importer:TextureImporter

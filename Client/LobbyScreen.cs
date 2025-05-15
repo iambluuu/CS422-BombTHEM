@@ -47,7 +47,7 @@ namespace Client {
                 HeightMode = SizeMode.WrapContent,
                 Text = "Waiting...",
                 TextSize = 2f,
-                TextColor = Color.White,
+                TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 PaddingBottom = 20,
             };
@@ -240,6 +240,7 @@ namespace Client {
         }
 
         private void LeaveLobby() {
+            ScreenManager.Instance.StartLoading();
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
             ScreenManager.Instance.NavigateBack();
         }
