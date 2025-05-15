@@ -3,20 +3,18 @@ using Microsoft.Xna.Framework.Graphics;
 using System;
 
 namespace Client.Component {
-    // Android-like scale types
     public enum ScaleType {
-        Center,           // Center the image without scaling
-        CenterCrop,       // Scale the image uniformly to fill the bounds and crop if necessary
-        CenterInside,     // Scale the image uniformly to fit within the bounds
-        FitCenter,        // Scale the image uniformly to fit within the bounds and center it
-        FitStart,         // Scale the image uniformly to fit within the bounds, align to the start
-        FitEnd,           // Scale the image uniformly to fit within the bounds, align to the end
-        FitXY,            // Scale the image to fill the bounds (may distort the image)
-        Matrix            // Use a custom transformation matrix (not fully implemented)
+        Center,
+        CenterCrop,
+        CenterInside,
+        FitCenter,
+        FitStart,
+        FitEnd,
+        FitXY,
+        Matrix
     }
 
     public class ImageView : IComponent {
-        // Image properties
         private Texture2D _texture;
         public required Texture2D Texture {
             get => _texture;
@@ -27,27 +25,19 @@ namespace Client.Component {
                 }
             }
         }
-
-        // Android-like properties
         public ScaleType ScaleType { get; set; } = ScaleType.FitCenter;
         public Gravity Gravity { get; set; } = Gravity.Center;
         public Color Tint { get; set; } = Color.White;
-
-        // Image adjustment properties
         public float Rotation { get; set; } = 0f;
-        public Vector2 RotationOrigin { get; set; } = new Vector2(0.5f, 0.5f); // Normalized (0-1) center point
+        public Vector2 RotationOrigin { get; set; } = new Vector2(0.5f, 0.5f);
         public SpriteEffects SpriteEffects { get; set; } = SpriteEffects.None;
         public bool AdjustViewBounds { get; set; } = false;
         public float MaxWidth { get; set; } = float.MaxValue;
         public float MaxHeight { get; set; } = float.MaxValue;
-
-        // Visual effects
         public bool DrawShadow { get; set; } = false;
         public Vector2 ShadowOffset { get; set; } = new Vector2(2, 2);
         public Color ShadowColor { get; set; } = new Color(0, 0, 0, 128);
-        public float ShadowSoftness { get; set; } = 1f; // Simulated with multiple shadow draws
-
-        // Animation properties
+        public float ShadowSoftness { get; set; } = 1f;
         private float _alpha = 1.0f;
         public float Alpha {
             get => _alpha;
@@ -55,11 +45,10 @@ namespace Client.Component {
                 _alpha = MathHelper.Clamp(value, 0f, 1f);
             }
         }
-
-        // Layout flag
         private bool _needsLayout = true;
         private Rectangle _sourceRectangle;
         private Rectangle _destinationRectangle;
+        private Vector2 _rotationOriginVector = Vector2.Zero;
 
         public override Vector2 Size {
             get => base.Size;
@@ -111,7 +100,17 @@ namespace Client.Component {
             }
         }
 
-        // Android-like content sizing
+        // Fix for positioning - Override Position property
+        public override Vector2 Position {
+            get => base.Position;
+            set {
+                if (value != base.Position) {
+                    base.Position = value;
+                    _needsLayout = true;
+                }
+            }
+        }
+
         protected override float MeasureContentWidth() {
             if (Texture == null)
                 return PaddingLeft + PaddingRight;
@@ -140,11 +139,9 @@ namespace Client.Component {
 
         public override void Update(GameTime gameTime) {
             base.Update(gameTime);
-
-            // Perform layout if needed
-            // if (_needsLayout) {
-            PerformLayout();
-            // }
+            if (_needsLayout) {
+                PerformLayout();
+            }
         }
 
         private void PerformLayout() {
@@ -155,56 +152,46 @@ namespace Client.Component {
                 return;
             }
 
-            // Calculate the content area (excluding padding)
+            // Get available content area dimensions
             float contentWidth = Width - PaddingLeft - PaddingRight;
             float contentHeight = Height - PaddingTop - PaddingBottom;
 
-            // Source rectangle (the entire texture)
+            // Set source rectangle to the full texture
             _sourceRectangle = new Rectangle(0, 0, Texture.Width, Texture.Height);
 
-            // Calculate dimensions based on ScaleType
             float destWidth = 0;
             float destHeight = 0;
-            float destX = Position.X + PaddingLeft;
-            float destY = Position.Y + PaddingTop;
 
+            // Calculate aspect ratios
             float srcAspectRatio = (float)Texture.Width / Texture.Height;
             float destAspectRatio = contentWidth / contentHeight;
 
+            // Determine destination dimensions based on ScaleType
             switch (ScaleType) {
                 case ScaleType.Center:
-                    // Center the image without scaling
                     destWidth = Texture.Width;
                     destHeight = Texture.Height;
                     break;
 
                 case ScaleType.CenterCrop:
-                    // Scale to fill, maintaining aspect ratio, and crop if necessary
                     if (srcAspectRatio > destAspectRatio) {
-                        // Image is wider than destination: match height and crop width
                         destHeight = contentHeight;
                         destWidth = destHeight * srcAspectRatio;
                     } else {
-                        // Image is taller than destination: match width and crop height
                         destWidth = contentWidth;
                         destHeight = destWidth / srcAspectRatio;
                     }
                     break;
 
                 case ScaleType.CenterInside:
-                    // Scale to fit inside, maintaining aspect ratio
                     if (Texture.Width <= contentWidth && Texture.Height <= contentHeight) {
-                        // Image is smaller than bounds: don't scale
                         destWidth = Texture.Width;
                         destHeight = Texture.Height;
                     } else {
-                        // Scale down to fit
                         if (srcAspectRatio > destAspectRatio) {
-                            // Width is the constraint
                             destWidth = contentWidth;
                             destHeight = destWidth / srcAspectRatio;
                         } else {
-                            // Height is the constraint
                             destHeight = contentHeight;
                             destWidth = destHeight * srcAspectRatio;
                         }
@@ -214,40 +201,40 @@ namespace Client.Component {
                 case ScaleType.FitCenter:
                 case ScaleType.FitStart:
                 case ScaleType.FitEnd:
-                    // Scale to fit inside, maintaining aspect ratio
                     if (srcAspectRatio > destAspectRatio) {
-                        // Width is the constraint
                         destWidth = contentWidth;
                         destHeight = destWidth / srcAspectRatio;
                     } else {
-                        // Height is the constraint
                         destHeight = contentHeight;
                         destWidth = destHeight * srcAspectRatio;
                     }
                     break;
 
                 case ScaleType.FitXY:
-                    // Scale to fill the bounds (may distort)
                     destWidth = contentWidth;
                     destHeight = contentHeight;
                     break;
 
                 case ScaleType.Matrix:
-                    // Custom matrix transformation - use defaults for now
                     destWidth = contentWidth;
                     destHeight = contentHeight;
                     break;
             }
 
-            // Apply Gravity for positioning
+            // Calculate the destination X position
+            float destX = Position.X + PaddingLeft;
             if ((Gravity & Gravity.CenterHorizontal) != 0 || ScaleType == ScaleType.Center ||
                 ScaleType == ScaleType.CenterCrop || ScaleType == ScaleType.CenterInside ||
                 ScaleType == ScaleType.FitCenter) {
                 destX = Position.X + PaddingLeft + (contentWidth - destWidth) / 2;
             } else if ((Gravity & Gravity.Right) != 0 || ScaleType == ScaleType.FitEnd) {
                 destX = Position.X + Width - PaddingRight - destWidth;
+            } else if ((Gravity & Gravity.Left) != 0 || ScaleType == ScaleType.FitStart) {
+                destX = Position.X + PaddingLeft;
             }
 
+            // Calculate the destination Y position
+            float destY = Position.Y + PaddingTop;
             if ((Gravity & Gravity.CenterVertical) != 0 || ScaleType == ScaleType.Center ||
                 ScaleType == ScaleType.CenterCrop || ScaleType == ScaleType.CenterInside ||
                 ScaleType == ScaleType.FitCenter) {
@@ -263,63 +250,116 @@ namespace Client.Component {
                 (int)destHeight
             );
 
+            // Calculate rotation origin vector for proper rotation
+            _rotationOriginVector = new Vector2(
+                _sourceRectangle.Width * RotationOrigin.X,
+                _sourceRectangle.Height * RotationOrigin.Y
+            );
+
             _needsLayout = false;
         }
 
         public override void Draw(SpriteBatch spriteBatch) {
             if (Texture == null || !IsVisible || Alpha <= 0) return;
 
-            // Ensure layout is up to date
             if (_needsLayout) {
                 PerformLayout();
             }
 
-            // Calculate actual rotation origin in pixels
-            Vector2 origin = new Vector2(
-                _sourceRectangle.Width * RotationOrigin.X,
-                _sourceRectangle.Height * RotationOrigin.Y
-            );
+            // Calculate rotation origin point in destination coordinates
+            Vector2 origin = Vector2.Zero; // Default for drawing without rotation
+
+            if (Rotation != 0) {
+                // Only calculate an origin if rotation is used
+                origin = new Vector2(
+                    _destinationRectangle.Width * RotationOrigin.X,
+                    _destinationRectangle.Height * RotationOrigin.Y
+                );
+            }
 
             // Draw shadow if enabled
             if (DrawShadow) {
-                // Simple shadow implementation with multiple draws for softness
                 for (int i = 0; i < ShadowSoftness; i++) {
                     float softnessScale = (i + 1) / ShadowSoftness;
                     Vector2 shadowOffset = ShadowOffset * softnessScale;
-                    Rectangle shadowRect = new Rectangle(
-                        _destinationRectangle.X + (int)shadowOffset.X,
-                        _destinationRectangle.Y + (int)shadowOffset.Y,
-                        _destinationRectangle.Width,
-                        _destinationRectangle.Height
-                    );
 
-                    spriteBatch.Draw(
-                        Texture,
-                        shadowRect,
-                        _sourceRectangle,
-                        ShadowColor * Opacity * Alpha * (1 - 0.3f * softnessScale),
-                        Rotation,
-                        Vector2.Zero, // temporary fix
-                        SpriteEffects,
-                        0.01f
-                    );
+                    if (Rotation == 0) {
+                        // For non-rotated images, just offset the rectangle
+                        Rectangle shadowRect = new Rectangle(
+                            _destinationRectangle.X + (int)shadowOffset.X,
+                            _destinationRectangle.Y + (int)shadowOffset.Y,
+                            _destinationRectangle.Width,
+                            _destinationRectangle.Height
+                        );
+
+                        spriteBatch.Draw(
+                            Texture,
+                            shadowRect,
+                            _sourceRectangle,
+                            ShadowColor * Opacity * Alpha * (1 - 0.3f * softnessScale),
+                            0,
+                            Vector2.Zero,
+                            SpriteEffects,
+                            0.01f
+                        );
+                    } else {
+                        // For rotated images, use the overload that takes a Vector2 for position
+                        Vector2 shadowPos = new Vector2(
+                            _destinationRectangle.X + shadowOffset.X,
+                            _destinationRectangle.Y + shadowOffset.Y
+                        );
+
+                        spriteBatch.Draw(
+                            Texture,
+                            shadowPos,
+                            _sourceRectangle,
+                            ShadowColor * Opacity * Alpha * (1 - 0.3f * softnessScale),
+                            Rotation,
+                            _rotationOriginVector,
+                            new Vector2((float)_destinationRectangle.Width / Texture.Width,
+                                       (float)_destinationRectangle.Height / Texture.Height),
+                            SpriteEffects,
+                            0.01f
+                        );
+                    }
                 }
             }
 
-            // Draw the image
-            spriteBatch.Draw(
-                Texture,
-                _destinationRectangle,
-                _sourceRectangle,
-                Tint * Opacity * Alpha,
-                Rotation,
-                Vector2.Zero, // temporary fix
-                SpriteEffects,
-                0f
-            );
+            // Draw the main image
+            if (Rotation == 0) {
+                // Use rectangle overload for non-rotated images for efficiency
+                spriteBatch.Draw(
+                    Texture,
+                    _destinationRectangle,
+                    _sourceRectangle,
+                    Tint * Opacity * Alpha,
+                    0,
+                    Vector2.Zero,
+                    SpriteEffects,
+                    0f
+                );
+            } else {
+                // Use Vector2 position overload for rotated images
+                Vector2 position = new Vector2(_destinationRectangle.X, _destinationRectangle.Y);
+                Vector2 scale = new Vector2(
+                    (float)_destinationRectangle.Width / Texture.Width,
+                    (float)_destinationRectangle.Height / Texture.Height
+                );
+
+                spriteBatch.Draw(
+                    Texture,
+                    position,
+                    _sourceRectangle,
+                    Tint * Opacity * Alpha,
+                    Rotation,
+                    Vector2.Zero,
+                    scale,
+                    SpriteEffects,
+                    0f
+                );
+            }
         }
 
-        // Android-like methods for adjusting view bounds based on image aspect ratio
         public void SetAdjustViewBounds(bool adjustViewBounds) {
             if (AdjustViewBounds != adjustViewBounds) {
                 AdjustViewBounds = adjustViewBounds;
@@ -327,23 +367,18 @@ namespace Client.Component {
             }
         }
 
-        // Android-like animations
         public void FadeIn(float duration = 0.5f) {
-            // Implement animation logic here or in an animation system
             Alpha = 1.0f;
         }
 
         public void FadeOut(float duration = 0.5f) {
-            // Implement animation logic here or in an animation system
             Alpha = 0.0f;
         }
 
-        // Request a layout update (Android-like)
         public void RequestLayout() {
             _needsLayout = true;
         }
 
-        // Convenience method for setting padding
         public void SetPadding(float left, float top, float right, float bottom) {
             PaddingLeft = left;
             PaddingTop = top;

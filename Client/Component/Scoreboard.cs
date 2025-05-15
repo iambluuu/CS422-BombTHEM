@@ -11,14 +11,13 @@ namespace Client.Component {
     public class Scoreboard : IComponent {
         private List<ScoreboardEntry> _entries = new();
         private const int MaxEntryNum = 4;
-        private const int Paddings = 25; // surrounding Paddings
-        private const int Spacing = 5; // spacing between entries
-        private const int SeparatorHeight = 2; // height of the separator line
-        private float ClockHeight = 30; // height of the clock display
+        private const int Paddings = 25;
+        private const int Spacing = 5;
+        private const int SeparatorHeight = 2;
+        private float ClockHeight = 30;
+        private object _lock = new();
         private Stopwatch _stopwatch;
         private double _lastElapsed;
-
-        // For drawing entries
         private static Vector2 EntrySize;
         private static Vector2 TopLeftPosition;
 
@@ -34,17 +33,15 @@ namespace Client.Component {
                 EntrySize = new Vector2(entryWidth, entryHeight);
                 TopLeftPosition = new Vector2(Position.X + Paddings, Position.Y + Paddings + ClockHeight + Spacing);
                 for (int i = 0; i < _entries.Count; i++) {
-                    _entries[i].Rank = i; // Update rank based on new size
+                    _entries[i].Rank = i;
                 }
             }
         }
 
         public override float Width { get => base.Width; set => base.Width = value; }
         public override float Height { get => base.Height; set => base.Height = value; }
-
-        // Nine-slice texture size
         private static readonly Vector2 CornerSize = new Vector2(5, 5);
-        private static readonly Rectangle TextureSize = new(0, 0, 16, 16); // Assuming the texture is 16x16 pixels
+        private static readonly Rectangle TextureSize = new(0, 0, 16, 16);
 
         private float _timer = 0;
         private Color _textColor = Color.White;
@@ -52,8 +49,6 @@ namespace Client.Component {
         private readonly Texture2D _backgroundTexture;
         private readonly Texture2D _borderTexture;
         private readonly SpriteFont _font;
-
-        // Receive a list of player name and skin
         public Scoreboard() {
             _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
             _borderTexture = TextureHolder.Get("Theme/scoreboard_border");
@@ -72,10 +67,13 @@ namespace Client.Component {
         }
 
         public void SetPlayerData(List<(string, string, int)> playerData) {
-            _entries.Clear();
-            for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
-                _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
+            lock (_lock) {
+                _entries.Clear();
+                for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
+                    _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
+                }
             }
+
             UpdateRanks();
         }
 
@@ -90,10 +88,12 @@ namespace Client.Component {
         }
 
         private void UpdateRanks() {
-            _entries.Sort((a, b) => b.Score.CompareTo(a.Score)); // Sort by score descending
-            for (int i = 0; i < _entries.Count; i++) {
-                if (_entries[i].Rank != i) {
-                    _entries[i].Rank = i;
+            lock (_lock) {
+                _entries.Sort((a, b) => b.Score.CompareTo(a.Score));
+                for (int i = 0; i < _entries.Count; i++) {
+                    if (_entries[i].Rank != i) {
+                        _entries[i].Rank = i;
+                    }
                 }
             }
         }
@@ -106,41 +106,35 @@ namespace Client.Component {
                 _timer = Math.Max(0, _timer - (float)delta);
             }
 
-            foreach (var entry in _entries) {
-                entry.Update(gameTime);
+            lock (_lock) {
+                foreach (var entry in _entries) {
+                    entry.Update(gameTime);
+                }
             }
         }
 
         public override void Draw(SpriteBatch spriteBatch) {
-            // Draw the scoreboard background
             DrawNineSlice(spriteBatch, _backgroundTexture);
-
-            // Draw the border
             DrawNineSlice(spriteBatch, _borderTexture);
-
-            // Draw the timer
             var timerText = TimeSpan.FromSeconds(_timer).ToString(@"mm\:ss");
             Vector2 timerSize = _font.MeasureString(timerText);
             float timerScale = ClockHeight / timerSize.Y;
             Vector2 timerPosition = new Vector2(Position.X + Size.X / 2, Position.Y + Paddings);
             spriteBatch.DrawString(_font, timerText, timerPosition, _textColor, 0f, new Vector2(timerSize.X / 2, 0), timerScale, SpriteEffects.None, 0f);
-
-            // Draw each entry
             Texture2D separatorTexture = new Texture2D(spriteBatch.GraphicsDevice, 1, 1);
             separatorTexture.SetData(new[] { Color.Black * 0.6f });
 
-            for (int i = 0; i < _entries.Count; i++) {
-                // Draw separator line
-                var separatorPosition = new Vector2(Position.X + Paddings, TopLeftPosition.Y + (EntrySize.Y + Spacing) * i);
-                spriteBatch.Draw(separatorTexture, new Rectangle((int)separatorPosition.X, (int)separatorPosition.Y, (int)Size.X - Paddings * 2, SeparatorHeight), Color.White);
-
-                // Draw entry
-                _entries[i].Draw(spriteBatch);
+            lock (_lock) {
+                for (int i = 0; i < _entries.Count; i++) {
+                    var separatorPosition = new Vector2(Position.X + Paddings, TopLeftPosition.Y + (EntrySize.Y + Spacing) * i);
+                    spriteBatch.Draw(separatorTexture, new Rectangle((int)separatorPosition.X, (int)separatorPosition.Y, (int)Size.X - Paddings * 2, SeparatorHeight), Color.White);
+                    _entries[i].Draw(spriteBatch);
+                }
             }
         }
 
         private void DrawNineSlice(SpriteBatch spriteBatch, Texture2D texture) {
-            var scale = (Paddings - 5) / CornerSize.X; // Scale factor based on Paddings and corner size
+            var scale = (Paddings - 5) / CornerSize.X;
             var scaledCornerSize = CornerSize * scale;
 
             Rectangle srcTopLeft = new Rectangle(0, 0, (int)CornerSize.X, (int)CornerSize.Y);
@@ -190,33 +184,23 @@ namespace Client.Component {
             public int Rank {
                 get => _rank;
                 set {
-                    _animationTimer = AnimationDuration; // Reset animation timer when rank changes
+                    _animationTimer = AnimationDuration;
                     _rank = value;
                     _targetPosition = new Vector2(TopLeftPosition.X, TopLeftPosition.Y + (EntrySize.Y + Scoreboard.Spacing) * value);
                 }
             }
-
-            // Static score icon texture shared by all entries
             private static Texture2D _scoreIconTexture;
-            private static readonly Color TextColor = new Color(110, 106, 95); // Greyish color for the score icon
+            private static readonly Color TextColor = new Color(110, 106, 95);
             private static bool _isScoreIconInitialized = false;
 
             private static void InitializeScoreIcon(GraphicsDevice graphicsDevice) {
                 if (!_isScoreIconInitialized) {
-                    // Load the score icon texture
                     _scoreIconTexture = TextureHolder.Get("Icon/score");
-
-                    // Apply flat color to the texture
                     if (_scoreIconTexture != null) {
-                        // Get the width and height of the texture
                         int width = _scoreIconTexture.Width;
                         int height = _scoreIconTexture.Height;
-
-                        // Get the color data from the texture
                         Color[] colorData = new Color[width * height];
                         _scoreIconTexture.GetData(colorData);
-
-                        // Create a new array for the modified color data
                         Color[] newColorData = new Color[width * height];
 
                         for (int i = 0; i < colorData.Length; i++) {
@@ -233,16 +217,14 @@ namespace Client.Component {
                                 newColorData[i] = Color.Transparent;
                             }
                         }
-
-                        // Set the modified color data back to the texture
                         _scoreIconTexture.SetData(newColorData);
                         _isScoreIconInitialized = true;
                     }
                 }
             }
 
-            private const int AnimationDuration = 1000; // milliseconds
-            private const int Spacing = 5; // spacing between elements of the entry
+            private const int AnimationDuration = 1000;
+            private const int Spacing = 5;
             private int _animationTimer = 0;
             private Vector2 _currentPosition;
             private Vector2 _targetPosition;
@@ -260,14 +242,12 @@ namespace Client.Component {
             }
 
             public void Update(GameTime gameTime) {
-                // Update logic for each entry if needed
                 if (_animationTimer > 0) {
                     _animationTimer -= (int)gameTime.ElapsedGameTime.TotalMilliseconds;
                     if (_animationTimer < 0) {
                         _animationTimer = 0;
                     }
                 }
-                // Update position based on animation timer
                 if (_animationTimer > 0) {
                     float t = (float)_animationTimer / AnimationDuration;
                     float EaseOutCubic(float t) => 1 - MathF.Pow(1 - t, 3);
@@ -278,7 +258,6 @@ namespace Client.Component {
             }
 
             public void Draw(SpriteBatch spriteBatch) {
-                // Draw icon
                 var iconTexture = TextureHolder.Get($"Character/{(Shared.PlayerSkin)PlayerSkin}", new Rectangle(0, 0, 16, 13));
                 var iconSize = Math.Min(EntrySize.Y, EntrySize.X / 2.5f);
                 var centeringOffset = (EntrySize.Y - iconSize) / 2;
@@ -288,19 +267,13 @@ namespace Client.Component {
                     new Rectangle(0, 0, 16, 13),
                     Color.White
                 );
-
-                // line height for info display
                 var lineHeight = (EntrySize.Y - Spacing) / 2;
                 var lineWidth = EntrySize.X - iconSize - Spacing;
-
-                // Draw the player name on top line
                 var font = FontHolder.Get("PressStart2P");
                 var nameText = Username;
                 var textScale = Math.Min(Math.Min(lineHeight / font.LineSpacing, lineWidth / font.MeasureString(nameText).X), 1);
                 var namePosition = new Vector2(_currentPosition.X + Spacing + iconSize, _currentPosition.Y + centeringOffset + Spacing);
                 spriteBatch.DrawString(font, nameText, namePosition, Color.White, 0f, Vector2.Zero, textScale, SpriteEffects.None, 0f);
-
-                // Draw score icon
                 var scoreIconSize = lineHeight * 0.7f;
                 var scoreIconPosition = new Vector2(
                     _currentPosition.X + Spacing + iconSize,
@@ -319,13 +292,11 @@ namespace Client.Component {
                         (int)scoreIconSize
                     ),
                     null,
-                    Color.White  // Use white since we've already colored the texture
+                    Color.White
                 );
-
-                // Draw the score text next to the icon
                 var scoreText = Score.ToString();
                 var scoreTextSize = font.MeasureString(scoreText);
-                var scoreTextScale = scoreIconSize / scoreTextSize.Y * 0.8f; // Scale the text to fit the icon size
+                var scoreTextScale = scoreIconSize / scoreTextSize.Y * 0.8f;
                 var scorePosition = new Vector2(
                     scoreIconPosition.X + scoreIconSize + Spacing * 2,
                     scoreIconPosition.Y + (scoreIconSize - scoreTextSize.Y * scoreTextScale) / 2

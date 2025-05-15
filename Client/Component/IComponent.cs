@@ -92,17 +92,7 @@ namespace Client.Component {
         // Size modes (Android-like)
         public virtual SizeMode WidthMode { get; set; } = SizeMode.Fixed;
         public virtual SizeMode HeightMode { get; set; } = SizeMode.Fixed;
-
-        private Vector2 _position = Vector2.Zero;
-
-        public virtual Vector2 Position {
-            get => _position;
-            set {
-                _position = value;
-                if (_position.X < 0) _position.X = 0;
-                if (_position.Y < 0) _position.Y = 0;
-            }
-        }
+        public virtual Vector2 Position { get; set; } = new Vector2(0, 0);
 
         public virtual float X {
             get => Position.X;

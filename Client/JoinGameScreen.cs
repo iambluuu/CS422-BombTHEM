@@ -20,34 +20,38 @@ namespace Client {
                 Height = ScreenSize.Y,
                 Gravity = Gravity.Center,
             };
+            uiManager.AddComponent(layout);
 
             var mainBox = new ContainerBox() {
                 LayoutOrientation = Orientation.Vertical,
                 HeightMode = SizeMode.WrapContent,
-                Width = 500,
+                Width = 600,
                 Spacing = 20,
             };
+            layout.AddComponent(mainBox);
 
             var title = new TextView() {
                 WidthMode = SizeMode.MatchParent,
                 HeightMode = SizeMode.WrapContent,
                 Text = "Join Game",
                 TextSize = 2f,
-                TextColor = Color.White,
+                TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 PaddingBottom = 20,
             };
+            mainBox.AddComponent(title);
 
             _roomIdBox = new TextBox() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
                 AllowedCharacters = CharacterSet.Alpha,
-                PlaceholderText = "Enter room ID",
+                PlaceholderText = "Enter room code",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 MaxLength = 6,
                 IsUppercase = true,
             };
+            mainBox.AddComponent(_roomIdBox);
 
             var joinButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
@@ -55,6 +59,7 @@ namespace Client {
                 Text = "Join",
                 OnClick = Connect,
             };
+            mainBox.AddComponent(joinButton);
 
             var backButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
@@ -62,14 +67,12 @@ namespace Client {
                 Text = "Back",
                 OnClick = ScreenManager.Instance.NavigateBack,
             };
-
-            layout.AddComponent(mainBox);
-            mainBox.AddComponent(title);
-            mainBox.AddComponent(_roomIdBox);
-            mainBox.AddComponent(joinButton);
             mainBox.AddComponent(backButton);
+        }
 
-            uiManager.AddComponent(layout, 0);
+        public override void Activate() {
+            base.Activate();
+            ScreenManager.Instance.StopLoading();
         }
 
         private void Connect() {
@@ -79,7 +82,7 @@ namespace Client {
                     {"roomId", roomId }
                 }));
             } else {
-                Console.WriteLine("Invalid room code. Please enter a 6-character code");
+                ToastManager.Instance.ShowToast("Code length must be 6");
             }
         }
 
@@ -92,11 +95,13 @@ namespace Client {
 
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.RoomJoined: {
+                        ScreenManager.Instance.StartLoading();
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error: {message.Data["message"]}");
+                        ScreenManager.Instance.StopLoading();
+                        ToastManager.Instance.ShowToast(message.Data["message"]);
                     }
                     break;
             }

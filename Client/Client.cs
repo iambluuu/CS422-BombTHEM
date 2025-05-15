@@ -35,7 +35,6 @@ namespace Client {
         }
 
         protected override void Draw(GameTime gameTime) {
-            GraphicsDevice.Clear(new Color(255, 173, 93, 255));
             _screenManager.Draw(gameTime);
             base.Draw(gameTime);
         }

@@ -6,6 +6,7 @@ using TextCopy;
 
 using Client.Component;
 using Shared;
+using Microsoft.VisualBasic.Devices;
 
 namespace Client {
     public class LobbyScreen : GameScreen {
@@ -30,6 +31,7 @@ namespace Client {
                 Height = ScreenSize.Y,
                 Gravity = Gravity.Center,
             };
+            uiManager.AddComponent(layout);
 
             var mainBox = new ContainerBox() {
                 LayoutOrientation = Orientation.Vertical,
@@ -45,7 +47,7 @@ namespace Client {
                 HeightMode = SizeMode.WrapContent,
                 Text = "Waiting...",
                 TextSize = 2f,
-                TextColor = Color.White,
+                TextColor = Color.Black,
                 Gravity = Gravity.Center,
                 PaddingBottom = 20,
             };
@@ -150,8 +152,11 @@ namespace Client {
             var copyRoomIdButton = new Button() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
-                Text = "Copy Room ID",
-                OnClick = () => ClipboardService.SetText(_roomIdText.Text.Replace("Room ", "")),
+                Text = "Copy Code",
+                OnClick = () => {
+                    ClipboardService.SetText(_roomIdText.Text.Replace("Room ", ""));
+                    ToastManager.Instance.ShowToast("Room code copied");
+                },
             };
             rightLayout.AddComponent(copyRoomIdButton);
 
@@ -175,7 +180,6 @@ namespace Client {
             _waitText = new TextBox() {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 1,
-                AllowedCharacters = CharacterSet.Alphanumeric | CharacterSet.Whitespace | CharacterSet.Dot,
                 Text = "",
                 TextColor = Color.Black,
                 Gravity = Gravity.Center,
@@ -185,8 +189,6 @@ namespace Client {
                 Padding = 20,
             };
             rightLayout.AddComponent(_waitText);
-
-            uiManager.AddComponent(layout, 0);
 
             for (int i = 0; i < _playerIds.Length; i++) {
                 _playerIds[i] = -1;
@@ -238,6 +240,7 @@ namespace Client {
         }
 
         private void LeaveLobby() {
+            ScreenManager.Instance.StartLoading();
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.LeaveRoom));
             ScreenManager.Instance.NavigateBack();
         }
@@ -305,6 +308,8 @@ namespace Client {
                         }
 
                         ResetPermissions();
+
+                        ScreenManager.Instance.StopLoading();
                     }
                     break;
                 case ServerMessageType.UsernameSet: {
@@ -325,6 +330,7 @@ namespace Client {
                     break;
                 case ServerMessageType.PlayerKicked: {
                         ScreenManager.Instance.NavigateBack();
+                        ToastManager.Instance.ShowToast("You have been kicked");
                     }
                     break;
                 case ServerMessageType.PlayerJoined: {
@@ -401,14 +407,19 @@ namespace Client {
                         }
 
                         ResetPermissions();
+
+                        if (_isHost) {
+                            ToastManager.Instance.ShowToast("You are now the host");
+                        }
                     }
                     break;
                 case ServerMessageType.GameStarted: {
+                        ScreenManager.StartLoading();
                         ScreenManager.Instance.NavigateTo(ScreenName.MainGameScreen);
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error: {message.Data["message"]}");
+                        ToastManager.Instance.ShowToast(message.Data["message"]);
                     }
                     break;
             }
