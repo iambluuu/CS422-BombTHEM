@@ -8,29 +8,16 @@ using Microsoft.Xna.Framework.Input;
 using Shared;
 using Client.Component;
 using Client.PowerUps;
+using System.Net.NetworkInformation;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
         private readonly object _lock = new();
-
-        private SceneNode _sceneGraph;
-        private SceneNode _mapLayer, _bombLayer, _playerLayer, _itemLayer, _vfxLayer;
-
-        private readonly TextNode _pingText = new("Ping: ?ms");
-
-        private const int TILE_SIZE = 48;
-        private int _bombCount = 0;
-
-        private Map _map = null;
-        private readonly Dictionary<int, PlayerNode> _playerNodes = [];
-        private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
-        private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
-        private readonly Dictionary<(int, int), ItemNode> _itemNodes = [];
-        private Dictionary<int, int> _skinMapping = [];
-
         private LinearLayout _sidebar;
         private Scoreboard _scoreboard;
         private PowerSlot _powerSlot;
+        private MapRenderInfo _map = new();
+        private MapComponent _mapComponent;
 
         public MainGameScreen() { }
 
@@ -48,6 +35,7 @@ namespace Client {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 2,
             };
+
             _scoreboard = new Scoreboard() {
                 Position = new Vector2(0, 0),
                 Width = 240, /// ???
@@ -69,21 +57,10 @@ namespace Client {
                 },
             });
 
-            _sceneGraph = new SceneNode();
-            _mapLayer = new SceneNode();
-            _bombLayer = new SceneNode();
-            _itemLayer = new SceneNode();
-            _playerLayer = new SceneNode();
-            _vfxLayer = new SceneNode();
-            _sceneGraph.AttachChild(_mapLayer);
-            _sceneGraph.AttachChild(_itemLayer);
-            _sceneGraph.AttachChild(_bombLayer);
-            _sceneGraph.AttachChild(_playerLayer);
-            _sceneGraph.AttachChild(_vfxLayer);
-            _sceneGraph.AttachChild(_pingText);
-
-            _sceneGraph.Position = new Vector2(240, 0);
-            _pingText.Position = new Vector2(10 * TILE_SIZE, 14 * TILE_SIZE + 10);
+            _mapComponent = new MapComponent(_map) {
+                Position = new Vector2(240, 0)
+            };
+            uiManager.AddComponent(_mapComponent);
         }
 
         public override void Activate() {
@@ -170,7 +147,7 @@ namespace Client {
                             var newBomb = BombNodeFactory.CreateNode(type);
                             newBomb.Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE);
                             _bombNodes.Add((x, y), newBomb);
-                            _bombLayer.AttachChild(_bombNodes[(x, y)]);
+                            _bombLayer.AttachChild(newBomb);
                         }
                     }
                     break;
@@ -178,7 +155,7 @@ namespace Client {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         string[] positions = message.Data["positions"].Split(';');
-                        int byPlayerId = int.Parse(message.Data["byPlayerId"]);
+                        int byPlayerId = int.Parse(message.Data["byPlayerI d"]);
 
                         lock (_lock) {
                             foreach (var pos in positions) {
@@ -222,7 +199,7 @@ namespace Client {
                     break;
                 case ServerMessageType.GameStopped: {
                         ScreenManager.Instance.NavigateTo(ScreenName.EndGameScreen, isOverlay: true, new(){
-                            { "skinMapping", _skinMapping },
+                            { "skinMapping", _map.SkinMapping },
                         });
                     }
                     break;
@@ -231,10 +208,13 @@ namespace Client {
                         string powerUpType = message.Data["powerUpType"];
                         Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
                         parameters["vfxLayer"] = _vfxLayer;
+                        parameters["bombLayer"] = _bombLayer;
+                        parameters["bombNodes"] = _bombNodes;
                         parameters["playerNodes"] = _playerNodes;
                         parameters["map"] = _map;
                         PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
                         lock (_lock) {
+                            _powerSlot.PowerUpUsed(Enum.Parse<PowerName>(powerUpType));
                             powerUp.Apply(parameters);
                         }
                     }
@@ -245,7 +225,7 @@ namespace Client {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         lock (_lock) {
-                            ItemNode itemNode = new ItemNode(powerUpType) {
+                            ItemNode itemNode = new(powerUpType) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE),
                             };
                             _map.AddItem(x, y, powerUpType);
@@ -293,63 +273,13 @@ namespace Client {
             }
         }
 
-        private void ProcessMap() {
-            for (int i = 0; i < _map.Height; i++) {
-                for (int j = 0; j < _map.Width; j++) {
-                    SpriteNode cellSprite = new(TextureHolder.Get("Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                        Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
-                    };
-                    _mapLayer.AttachChild(cellSprite);
-
-                    if (_map.GetTile(i, j) == TileType.Grass) {
-                        SpriteNode grassSprite = new(TextureHolder.Get("Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                            Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
-                        };
-
-                        _grassNodes.Add((i, j), grassSprite);
-                        _bombLayer.AttachChild(grassSprite);
-                    }
-
-                    if (_map.GetTile(i, j) != TileType.Wall) {
-                        continue;
-                    }
-
-                    bool[,] localArea = new bool[3, 3];
-                    for (int u = -1; u <= 1; u++) {
-                        for (int v = -1; v <= 1; v++) {
-                            int newX = i + u;
-                            int newY = j + v;
-                            if (_map.IsInBounds(newX, newY)) {
-                                localArea[u + 1, v + 1] = _map.GetTile(newX, newY) == TileType.Wall;
-                            } else {
-                                localArea[u + 1, v + 1] = false;
-                            }
-                        }
-                    }
-
-                    (int, int) p = BitmaskReferences.GetPosition(localArea);
-                    SpriteNode wallSprite = new(TextureHolder.Get("Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                        Position = new Vector2(j * TILE_SIZE, i * TILE_SIZE)
-                    };
-                    _mapLayer.AttachChild(wallSprite);
-                }
-            }
-        }
+        
 
         private void IncreaseScore(int playerId) {
             _scoreboard.IncreaseScore(playerId);
         }
 
         private void HandleUpdate(GameTime gameTime) {
-            _sceneGraph.UpdateTree(gameTime);
-
-            _pingText.Text = $"Ping: {NetworkManager.Instance.Ping}ms";
-            if (NetworkManager.Instance.Ping > 200) {
-                _pingText.Color = Color.Red;
-            } else {
-                _pingText.Color = Color.White;
-            }
-
             int playerId = NetworkManager.Instance.ClientId;
             if (_map == null || !_map.PlayerInfos.ContainsKey(playerId) || !_playerNodes.ContainsKey(playerId)) {
                 return;
@@ -442,11 +372,6 @@ namespace Client {
 
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             base.Draw(gameTime, spriteBatch);
-            try {
-                _sceneGraph.DrawTree(spriteBatch, Matrix.Identity);
-            } catch (Exception ex) {
-                Console.WriteLine($"Error during draw: {ex.Message}");
-            }
         }
     }
 }

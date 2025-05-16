@@ -16,19 +16,30 @@ namespace Client.PowerUps {
                 return;
             }
 
-            int playerId = int.Parse(parameters["playerId"].ToString());
-            var playerNodes = parameters["playerNodes"] as Dictionary<int, PlayerNode> ?? throw new ArgumentException("playerNodes must be a dictionary of PlayerNode.");
             var map = parameters["map"] as Map ?? throw new ArgumentException("map must be a Map object.");
-            var playerInfo = map.PlayerInfos[playerId] as PlayerIngameInfo ?? throw new ArgumentException("PlayerIngameInfo must be a PlayerIngameInfo object.");
+            var bombNodes = parameters["bombNodes"] as Dictionary<(int, int), BombNode> ?? throw new ArgumentException("bombNodes must be a dictionary of BombNode.");
+            var bombLayer = parameters["bombLayer"] as SceneNode ?? throw new ArgumentException("bombLayer must be a Layer object.");
+            int x = int.Parse(parameters["x"].ToString());
+            int y = int.Parse(parameters["y"].ToString());
+            
+            PlantBomb(map, bombLayer, bombNodes, x, y);
 
-            playerInfo.ActivePowerUps.Add(new ActivePowerUp(PowerName.Nuke, DateTime.Now));
+            // playerInfo.ActivePowerUps.Add(new ActivePowerUp(PowerName.Nuke, DateTime.Now));
 
-            PlayerNode target = playerNodes[playerId];
-            VFXNode vfx = new(TextureHolder.Get("Effect/Circle"), new Vector2(GameValues.TILE_SIZE * 1.5f, GameValues.TILE_SIZE * 2), 4, 0.1f, isLooping: true, isInfinite: true) {
-                Position = new Vector2(-0.25f * GameValues.TILE_SIZE, -0.25f * GameValues.TILE_SIZE),
-            };
-            target.AttachChild(vfx);
-            _activeEffects.Add(target, (vfx, playerInfo));
+            // PlayerNode target = playerNodes[playerId];
+            // VFXNode vfx = new(TextureHolder.Get("Effect/Circle"), new Vector2(GameValues.TILE_SIZE * 1.5f, GameValues.TILE_SIZE * 2), 4, 0.1f, isLooping: true, isInfinite: true) {
+            //     Position = new Vector2(-0.25f * GameValues.TILE_SIZE, -0.25f * GameValues.TILE_SIZE),
+            // };
+            // target.AttachChild(vfx);
+            // _activeEffects.Add(target, (vfx, playerInfo));
+        }
+
+        private void PlantBomb(Map map, SceneNode bombLayer, Dictionary<(int, int), BombNode> bombNodes, int x, int y) {
+            map.AddBomb(x, y, BombType.Nuke);
+            var bombNode = BombNodeFactory.CreateNode(BombType.Nuke);
+            bombNode.Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE);
+            bombNodes.Add((x, y), bombNode);
+            bombLayer.AttachChild(bombNode);
         }
 
         public override void Remove(SceneNode target) {

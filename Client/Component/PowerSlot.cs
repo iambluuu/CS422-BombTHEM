@@ -21,7 +21,7 @@ namespace Client.Component {
         private readonly Texture2D _borderTexture;
         private readonly SpriteFont _font;
 
-        private PowerName[] _powers = { PowerName.None, PowerName.None };
+        private (PowerName, int)[] _powers = [(PowerName.None, 0), (PowerName.None, 0)];
 
         public PowerSlot() {
             _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
@@ -31,8 +31,8 @@ namespace Client.Component {
 
         public void ObtainPower(PowerName power) {
             for (int i = 0; i < _powers.Length; i++) {
-                if (_powers[i] == PowerName.None) {
-                    _powers[i] = power;
+                if (_powers[i].Item1 == PowerName.None) {
+                    _powers[i] = (power, GameplayConfig.PowerUpQuantity[power]);
                     break;
                 }
             }
@@ -51,11 +51,22 @@ namespace Client.Component {
 
             // Console.WriteLine($"Using power: {_powers[index]}");
 
-            if (_powers[index] != PowerName.None) {
+            if (_powers[index].Item1 != PowerName.None) {
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
                     { "powerUpType", _powers[index].ToString() },
                 }));
-                _powers[index] = PowerName.None; // Remove the power after use
+            }
+        }
+
+        public void PowerUpUsed(PowerName power) {
+            for (int i = 0; i < _powers.Length; i++) {
+                if (_powers[i].Item1 == power) {
+                    _powers[i].Item2--;
+                    if (_powers[i].Item2 == 0) {
+                        _powers[i] = (PowerName.None, 0);
+                    }
+                    break;
+                }
             }
         }
 
@@ -79,7 +90,7 @@ namespace Client.Component {
             var leftMargin = (Size.X - slotSize * 2 - Spacing) / 2;
             for (int i = 0; i < _powers.Length; i++) {
                 var power = _powers[i];
-                var texture = GetPowerTexture(power);
+                var texture = GetPowerTexture(power.Item1);
                 var scale = slotSize / texture.Width;
                 var position = new Vector2(Position.X + leftMargin + (slotSize + Spacing) * i, Position.Y + Paddings + textSize.Y + Spacing);
                 spriteBatch.Draw(texture, position, null, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
@@ -97,9 +108,19 @@ namespace Client.Component {
             spriteBatch.Draw(backgroundTexture, qPosition, null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, "Q", qPosition + new Vector2(3, 3), _textColor, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
 
+            if (_powers[0].Item2 > 1) {
+                spriteBatch.Draw(backgroundTexture, qPosition + new Vector2(0, slotSize - backgroundTexture.Height * backgroundScale), null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, _powers[0].Item2.ToString(), qPosition + new Vector2(3, slotSize - backgroundTexture.Height * backgroundScale + 3), Color.White, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
+            }
+
             ePosition += new Vector2(slotSize - keySize, 0);
             spriteBatch.Draw(backgroundTexture, ePosition, null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, "E", ePosition + new Vector2(3, 3), _textColor, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
+
+            if (_powers[1].Item2 > 1) {
+                spriteBatch.Draw(backgroundTexture, ePosition + new Vector2(0, slotSize - backgroundTexture.Height * backgroundScale), null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, _powers[1].Item2.ToString(), ePosition + new Vector2(3, slotSize - backgroundTexture.Height * backgroundScale + 3), Color.White, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
+            }
         }
 
         private Texture2D GetPowerTexture(PowerName power) {
@@ -110,29 +131,29 @@ namespace Client.Component {
             var scale = (Paddings - 5) / CornerSize.X; // Scale factor based on padding and corner size
             var scaledCornerSize = CornerSize * scale;
 
-            Rectangle srcTopLeft = new Rectangle(0, 0, (int)CornerSize.X, (int)CornerSize.Y);
-            Rectangle srcTop = new Rectangle((int)CornerSize.X, 0, (int)(TextureSize.Width - CornerSize.X * 2), (int)CornerSize.Y);
-            Rectangle srcTopRight = new Rectangle(TextureSize.Width - (int)CornerSize.X, 0, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcTopLeft = new(0, 0, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcTop = new((int)CornerSize.X, 0, (int)(TextureSize.Width - CornerSize.X * 2), (int)CornerSize.Y);
+            Rectangle srcTopRight = new(TextureSize.Width - (int)CornerSize.X, 0, (int)CornerSize.X, (int)CornerSize.Y);
 
-            Rectangle srcBottomLeft = new Rectangle(0, TextureSize.Height - (int)CornerSize.Y, (int)CornerSize.X, (int)CornerSize.Y);
-            Rectangle srcBottomRight = new Rectangle(TextureSize.Width - (int)CornerSize.X, TextureSize.Height - (int)CornerSize.Y, (int)CornerSize.X, (int)CornerSize.Y);
-            Rectangle srcBottom = new Rectangle((int)CornerSize.X, TextureSize.Height - (int)CornerSize.Y, (int)(TextureSize.Width - CornerSize.X * 2), (int)CornerSize.Y);
+            Rectangle srcBottomLeft = new(0, TextureSize.Height - (int)CornerSize.Y, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcBottomRight = new(TextureSize.Width - (int)CornerSize.X, TextureSize.Height - (int)CornerSize.Y, (int)CornerSize.X, (int)CornerSize.Y);
+            Rectangle srcBottom = new((int)CornerSize.X, TextureSize.Height - (int)CornerSize.Y, (int)(TextureSize.Width - CornerSize.X * 2), (int)CornerSize.Y);
 
-            Rectangle srcMiddle = new Rectangle((int)CornerSize.X, (int)CornerSize.Y, (int)(TextureSize.Width - CornerSize.X * 2), (int)(TextureSize.Height - CornerSize.Y * 2));
-            Rectangle srcMiddleLeft = new Rectangle(0, (int)CornerSize.Y, (int)CornerSize.X, (int)(TextureSize.Height - CornerSize.Y * 2));
-            Rectangle srcMiddleRight = new Rectangle(TextureSize.Width - (int)CornerSize.X, (int)CornerSize.Y, (int)CornerSize.X, (int)(TextureSize.Height - CornerSize.Y * 2));
+            Rectangle srcMiddle = new((int)CornerSize.X, (int)CornerSize.Y, (int)(TextureSize.Width - CornerSize.X * 2), (int)(TextureSize.Height - CornerSize.Y * 2));
+            Rectangle srcMiddleLeft = new(0, (int)CornerSize.Y, (int)CornerSize.X, (int)(TextureSize.Height - CornerSize.Y * 2));
+            Rectangle srcMiddleRight = new(TextureSize.Width - (int)CornerSize.X, (int)CornerSize.Y, (int)CornerSize.X, (int)(TextureSize.Height - CornerSize.Y * 2));
 
-            Rectangle dstTopLeft = new Rectangle((int)Position.X, (int)Position.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
-            Rectangle dstTop = new Rectangle((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)scaledCornerSize.Y);
-            Rectangle dstTopRight = new Rectangle((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstTopLeft = new((int)Position.X, (int)Position.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstTop = new((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)scaledCornerSize.Y);
+            Rectangle dstTopRight = new((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
 
-            Rectangle dstBottomLeft = new Rectangle((int)Position.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
-            Rectangle dstBottomRight = new Rectangle((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
-            Rectangle dstBottom = new Rectangle((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)scaledCornerSize.Y);
+            Rectangle dstBottomLeft = new((int)Position.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstBottomRight = new((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)scaledCornerSize.Y);
+            Rectangle dstBottom = new((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y + (int)Size.Y - (int)scaledCornerSize.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)scaledCornerSize.Y);
 
-            Rectangle dstMiddle = new Rectangle((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)(Size.Y - scaledCornerSize.Y * 2));
-            Rectangle dstMiddleLeft = new Rectangle((int)Position.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)(Size.Y - scaledCornerSize.Y * 2));
-            Rectangle dstMiddleRight = new Rectangle((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)(Size.Y - scaledCornerSize.Y * 2));
+            Rectangle dstMiddle = new((int)Position.X + (int)scaledCornerSize.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)(Size.X - scaledCornerSize.X * 2), (int)(Size.Y - scaledCornerSize.Y * 2));
+            Rectangle dstMiddleLeft = new((int)Position.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)(Size.Y - scaledCornerSize.Y * 2));
+            Rectangle dstMiddleRight = new((int)Position.X + (int)Size.X - (int)scaledCornerSize.X, (int)Position.Y + (int)scaledCornerSize.Y, (int)scaledCornerSize.X, (int)(Size.Y - scaledCornerSize.Y * 2));
 
             spriteBatch.Draw(texture, dstTopLeft, srcTopLeft, Color.White);
             spriteBatch.Draw(texture, dstTop, srcTop, Color.White);

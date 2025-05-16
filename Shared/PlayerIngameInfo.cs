@@ -8,20 +8,19 @@ namespace Server {
         public int Score { get; set; }
         private int _bombCount { get; set; } = 0;
         public Position Position { get; set; }
-        private PowerName[] _powerUps = { PowerName.None, PowerName.None };
-        public List<ActivePowerUp> ActivePowerUps { get; set; } = new List<ActivePowerUp>();
+        private (PowerName, int)[] _powerUps = [(PowerName.None, 0), (PowerName.None, 0)];
+        public List<ActivePowerUp> ActivePowerUps { get; set; } = [];
 
         public PlayerIngameInfo(string name, Position position, int score = 0) {
             Name = name;
             Score = score;
             Position = position ?? new Position(0, 0);
-            _powerUps = new PowerName[2];
         }
 
         public bool PickUpItem(PowerName powerUp) {
             for (int i = 0; i < _powerUps.Length; i++) {
-                if (_powerUps[i] == PowerName.None) {
-                    _powerUps[i] = powerUp;
+                if (_powerUps[i].Item1 == PowerName.None) {
+                    _powerUps[i] = new(powerUp, GameplayConfig.PowerUpQuantity[powerUp]);
                     return true;
                 }
             }
@@ -35,8 +34,11 @@ namespace Server {
 
         public bool UsePowerUp(PowerName powerUp) {
             for (int i = 0; i < _powerUps.Length; i++) {
-                if (_powerUps[i] == powerUp) {
-                    _powerUps[i] = PowerName.None;
+                if (_powerUps[i].Item1 == powerUp && _powerUps[i].Item2 > 0) {
+                    _powerUps[i].Item2--;
+                    if (_powerUps[i].Item2 == 0) {
+                        _powerUps[i] = (PowerName.None, 0);
+                    }
                     return true;
                 }
             }
