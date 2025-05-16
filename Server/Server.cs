@@ -732,12 +732,13 @@ namespace Server {
                 case ClientMessageType.PlaceBomb: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
-                        BombType type = Enum.Parse<BombType>(message.Data["type"]);
+                        // BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
 
                             if (!room.Map.HasBomb(x, y) && room.Map.GetTile(x, y) == TileType.Empty) {
+                                BombType type = (room.Map.PlayerInfos[playerId].HasPowerUp(PowerName.Nuke)) ? BombType.Nuke : BombType.Normal;
                                 if (!room.Map.AddBomb(x, y, type, playerId)) return;
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
                                     { "x", x.ToString() },
@@ -831,7 +832,7 @@ namespace Server {
                             room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
                             if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
                                 // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
-                                PowerName powerUpType = PowerName.MoreBombs;
+                                PowerName powerUpType = PowerName.Nuke;
                                 room.Map.AddItem(pos.X, pos.Y, powerUpType);
                                 BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
                                     { "x", pos.X.ToString() },
@@ -899,7 +900,7 @@ namespace Server {
                             int playerId = player.Key;
                             PlayerIngameInfo playerInfo = player.Value;
                             foreach (var powerUp in playerInfo.ActivePowerUps) {
-                                if ((DateTime.Now - powerUp.StartTime).TotalMilliseconds >= GameplayConfig.PowerUpDuration) {
+                                if ((DateTime.Now - powerUp.StartTime).TotalMilliseconds >= GameplayConfig.PowerUpDurations[powerUp.PowerType]) {
                                     expiredPowerUps.Add((playerId, powerUp.PowerType));
                                     BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpExpired, new() {
                                         { "playerId", playerId.ToString() },
