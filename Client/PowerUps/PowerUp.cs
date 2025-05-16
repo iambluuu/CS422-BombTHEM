@@ -29,6 +29,7 @@ namespace Client.PowerUps {
 
     public abstract class PowerUp {
         public static PowerUp Instance { get; private set; }
+        public abstract PowerName PowerName { get; }
         public virtual void Apply(Dictionary<string, object> parameters) {
             try {
                 if (parameters == null || parameters.Count == 0) {
@@ -37,6 +38,12 @@ namespace Client.PowerUps {
             } catch (ArgumentException e) {
                 Console.WriteLine(e.Message);
             }
+        }
+
+        public virtual void Use() {
+            NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
+                { "powerUpType", PowerName.ToString()}
+            }));
         }
 
         public virtual void Remove(SceneNode target) {

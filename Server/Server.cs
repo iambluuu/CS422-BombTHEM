@@ -744,7 +744,12 @@ namespace Server {
                                     { "x", x.ToString() },
                                     { "y", y.ToString() },
                                     { "type", type.ToString() },
-                                    { "byPlayerId", playerId.ToString() }
+                                    { "byPlayerId", playerId.ToString() },
+                                    { "isCounted", room.Map.PlayerInfos[playerId].HasPowerUp(PowerName.MoreBombs).ToString() }
+                                }));
+                            } else {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombExploded, new() {
+                                    { "invalid", "True" }
                                 }));
                             }
                         }
@@ -778,6 +783,10 @@ namespace Server {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "powerUpType", powerUpType.ToString() },
                                     { "parameters", JsonSerializer.Serialize(responseParams) },
+                                }));
+                            } else {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                    { "invalid", "True" }
                                 }));
                             }
                         }
@@ -818,7 +827,8 @@ namespace Server {
                                 { "x", bomb.Position.X.ToString() },
                                 { "y", bomb.Position.Y.ToString() },
                                 { "positions", string.Join(";", bomb.ExplosionPositions) },
-                                { "byPlayerId", bomb.PlayerId.ToString() }
+                                { "byPlayerId", bomb.PlayerId.ToString() },
+                                { "isCounted", bomb.IsCounted.ToString() }
                             }));
 
                             foreach (var pos in bomb.ExplosionPositions) {
@@ -834,7 +844,7 @@ namespace Server {
                                 // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
                                 PowerName powerUpType = PowerName.Nuke;
                                 room.Map.AddItem(pos.X, pos.Y, powerUpType);
-                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpSpawned, new() {
+                                BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.ItemSpawned, new() {
                                     { "x", pos.X.ToString() },
                                     { "y", pos.Y.ToString() },
                                     { "powerUpType", powerUpType.ToString() }

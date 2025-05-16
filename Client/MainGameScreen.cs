@@ -9,6 +9,7 @@ using Shared;
 using Client.Component;
 using Client.PowerUps;
 using System.Net.NetworkInformation;
+using System.Linq;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
@@ -16,8 +17,8 @@ namespace Client {
         private LinearLayout _sidebar;
         private Scoreboard _scoreboard;
         private PowerSlot _powerSlot;
+        private MapRenderInfo _map = new();
         private MapComponent _mapComponent;
-        private MapRenderInfo _map;
 
         public MainGameScreen() { }
 
@@ -31,18 +32,21 @@ namespace Client {
             };
             uiManager.AddComponent(_sidebar);
 
-            _powerSlot = new PowerSlot() {
+            _powerSlot = new PowerSlot(_map) {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 2,
             };
-            _scoreboard = new Scoreboard() {
+
+            _scoreboard = new Scoreboard(_map) {
                 Position = new Vector2(0, 0),
                 Width = 240, /// ???
                 Height = ScreenSize.Y, /// ???
                 Weight = 6,
             };
+
             _sidebar.AddComponent(_scoreboard);
             _sidebar.AddComponent(_powerSlot);
+
             _sidebar.AddComponent(new Button() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
@@ -59,6 +63,7 @@ namespace Client {
             };
             _map.OnMapInitialized = () => {
                 _mapComponent.ProcessMap();
+                _scoreboard.SetDuration(_map.Duration);
             };
             uiManager.AddComponent(_mapComponent);
         }
@@ -73,13 +78,13 @@ namespace Client {
 
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.GameInfo: {
-                        // _map.ReadMapFromString(message.Data["map"]);
+                        // _map = Map.FromString(message.Data["map"]);
                         // int duration = int.Parse(message.Data["duration"]);
                         // int playerCount = int.Parse(message.Data["playerCount"]);
                         // int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
                         // string[] usernames = message.Data["usernames"].Split(';');
                         // Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
-
+                        // ProcessMap();
                         // List<(string, string, int)> playerData = new();
                         // for (int i = 0; i < playerCount; i++) {
                         //     int playerId = playerIds[i];
@@ -101,41 +106,36 @@ namespace Client {
                         // _scoreboard.SetDuration(duration);
                         // _scoreboard.SetPlayerData(playerData);
 
-                        ScreenManager.Instance.StopLoading();
+                        // ScreenManager.Instance.StopLoading();
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {
-                        // int playerId = int.Parse(message.Data["playerId"]);
-                        // int x = int.Parse(message.Data["x"]);
-                        // int y = int.Parse(message.Data["y"]);
-                        // Direction direction = Enum.Parse<Direction>(message.Data["d"]);
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        Direction direction = Enum.Parse<Direction>(message.Data["d"]);
 
-                        // if (x != _map.PlayerInfos[playerId].Position.X || y != _map.PlayerInfos[playerId].Position.Y) {
-                        //     lock (_lock) {
-                        //         _map.SetPlayerPosition(playerId, x, y);
-                        //         _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
-                        //     }
-                        // }   
+                        if (x != _map.PlayerInfos[playerId].Position.X || y != _map.PlayerInfos[playerId].Position.Y) {
+                            lock (_lock) {
+                                _map.SetPlayerPosition(playerId, x, y);
+                                _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
+                            }
+                        }
                     }
                     break;
                 case ServerMessageType.PlayerLeft:
                 case ServerMessageType.GameLeft: {
-                        // int playerId = int.Parse(message.Data["playerId"]);
-                        // lock (_lock) {
-                        //     _map.PlayerInfos.Remove(playerId);
-                        //     if (_playerNodes.ContainsKey(playerId)) {
-                        //         _playerLayer.DetachChild(_playerNodes[playerId]);
-                        //         _playerNodes.Remove(playerId);
-                        //     }
-                        // }
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        lock (_lock) {
+                            _map.PlayerInfos.Remove(playerId);
+                            if (_playerNodes.ContainsKey(playerId)) {
+                                _playerLayer.DetachChild(_playerNodes[playerId]);
+                                _playerNodes.Remove(playerId);
+                            }
+                        }
                     }
                     break;
                 case ServerMessageType.BombPlaced: {
-                        // int x = int.Parse(message.Data["x"]);
-                        // int y = int.Parse(message.Data["y"]);
-                        // int byPlayerId = int.Parse(message.Data["byPlayerId"]);
-                        // BombType type = Enum.Parse<BombType>(message.Data["type"]);
-
                         // lock (_lock) {
                         //     if (_map.HasBomb(x, y)) {
                         //         _map.RemoveBomb(x, y);
@@ -152,33 +152,33 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.BombExploded: {
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        string[] positions = message.Data["positions"].Split(';');
-                        int byPlayerId = int.Parse(message.Data["byPlayerI d"]);
+                        // int x = int.Parse(message.Data["x"]);
+                        // int y = int.Parse(message.Data["y"]);
+                        // string[] positions = message.Data["positions"].Split(';');
+                        // int byPlayerId = int.Parse(message.Data["byPlayerId"]);
 
-                        lock (_lock) {
-                            foreach (var pos in positions) {
-                                int ex = Position.FromString(pos).X;
-                                int ey = Position.FromString(pos).Y;
+                        // lock (_lock) {
+                        //     foreach (var pos in positions) {
+                        //         int ex = Position.FromString(pos).X;
+                        //         int ey = Position.FromString(pos).Y;
 
-                                _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                                    Position = new Vector2(ey * TILE_SIZE, ex * TILE_SIZE)
-                                });
+                        //         _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Effect/Explosion"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                        //             Position = new Vector2(ey * TILE_SIZE, ex * TILE_SIZE)
+                        //         });
 
-                                if (_map.GetTile(ex, ey) == TileType.Grass) {
-                                    _bombLayer.DetachChild(_grassNodes[(ex, ey)]);
-                                    _grassNodes.Remove((ex, ey));
-                                    _map.SetTile(ex, ey, TileType.Empty);
-                                }
-                            }
-                            _map.RemoveBomb(x, y);
-                            if (byPlayerId == NetworkManager.Instance.ClientId) {
-                                _bombCount--;
-                            }
-                            _bombLayer.DetachChild(_bombNodes[(x, y)]);
-                            _bombNodes.Remove((x, y));
-                        }
+                        //         if (_map.GetTile(ex, ey) == TileType.Grass) {
+                        //             _bombLayer.DetachChild(_grassNodes[(ex, ey)]);
+                        //             _grassNodes.Remove((ex, ey));
+                        //             _map.SetTile(ex, ey, TileType.Empty);
+                        //         }
+                        //     }
+                        //     _map.RemoveBomb(x, y);
+                        //     if (byPlayerId == NetworkManager.Instance.ClientId) {
+                        //         _bombCount--;
+                        //     }
+                        //     _bombLayer.DetachChild(_bombNodes[(x, y)]);
+                        //     _bombNodes.Remove((x, y));
+                        // }
                     }
                     break;
                 case ServerMessageType.PlayerDied: {
@@ -205,29 +205,33 @@ namespace Client {
                     break;
 
                 case ServerMessageType.PowerUpUsed: {
-                        string powerUpType = message.Data["powerUpType"];
-                        Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
-
-                        PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
-                        lock (_lock) {
-                            _powerSlot.PowerUpUsed(Enum.Parse<PowerName>(powerUpType));
-                            powerUp.Apply(parameters);
-                        }
+                        // string powerUpType = message.Data["powerUpType"];
+                        // Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
+                        // parameters["vfxLayer"] = _vfxLayer;
+                        // parameters["bombLayer"] = _bombLayer;
+                        // parameters["bombNodes"] = _bombNodes;
+                        // parameters["playerNodes"] = _playerNodes;
+                        // parameters["map"] = _map;
+                        // PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
+                        // lock (_lock) {
+                        //     // _powerSlot.PowerUpUsed(Enum.Parse<PowerName>(powerUpType));
+                        //     powerUp.Apply(parameters);
+                        // }
                     }
                     break;
 
-                case ServerMessageType.PowerUpSpawned: {
-                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        lock (_lock) {
-                            ItemNode itemNode = new(powerUpType) {
-                                Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE),
-                            };
-                            _map.AddItem(x, y, powerUpType);
-                            _itemNodes.Add((x, y), itemNode);
-                            _itemLayer.AttachChild(itemNode);
-                        }
+                case ServerMessageType.ItemSpawned: {
+                        // PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        // int x = int.Parse(message.Data["x"]);
+                        // int y = int.Parse(message.Data["y"]);
+                        // lock (_lock) {
+                        //     ItemNode itemNode = new(powerUpType) {
+                        //         Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE),
+                        //     };
+                        //     _map.AddItem(x, y, powerUpType);
+                        //     _itemNodes.Add((x, y), itemNode);
+                        //     _itemLayer.AttachChild(itemNode);
+                        // }
                     }
                     break;
 
@@ -267,12 +271,6 @@ namespace Client {
                     }
                     break;
             }
-        }
-
-
-
-        private void IncreaseScore(int playerId) {
-            _scoreboard.IncreaseScore(playerId);
         }
 
         private void HandleUpdate(GameTime gameTime) {
@@ -356,9 +354,9 @@ namespace Client {
                 }
             }
 
-            // if (key.IsKeyDown(Keys.E) || key.IsKeyDown(Keys.Q)) {
-            //     _powerSlot.UsePower(key.IsKeyDown(Keys.E) ? 'E' : 'Q');
-            // }
+            if (key.IsKeyDown(Keys.E) || key.IsKeyDown(Keys.Q)) {
+                UsePowerUp(key.IsKeyDown(Keys.E) ? 0 : 1);
+            }
         }
 
         public override void Update(GameTime gameTime) {
@@ -368,6 +366,18 @@ namespace Client {
 
         public override void Draw(GameTime gameTime, SpriteBatch spriteBatch) {
             base.Draw(gameTime, spriteBatch);
+        }
+
+        private void UsePowerUp(int slotNum) {
+            var powerSlots = _map.PowerUps;
+            if (slotNum < 0 || slotNum >= powerSlots.Length) {
+                return;
+            }
+            var power = powerSlots[slotNum];
+            if (power.Item1 != PowerName.None && power.Item2 > 0 && _map.LockPowerSlot(slotNum)) {
+                PowerUp powerUp = PowerUpFactory.GetPowerUp(power.Item1);
+                powerUp.Use();
+            }
         }
     }
 }

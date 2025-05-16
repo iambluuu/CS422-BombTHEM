@@ -7,7 +7,7 @@ using Shared;
 namespace Client.PowerUps {
     public class Shield : PowerUp {
         private static Dictionary<PlayerNode, VFXNode> _activeEffects = new(); // Current Players with Shield
-
+        public override PowerName PowerName => PowerName.Shield;
         public override void Apply(Dictionary<string, object> parameters) {
             base.Apply(parameters);
             bool needToChange = Boolean.Parse(parameters["needToChange"].ToString());

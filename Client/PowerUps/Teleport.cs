@@ -7,6 +7,7 @@ using Shared;
 
 namespace Client.PowerUps {
     public class Teleport : PowerUp {
+        public override PowerName PowerName => PowerName.Teleport;
         public override void Apply(Dictionary<string, object> parameters) {
             base.Apply(parameters);
 

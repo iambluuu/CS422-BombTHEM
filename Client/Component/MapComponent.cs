@@ -60,6 +60,28 @@ namespace Client.Component {
         }
 
         private void UpdateBombNodes() {
+            lock (_lock) {
+                var newBombs = map.FlushNewBomb();
+                foreach (var (x, y, bombType) in newBombs) {
+                    if (!_bombNodes.ContainsKey((x, y))) {
+                        var bombNode = BombNodeFactory.CreateNode(bombType);
+                        bombNode.Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE);
+
+                        _bombNodes.Add((x, y), bombNode);
+                        _bombLayer.AttachChild(bombNode);
+                    }
+                }
+            }
+
+            lock (_lock) {
+                var removedBombs = map.FlushRemovedBomb();
+                foreach (var (x, y) in removedBombs) {
+                    if (_bombNodes.TryGetValue((x, y), out var bombNode)) {
+                        _bombLayer.DetachChild(bombNode);
+                        _bombNodes.Remove((x, y));
+                    }
+                }
+            }
         }
 
         private void UpdatePlayerNodes() {
@@ -67,6 +89,41 @@ namespace Client.Component {
         }
 
         private void UpdateGrassNodes() {
+            lock (_lock) {
+                var destroyedGrass = map.FlushDestroyedBlock();
+                foreach (var (x, y) in destroyedGrass) {
+                    if (_grassNodes.TryGetValue((x, y), out var grassNode)) {
+                        _bombLayer.DetachChild(grassNode);
+                        _grassNodes.Remove((x, y));
+                    }
+                }
+            }
+        }
+
+        private void UpdatePowerUpNodes() {
+            lock (_lock) {
+                var newPowerUps = map.FlushNewPowerUp();
+                foreach (var (x, y, powerUpType) in newPowerUps) {
+                    if (!_itemNodes.ContainsKey((x, y))) {
+                        var itemNode = new ItemNode(powerUpType) {
+                            Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE),
+                        };
+
+                        _itemNodes.Add((x, y), itemNode);
+                        _ItemLayer.AttachChild(itemNode);
+                    }
+                }
+            }
+
+            lock (_lock) {
+                var removedPowerUps = map.FlushRemovedPowerUp();
+                foreach (var (x, y) in removedPowerUps) {
+                    if (_itemNodes.TryGetValue((x, y), out var itemNode)) {
+                        _ItemLayer.DetachChild(itemNode);
+                        _itemNodes.Remove((x, y));
+                    }
+                }
+            }
         }
 
         private void UpdateItemNodes() {
@@ -86,7 +143,7 @@ namespace Client.Component {
 
             lock (_lock) {
                 var removedItems = map.FlushRemovedItem();
-                foreach (var (x, y, powerUpType) in removedItems) {
+                foreach (var (x, y) in removedItems) {
                     if (_itemNodes.TryGetValue((x, y), out var itemNode)) {
                         _sceneGraph.DetachChild(itemNode);
                         _itemNodes.Remove((x, y));

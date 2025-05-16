@@ -10,6 +10,7 @@ namespace Client.Component {
     public class PowerSlot : IComponent {
         private const int Paddings = 25; // surrounding padding
         private const int Spacing = 10; // spacing between entries
+        private readonly MapRenderInfo map;
 
         // Nine-slice texture size
         private static readonly Vector2 CornerSize = new Vector2(6, 6);
@@ -21,21 +22,12 @@ namespace Client.Component {
         private readonly Texture2D _borderTexture;
         private readonly SpriteFont _font;
 
-        private (PowerName, int)[] _powers = [(PowerName.None, 0), (PowerName.None, 0)];
 
-        public PowerSlot() {
+        public PowerSlot(MapRenderInfo map) {
             _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
             _borderTexture = TextureHolder.Get("Theme/scoreboard_border");
             _font = FontHolder.Get("PressStart2P");
-        }
-
-        public void ObtainPower(PowerName power) {
-            for (int i = 0; i < _powers.Length; i++) {
-                if (_powers[i].Item1 == PowerName.None) {
-                    _powers[i] = (power, GameplayConfig.PowerUpQuantity[power]);
-                    break;
-                }
-            }
+            this.map = map;
         }
 
         // public void UsePower(char key) {
@@ -58,24 +50,30 @@ namespace Client.Component {
         //     }
         // }
 
-        public void PowerUpUsed(PowerName power) {
-            for (int i = 0; i < _powers.Length; i++) {
-                if (_powers[i].Item1 == power) {
-                    _powers[i].Item2--;
-                    if (_powers[i].Item2 == 0) {
-                        _powers[i] = (PowerName.None, 0);
-                    }
-                    break;
-                }
-            }
-        }
+        // public void PowerUpUsed(PowerName power) {
+        //     for (int i = 0; i < _powers.Length; i++) {
+        //         if (_powers[i].Item1 == power) {
+        //             _powers[i].Item2--;
+        //             if (_powers[i].Item2 == 0) {
+        //                 _powers[i] = (PowerName.None, 0);
+        //             }
+        //             break;
+        //         }
+        //     }
+        // }
 
 
         public override void Update(GameTime gameTime) {
-
+            if (map == null || !map.IsInitialized) {
+                return;
+            }
         }
 
         public override void Draw(SpriteBatch spriteBatch) {
+            if (map == null || !map.IsInitialized) {
+                return;
+            }
+
             DrawNineSlice(spriteBatch, _backgroundTexture);
             DrawNineSlice(spriteBatch, _borderTexture);
 
@@ -88,9 +86,10 @@ namespace Client.Component {
 
             var slotSize = Math.Min((Size.X - Paddings * 2 - Spacing) / 2, Size.Y - Paddings * 2 - textSize.Y - Spacing);
             var leftMargin = (Size.X - slotSize * 2 - Spacing) / 2;
-            for (int i = 0; i < _powers.Length; i++) {
-                var power = _powers[i];
-                var texture = GetPowerTexture(power.Item1);
+            var powers = map.PowerUps;
+            for (int i = 0; i < powers.Length; i++) {
+                var power = powers[i].Item1;
+                var texture = GetPowerTexture(power);
                 var scale = slotSize / texture.Width;
                 var position = new Vector2(Position.X + leftMargin + (slotSize + Spacing) * i, Position.Y + Paddings + textSize.Y + Spacing);
                 spriteBatch.Draw(texture, position, null, Color.White, 0f, Vector2.Zero, scale, SpriteEffects.None, 0f);
@@ -108,18 +107,18 @@ namespace Client.Component {
             spriteBatch.Draw(backgroundTexture, qPosition, null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, "Q", qPosition + new Vector2(3, 3), _textColor, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
 
-            if (_powers[0].Item2 > 1) {
+            if (powers[0].Item2 > 1) {
                 spriteBatch.Draw(backgroundTexture, qPosition + new Vector2(0, slotSize - backgroundTexture.Height * backgroundScale), null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, _powers[0].Item2.ToString(), qPosition + new Vector2(3, slotSize - backgroundTexture.Height * backgroundScale + 3), Color.White, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, powers[0].Item2.ToString(), qPosition + new Vector2(3, slotSize - backgroundTexture.Height * backgroundScale + 3), Color.White, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
             }
 
             ePosition += new Vector2(slotSize - keySize, 0);
             spriteBatch.Draw(backgroundTexture, ePosition, null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
             spriteBatch.DrawString(_font, "E", ePosition + new Vector2(3, 3), _textColor, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
 
-            if (_powers[1].Item2 > 1) {
+            if (powers[1].Item2 > 1) {
                 spriteBatch.Draw(backgroundTexture, ePosition + new Vector2(0, slotSize - backgroundTexture.Height * backgroundScale), null, Color.White, 0f, Vector2.Zero, backgroundScale, SpriteEffects.None, 0f);
-                spriteBatch.DrawString(_font, _powers[1].Item2.ToString(), ePosition + new Vector2(3, slotSize - backgroundTexture.Height * backgroundScale + 3), Color.White, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
+                spriteBatch.DrawString(_font, powers[1].Item2.ToString(), ePosition + new Vector2(3, slotSize - backgroundTexture.Height * backgroundScale + 3), Color.White, 0f, Vector2.Zero, charScale, SpriteEffects.None, 0f);
             }
         }
 

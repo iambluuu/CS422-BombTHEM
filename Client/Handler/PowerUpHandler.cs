@@ -8,8 +8,8 @@ using Shared;
 
 namespace Client.Handler {
 
-    public class PowerUpHandler(MapRenderInfo map) : Handler(map) {
-        public override void Handle(NetworkMessage message) {
+    public class PowerUpHandler(MapRenderInfo map) : Handler {
+        public void Handle(NetworkMessage message) {
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.PowerUpUsed:
                     PowerUpUsed(message);
@@ -28,15 +28,12 @@ namespace Client.Handler {
 
             PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
             powerUp.Apply(parameters);
-            // lock (_lock) {
-            //     _powerSlot.PowerUpUsed(Enum.Parse<PowerName>(powerUpType));
-            // }
         }
 
         internal void PowerUpExpired(NetworkMessage message) {
             int playerId = int.Parse(message.Data["playerId"]);
             PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
-            mapRenderInfo.PowerUpRemoved(playerId, powerType);
+            map.PowerUpExpired(playerId, powerType);
         }
     }
 }

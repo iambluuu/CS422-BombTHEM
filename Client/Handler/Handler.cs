@@ -22,9 +22,7 @@ namespace Client.Handler {
             return _handlers[type] = handler;
         }
     }
-    public abstract class Handler(MapRenderInfo mapRenderInfo) {
-        protected MapRenderInfo mapRenderInfo = mapRenderInfo;
-
+    public interface Handler {
         public virtual void Handle(NetworkMessage message) { }
     }
 }

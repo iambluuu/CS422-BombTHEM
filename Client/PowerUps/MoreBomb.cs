@@ -8,10 +8,10 @@ using Shared;
 namespace Client.PowerUps {
     public class MoreBombs : PowerUp {
         private static Dictionary<PlayerNode, (VFXNode, PlayerIngameInfo)> _activeEffects = new(); // Current Players with More Bombs
-
+        public override PowerName PowerName => PowerName.MoreBombs;
         public override void Apply(Dictionary<string, object> parameters) {
             base.Apply(parameters);
-            bool needToChange = Boolean.Parse(parameters["needToChange"].ToString());
+            bool needToChange = bool.Parse(parameters["needToChange"].ToString());
             if (!needToChange) {
                 return;
             }
