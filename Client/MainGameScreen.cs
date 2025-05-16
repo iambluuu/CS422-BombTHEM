@@ -16,8 +16,8 @@ namespace Client {
         private LinearLayout _sidebar;
         private Scoreboard _scoreboard;
         private PowerSlot _powerSlot;
-        private MapRenderInfo _map = new();
         private MapComponent _mapComponent;
+        private MapRenderInfo _map;
 
         public MainGameScreen() { }
 
@@ -35,17 +35,14 @@ namespace Client {
                 WidthMode = SizeMode.MatchParent,
                 Weight = 2,
             };
-
             _scoreboard = new Scoreboard() {
                 Position = new Vector2(0, 0),
                 Width = 240, /// ???
                 Height = ScreenSize.Y, /// ???
                 Weight = 6,
             };
-
             _sidebar.AddComponent(_scoreboard);
             _sidebar.AddComponent(_powerSlot);
-
             _sidebar.AddComponent(new Button() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 80,
@@ -60,6 +57,9 @@ namespace Client {
             _mapComponent = new MapComponent(_map) {
                 Position = new Vector2(240, 0)
             };
+            _map.OnMapInitialized = () => {
+                _mapComponent.ProcessMap();
+            };
             uiManager.AddComponent(_mapComponent);
         }
 
@@ -73,82 +73,82 @@ namespace Client {
 
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.GameInfo: {
-                        _map = Map.FromString(message.Data["map"]);
-                        int duration = int.Parse(message.Data["duration"]);
-                        int playerCount = int.Parse(message.Data["playerCount"]);
-                        int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
-                        string[] usernames = message.Data["usernames"].Split(';');
-                        Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
-                        ProcessMap();
-                        List<(string, string, int)> playerData = new();
-                        for (int i = 0; i < playerCount; i++) {
-                            int playerId = playerIds[i];
-                            string username = usernames[i];
-                            int x = playerPositions[i].X;
-                            int y = playerPositions[i].Y;
-                            _map.SetPlayerPosition(playerId, x, y);
+                        // _map.ReadMapFromString(message.Data["map"]);
+                        // int duration = int.Parse(message.Data["duration"]);
+                        // int playerCount = int.Parse(message.Data["playerCount"]);
+                        // int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
+                        // string[] usernames = message.Data["usernames"].Split(';');
+                        // Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
 
-                            PlayerNode playerNode = new(TextureHolder.Get($"Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
-                                Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
-                            };
+                        // List<(string, string, int)> playerData = new();
+                        // for (int i = 0; i < playerCount; i++) {
+                        //     int playerId = playerIds[i];
+                        //     string username = usernames[i];
+                        //     int x = playerPositions[i].X;
+                        //     int y = playerPositions[i].Y;
+                        //     _map.SetPlayerPosition(playerId, x, y);
 
-                            _playerLayer.AttachChild(playerNode);
-                            _playerNodes.Add(playerId, playerNode);
-                            _skinMapping.Add(playerId, i);
-                            playerData.Add((playerId.ToString(), username, i));
-                        }
+                        //     PlayerNode playerNode = new(TextureHolder.Get($"Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                        //         Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
+                        //     };
 
-                        _scoreboard.SetDuration(duration);
-                        _scoreboard.SetPlayerData(playerData);
+                        //     _playerLayer.AttachChild(playerNode);
+                        //     _playerNodes.Add(playerId, playerNode);
+                        //     _skinMapping.Add(playerId, i);
+                        //     playerData.Add((playerId.ToString(), username, i));
+                        // }
+
+                        // _scoreboard.SetDuration(duration);
+                        // _scoreboard.SetPlayerData(playerData);
 
                         ScreenManager.Instance.StopLoading();
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        Direction direction = Enum.Parse<Direction>(message.Data["d"]);
+                        // int playerId = int.Parse(message.Data["playerId"]);
+                        // int x = int.Parse(message.Data["x"]);
+                        // int y = int.Parse(message.Data["y"]);
+                        // Direction direction = Enum.Parse<Direction>(message.Data["d"]);
 
-                        if (x != _map.PlayerInfos[playerId].Position.X || y != _map.PlayerInfos[playerId].Position.Y) {
-                            lock (_lock) {
-                                _map.SetPlayerPosition(playerId, x, y);
-                                _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
-                            }
-                        }
+                        // if (x != _map.PlayerInfos[playerId].Position.X || y != _map.PlayerInfos[playerId].Position.Y) {
+                        //     lock (_lock) {
+                        //         _map.SetPlayerPosition(playerId, x, y);
+                        //         _playerNodes[playerId].MoveTo(new Vector2(y * TILE_SIZE, x * TILE_SIZE), direction);
+                        //     }
+                        // }   
                     }
                     break;
                 case ServerMessageType.PlayerLeft:
                 case ServerMessageType.GameLeft: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        lock (_lock) {
-                            _map.PlayerInfos.Remove(playerId);
-                            if (_playerNodes.ContainsKey(playerId)) {
-                                _playerLayer.DetachChild(_playerNodes[playerId]);
-                                _playerNodes.Remove(playerId);
-                            }
-                        }
+                        // int playerId = int.Parse(message.Data["playerId"]);
+                        // lock (_lock) {
+                        //     _map.PlayerInfos.Remove(playerId);
+                        //     if (_playerNodes.ContainsKey(playerId)) {
+                        //         _playerLayer.DetachChild(_playerNodes[playerId]);
+                        //         _playerNodes.Remove(playerId);
+                        //     }
+                        // }
                     }
                     break;
                 case ServerMessageType.BombPlaced: {
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        int byPlayerId = int.Parse(message.Data["byPlayerId"]);
-                        BombType type = Enum.Parse<BombType>(message.Data["type"]);
+                        // int x = int.Parse(message.Data["x"]);
+                        // int y = int.Parse(message.Data["y"]);
+                        // int byPlayerId = int.Parse(message.Data["byPlayerId"]);
+                        // BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
-                        lock (_lock) {
-                            if (_map.HasBomb(x, y)) {
-                                _map.RemoveBomb(x, y);
-                            }
-                            _map.AddBomb(x, y, type);
-                            if (byPlayerId == NetworkManager.Instance.ClientId) {
-                                _bombCount++;
-                            }
-                            var newBomb = BombNodeFactory.CreateNode(type);
-                            newBomb.Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE);
-                            _bombNodes.Add((x, y), newBomb);
-                            _bombLayer.AttachChild(newBomb);
-                        }
+                        // lock (_lock) {
+                        //     if (_map.HasBomb(x, y)) {
+                        //         _map.RemoveBomb(x, y);
+                        //     }
+                        //     _map.AddBomb(x, y, type);
+                        //     if (byPlayerId == NetworkManager.Instance.ClientId) {
+                        //         _bombCount++;
+                        //     }
+                        //     var newBomb = BombNodeFactory.CreateNode(type);
+                        //     newBomb.Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE);
+                        //     _bombNodes.Add((x, y), newBomb);
+                        //     _bombLayer.AttachChild(newBomb);
+                        // }
                     }
                     break;
                 case ServerMessageType.BombExploded: {
@@ -207,11 +207,7 @@ namespace Client {
                 case ServerMessageType.PowerUpUsed: {
                         string powerUpType = message.Data["powerUpType"];
                         Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
-                        parameters["vfxLayer"] = _vfxLayer;
-                        parameters["bombLayer"] = _bombLayer;
-                        parameters["bombNodes"] = _bombNodes;
-                        parameters["playerNodes"] = _playerNodes;
-                        parameters["map"] = _map;
+
                         PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
                         lock (_lock) {
                             _powerSlot.PowerUpUsed(Enum.Parse<PowerName>(powerUpType));
@@ -273,7 +269,7 @@ namespace Client {
             }
         }
 
-        
+
 
         private void IncreaseScore(int playerId) {
             _scoreboard.IncreaseScore(playerId);
@@ -360,9 +356,9 @@ namespace Client {
                 }
             }
 
-            if (key.IsKeyDown(Keys.E) || key.IsKeyDown(Keys.Q)) {
-                _powerSlot.UsePower(key.IsKeyDown(Keys.E) ? 'E' : 'Q');
-            }
+            // if (key.IsKeyDown(Keys.E) || key.IsKeyDown(Keys.Q)) {
+            //     _powerSlot.UsePower(key.IsKeyDown(Keys.E) ? 'E' : 'Q');
+            // }
         }
 
         public override void Update(GameTime gameTime) {

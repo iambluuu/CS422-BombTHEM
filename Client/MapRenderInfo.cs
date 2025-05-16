@@ -7,15 +7,52 @@ using Microsoft.Xna.Framework;
 using Shared;
 
 namespace Client {
+    public class PlayerInfo {
+        public Position Position;
+        public readonly PlayerSkin SkinId;
+        public readonly string Name;
+
+        public PlayerInfo(int skinId, string name, Position position) {
+            SkinId = (PlayerSkin)skinId;
+            Name = name;
+            Position = position;
+        }
+    }
+
     public class MapRenderInfo {
         private readonly object _lock = new();
+
+        private bool _isInitialized;
+        public Action OnMapInitialized;
+
+        private TileType[,] Tiles;
         public Dictionary<int, int> SkinMapping = [];
-        private Dictionary<int, Position> PlayerPosition = new();
+        public Dictionary<int, PlayerInfo> PlayerInfos { get; private set; } = [];
+
         private readonly List<(int, int)> BombPosition = new();
         private readonly List<(int, int, BombType)> NewBomb = new();
         private readonly List<(int, int)> RemovedBomb = new();
         private readonly List<(int, int, PowerName)> NewItemDropped = new();
         private readonly List<(int, int, PowerName)> RemovedItem = new();
+        private readonly List<(int, PowerName)> ExpiredPowerUp;
+        private readonly List<(int, PowerName)> ActivePowerUp;
+        private readonly List<(int, int)> ExpiredItem;
+
+        public List<(int, int, PowerName)> FlushRemovedItem() => FlushList(RemovedItem);
+        public List<(int, int)> FlushRemovedBomb() => FlushList(RemovedBomb);
+        public List<(int, int, BombType)> FlushNewBomb() => FlushList(NewBomb);
+        public List<(int, int, PowerName)> FlushNewItemDropped() => FlushList(NewItemDropped);
+        public List<(int, PowerName)> FlushExpiredPowerUp() => FlushList(ExpiredPowerUp);
+        public List<(int, PowerName)> FlushActivePowerUp() => FlushList(ActivePowerUp);
+        public List<(int, int)> FlushExpiredItem() => FlushList(ExpiredItem);
+
+        internal List<T> FlushList<T>(List<T> list) {
+            lock (_lock) {
+                var flushed = new List<T>(list);
+                list.Clear();
+                return flushed;
+            }
+        }
 
         public int Width { get; }
         public int Height { get; }
@@ -32,9 +69,15 @@ namespace Client {
             }
         }
 
+        public bool PlayerAt(int playerId, int x, int y) {
+            lock (_lock) {
+                return PlayerInfos[playerId].Position.X == x && PlayerInfos[playerId].Position.Y == y;
+            }
+        }
+
         internal void SetPlayerPosition(int playerId, int x, int y) {
             lock (_lock) {
-                PlayerPosition[playerId] = new Position(x, y);
+                PlayerInfos[playerId].Position = new Position(x, y);
             }
         }
 
@@ -46,40 +89,8 @@ namespace Client {
             return Tiles[x, y];
         }
 
-        private bool IsInBounds(int x, int y) {
-            throw new NotImplementedException();
-        }
-
-        public List<(int, int, PowerName)> FlushNewItemDropped() {
-            lock (_lock) {
-                var items = new List<(int, int, PowerName)>(NewItemDropped);
-                NewItemDropped.Clear();
-                return items;
-            }
-        }
-
-        public List<(int, int, PowerName)> FlushRemovedItem() {
-            lock (_lock) {
-                var items = new List<(int, int, PowerName)>(RemovedItem);
-                RemovedItem.Clear();
-                return items;
-            }
-        }
-
-        public List<(int, int)> FlushRemovedBomb() {
-            lock (_lock) {
-                var bombs = new List<(int, int)>(BombPosition);
-                BombPosition.Clear();
-                return bombs;
-            }
-        }
-
-        public List<(int, int, BombType)> FlushNewBomb() {
-            lock (_lock) {
-                var bombs = new List<(int, int, BombType)>(NewBomb);
-                BombPosition.Clear();
-                return bombs;
-            }
+        public bool IsInBounds(int x, int y) {
+            return x >= 0 && x < Height && y >= 0 && y < Width;
         }
 
         public void BombPlaced(int x, int y, BombType bombType) {
@@ -88,9 +99,49 @@ namespace Client {
             }
         }
 
-        public void BombRemoved(int x, int y) {
+        public void BombExploded(int x, int y) {
             lock (_lock) {
-                RemovedBomb.Add((x, y));
+                BombPosition.Add((x, y));
+            }
+        }
+
+        public void PowerUpRemoved(int playerId, PowerName powerUpType) {
+            lock (_lock) {
+                ExpiredPowerUp.Add((playerId, powerUpType));
+            }
+        }
+
+        public void ItemExpired(int x, int y) {
+            lock (_lock) {
+                ExpiredItem.Add((x, y));
+            }
+        }
+
+        public void InitMap(string mapString, int[] playerIds, Position[] playerPositions, string[] playerNames) {
+            if (playerIds.Length != playerPositions.Length || playerIds.Length != playerNames.Length) {
+                throw new ArgumentException("Player IDs and positions must have the same length.");
+            }
+
+            lock (_lock) {
+                string[] rows = mapString.Split(';');
+                int height = rows.Length;
+                int width = rows[0].Length;
+                Tiles = new TileType[height, width];
+                for (int i = 0; i < height; i++) {
+                    for (int j = 0; j < width; j++) {
+                        Tiles[i, j] = Enum.Parse<TileType>(rows[i][j].ToString());
+                    }
+                }
+
+                for (int i = 0; i < playerIds.Length; i++) {
+                    int playerId = playerIds[i];
+                    Position position = playerPositions[i];
+                    string name = playerNames[i];
+                    PlayerInfos[playerId] = new PlayerInfo(playerId, name, position);
+                }
+
+                _isInitialized = true;
+                OnMapInitialized?.Invoke();
             }
         }
     }

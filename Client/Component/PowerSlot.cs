@@ -38,25 +38,25 @@ namespace Client.Component {
             }
         }
 
-        public void UsePower(char key) {
-            int index = key switch {
-                'Q' => 0,
-                'E' => 1,
-                _ => -1,
-            };
+        // public void UsePower(char key) {
+        //     int index = key switch {
+        //         'Q' => 0,
+        //         'E' => 1,
+        //         _ => -1,
+        //     };
 
-            if (index < 0 || index >= _powers.Length) {
-                throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
-            }
+        //     if (index < 0 || index >= _powers.Length) {
+        //         throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
+        //     }
 
-            // Console.WriteLine($"Using power: {_powers[index]}");
+        //     // Console.WriteLine($"Using power: {_powers[index]}");
 
-            if (_powers[index].Item1 != PowerName.None) {
-                NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
-                    { "powerUpType", _powers[index].ToString() },
-                }));
-            }
-        }
+        //     if (_powers[index].Item1 != PowerName.None) {
+        //         NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
+        //             { "powerUpType", _powers[index].ToString() },
+        //         }));
+        //     }
+        // }
 
         public void PowerUpUsed(PowerName power) {
             for (int i = 0; i < _powers.Length; i++) {

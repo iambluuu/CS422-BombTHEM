@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Net.Http.Headers;
 using Client.PowerUps;
 using Microsoft.Xna.Framework;
 using Shared;
@@ -6,10 +7,10 @@ using Shared;
 namespace Client.Component {
     public class MapComponent : IComponent {
         private readonly object _lock = new();
-        public readonly Dictionary<int, PlayerNode> PlayerNodes = [];
-        private readonly Dictionary<(int, int), BombNode> BombNodes = [];
-        private readonly Dictionary<(int, int), SpriteNode> GrassNodes = [];
-        private readonly Dictionary<(int, int), ItemNode> ItemNodes = [];
+        public readonly Dictionary<int, PlayerNode> _playerNodes = [];
+        private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
+        private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
+        private readonly Dictionary<(int, int), ItemNode> _itemNodes = [];
         private readonly MapRenderInfo map;
         private SceneNode _sceneGraph;
         public SceneNode _mapLayer, _bombLayer, _playerLayer, _ItemLayer, _vfxLayer;
@@ -70,69 +71,83 @@ namespace Client.Component {
 
         private void UpdateItemNodes() {
             lock (_lock) {
-                foreach (var (x, y, powerUpType) in map.NewItemDropped) {
-                    if (!ItemNodes.ContainsKey((x, y))) {
+                var newItems = map.FlushNewItemDropped();
+                foreach (var (x, y, powerUpType) in newItems) {
+                    if (!_itemNodes.ContainsKey((x, y))) {
                         var itemNode = new ItemNode(powerUpType) {
                             Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE),
                         };
 
-                        ItemNodes.Add((x, y), itemNode);
+                        _itemNodes.Add((x, y), itemNode);
                         _sceneGraph.AttachChild(itemNode);
                     }
                 }
-                map.NewItemDropped.Clear();
             }
 
             lock (_lock) {
-                foreach (var (x, y, powerUpType) in map.RemovedItem) {
-                    if (ItemNodes.TryGetValue((x, y), out var itemNode)) {
+                var removedItems = map.FlushRemovedItem();
+                foreach (var (x, y, powerUpType) in removedItems) {
+                    if (_itemNodes.TryGetValue((x, y), out var itemNode)) {
                         _sceneGraph.DetachChild(itemNode);
-                        ItemNodes.Remove((x, y));
+                        _itemNodes.Remove((x, y));
                     }
                 }
-                map.RemovedItem.Clear();
             }
         }
 
-        private void ProcessMap() {
-            for (int i = 0; i < map.Height; i++) {
-                for (int j = 0; j < map.Width; j++) {
-                    SpriteNode cellSprite = new(TextureHolder.Get("Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
-                        Position = new Vector2(j * GameValues.TILE_SIZE, i *GameValues.TILE_SIZE)
-                    };
-                    _mapLayer.AttachChild(cellSprite);
-
-                    if (map.GetTile(i, j) == TileType.Grass) {
-                        SpriteNode grassSprite = new(TextureHolder.Get("Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
+        public void ProcessMap() {
+            // Map
+            lock (_lock) {
+                for (int i = 0; i < map.Height; i++) {
+                    for (int j = 0; j < map.Width; j++) {
+                        SpriteNode cellSprite = new(TextureHolder.Get("Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
                             Position = new Vector2(j * GameValues.TILE_SIZE, i * GameValues.TILE_SIZE)
                         };
+                        _mapLayer.AttachChild(cellSprite);
 
-                        _grassNodes.Add((i, j), grassSprite);
-                        _bombLayer.AttachChild(grassSprite);
-                    }
+                        if (map.GetTile(i, j) == TileType.Grass) {
+                            SpriteNode grassSprite = new(TextureHolder.Get("Tileset/TilesetNature", new Rectangle(96, 240, 16, 16)), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
+                                Position = new Vector2(j * GameValues.TILE_SIZE, i * GameValues.TILE_SIZE)
+                            };
 
-                    if (map.GetTile(i, j) != TileType.Wall) {
-                        continue;
-                    }
+                            _grassNodes.Add((i, j), grassSprite);
+                            _bombLayer.AttachChild(grassSprite);
+                        }
 
-                    bool[,] localArea = new bool[3, 3];
-                    for (int u = -1; u <= 1; u++) {
-                        for (int v = -1; v <= 1; v++) {
-                            int newX = i + u;
-                            int newY = j + v;
-                            if (map.IsInBounds(newX, newY)) {
-                                localArea[u + 1, v + 1] = _map.GetTile(newX, newY) == TileType.Wall;
-                            } else {
-                                localArea[u + 1, v + 1] = false;
+                        if (map.GetTile(i, j) != TileType.Wall) {
+                            continue;
+                        }
+
+                        bool[,] localArea = new bool[3, 3];
+                        for (int u = -1; u <= 1; u++) {
+                            for (int v = -1; v <= 1; v++) {
+                                int newX = i + u;
+                                int newY = j + v;
+                                if (map.IsInBounds(newX, newY)) {
+                                    localArea[u + 1, v + 1] = map.GetTile(newX, newY) == TileType.Wall;
+                                } else {
+                                    localArea[u + 1, v + 1] = false;
+                                }
                             }
                         }
-                    }
 
-                    (int, int) p = BitmaskReferences.GetPosition(localArea);
-                    SpriteNode wallSprite = new(TextureHolder.Get("Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(TILE_SIZE,GameValues.TILE_SIZE)) {
-                        Position = new Vector2(j * GameValues.TILE_SIZE, i * GameValues.TILE_SIZE)
+                        (int, int) p = BitmaskReferences.GetPosition(localArea);
+                        SpriteNode wallSprite = new(TextureHolder.Get("Tileset/TilesetFloor", new Rectangle(p.Item2 * 16, p.Item1 * 16, 16, 16)), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
+                            Position = new Vector2(j * GameValues.TILE_SIZE, i * GameValues.TILE_SIZE)
+                        };
+                        _mapLayer.AttachChild(wallSprite);
+                    }
+                }
+
+                // Player
+                foreach (var info in map.PlayerInfos) {
+                    var playerId = info.Key;
+                    var playerInfo = info.Value;
+                    PlayerNode playerNode = new(TextureHolder.Get($"Character/{playerInfo.SkinId}"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
+                        Position = new Vector2(playerInfo.Position.Y * GameValues.TILE_SIZE, playerInfo.Position.X * GameValues.TILE_SIZE)
                     };
-                    _mapLayer.AttachChild(wallSprite);
+                    _playerNodes[playerId] = playerNode;
+                    _playerLayer.AttachChild(playerNode);
                 }
             }
         }
