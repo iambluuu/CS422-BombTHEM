@@ -11,6 +11,7 @@ namespace Client.Component {
         private readonly Dictionary<(int, int), BombNode> _bombNodes = [];
         private readonly Dictionary<(int, int), SpriteNode> _grassNodes = [];
         private readonly Dictionary<(int, int), ItemNode> _itemNodes = [];
+        private readonly Dictionary<(int, PowerName), SceneNode> _playerPowerNodes = [];
         private readonly MapRenderInfo map;
         private SceneNode _sceneGraph;
         public SceneNode _mapLayer, _bombLayer, _playerLayer, _ItemLayer, _vfxLayer;
@@ -44,6 +45,13 @@ namespace Client.Component {
             _sceneGraph.Position = Position;
         }
 
+        public Vector2 GetPlayerSpritePosition(int playerId) {
+            if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                return playerNode.Position;
+            }
+            return Vector2.Zero;
+        }
+
         public override void Update(GameTime gameTime) {
             _sceneGraph.UpdateTree(gameTime);
             _pingText.Text = $"Ping: {NetworkManager.Instance.Ping}ms";
@@ -56,6 +64,7 @@ namespace Client.Component {
             UpdateBombNodes();
             UpdatePlayerNodes();
             UpdateGrassNodes();
+            UpdatePowerUpNodes();
             UpdateItemNodes();
         }
 
@@ -85,7 +94,34 @@ namespace Client.Component {
         }
 
         private void UpdatePlayerNodes() {
+            lock (_lock) {
+                var DeadPlayers = map.FlushDeadPlayers();
+                foreach (var playerId in DeadPlayers) {
+                    if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                        playerNode.Die();
+                        playerNode.TeleportTo(new Vector2(playerNode.Position.Y * GameValues.TILE_SIZE, playerNode.Position.X * GameValues.TILE_SIZE), Direction.Down);
+                    }
+                }
+            }
 
+            lock (_lock) {
+                var movedPlayers = map.FlushMovedPlayers();
+                foreach (var (playerId, x, y, direction) in movedPlayers) {
+                    if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                        playerNode.MoveTo(new Vector2(y * GameValues.TILE_SIZE, x * GameValues.TILE_SIZE), direction);
+                    }
+                }
+            }
+
+            lock (_lock) {
+                var removedPlayers = map.FlushRemovedPlayers();
+                foreach (var playerId in removedPlayers) {
+                    if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                        _playerLayer.DetachChild(playerNode);
+                        _playerNodes.Remove(playerId);
+                    }
+                }
+            }
         }
 
         private void UpdateGrassNodes() {
@@ -102,25 +138,30 @@ namespace Client.Component {
 
         private void UpdatePowerUpNodes() {
             lock (_lock) {
-                var newPowerUps = map.FlushNewPowerUp();
+                var newPowerUps = map.FlushNewEnvVFX();
                 foreach (var (x, y, powerUpType) in newPowerUps) {
-                    if (!_itemNodes.ContainsKey((x, y))) {
-                        var itemNode = new ItemNode(powerUpType) {
-                            Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE),
-                        };
+                    var vfx = EffectNodeFactory.CreateEnvEffect(powerUpType, x, y);
+                    _vfxLayer.AttachChild(vfx);
+                }
+            }
 
-                        _itemNodes.Add((x, y), itemNode);
-                        _ItemLayer.AttachChild(itemNode);
+            lock (_lock) {
+                var newPowerUps = map.FlushNewPlayerVFX();
+                foreach (var (playerId, powerUpType) in newPowerUps) {
+                    if (!_playerPowerNodes.ContainsKey((playerId, powerUpType))) {
+                        var vfx = EffectNodeFactory.CreatePlayerEffect(powerUpType);
+                        _playerPowerNodes.Add((playerId, powerUpType), vfx);
+                        _playerNodes[playerId].AttachChild(vfx);
                     }
                 }
             }
 
             lock (_lock) {
-                var removedPowerUps = map.FlushRemovedPowerUp();
-                foreach (var (x, y) in removedPowerUps) {
-                    if (_itemNodes.TryGetValue((x, y), out var itemNode)) {
-                        _ItemLayer.DetachChild(itemNode);
-                        _itemNodes.Remove((x, y));
+                var removedPowerUps = map.FlushExpiredPlayerPowerUp();
+                foreach (var (playerId, powerName) in removedPowerUps) {
+                    if (_playerPowerNodes.TryGetValue((playerId, powerName), out var vfx)) {
+                        _playerPowerNodes.Remove((playerId, powerName));
+                        _playerNodes[playerId].DetachChild(vfx);
                     }
                 }
             }
@@ -206,6 +247,8 @@ namespace Client.Component {
                     _playerNodes[playerId] = playerNode;
                     _playerLayer.AttachChild(playerNode);
                 }
+
+                map.MyNode = _playerNodes[NetworkManager.Instance.ClientId];
             }
         }
     }

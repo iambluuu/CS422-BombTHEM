@@ -12,10 +12,34 @@ namespace Client.Handler {
 
             Handler handler = null;
             switch (type) {
-                case ServerMessageType.BombExploded: {
-                        // handler = new BombHandler();
+                case ServerMessageType.PlayerMoved:
+                case ServerMessageType.PlayerDied:
+                case ServerMessageType.PlayerLeft:
+                case ServerMessageType.GameLeft: {
+                        handler = new PlayerHandler(mapRenderInfo);
+                        break;
                     }
-                    break;
+                case ServerMessageType.GameInfo: {
+                        handler = new GameInfoHandler(mapRenderInfo);
+                        break;
+                    }
+                case ServerMessageType.BombPlaced:
+                case ServerMessageType.BombExploded: {
+                        handler = new BombHandler(mapRenderInfo);
+                        break;
+                    }
+                case ServerMessageType.ItemSpawned:
+                case ServerMessageType.ItemPickedUp:
+                case ServerMessageType.ItemExpired: {
+                        handler = new ItemHandler(mapRenderInfo);
+                        break;
+                    }
+
+                case ServerMessageType.PowerUpUsed:
+                case ServerMessageType.PowerUpExpired: {
+                        handler = new PowerUpHandler(mapRenderInfo);
+                        break;
+                    }
                 default:
                     throw new Exception($"No handler available for {type}");
             }

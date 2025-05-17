@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Client.PowerUps;
 using Microsoft.Xna.Framework;
 using Shared;
@@ -28,34 +29,43 @@ namespace Client {
         public Action OnMapInitialized;
 
         private TileType[,] Tiles;
-        private bool[,] tileLocked;
+        private bool[,] TileLocked;
         public Dictionary<int, int> SkinMapping = [];
         public Dictionary<int, PlayerInfo> PlayerInfos { get; private set; } = [];
+        // PowerUps: Power-up slots, 0: left, 1: right, (PowerType, quantity)
         public (PowerName, int)[] PowerUps { get; private set; } = [(PowerName.None, 0), (PowerName.None, 0)];
+        public List<PowerName> ActivePowerUps { get; private set; } = new(); // Currently active power-ups of THIS CLIENT
         private bool[] powerUpLocked = [false, false];
+        public PlayerNode MyNode { private get; set; } = null;
         public int BombCount { get; private set; } = 0;
 
-        private readonly List<(int, int)> BombPosition = new();
-        private readonly List<(int, int, BombType)> NewBomb = new();
-        private readonly List<(int, int)> NewExplosion = new();
-        private readonly List<(int, int)> DestroyedBlock = new();
-        private readonly List<(int, int)> RemovedBomb = new();
-        private readonly List<(int, int, PowerName)> NewItemDropped = new();
-        private readonly List<(int, int)> RemovedItem = new();
-        private readonly List<(int, PowerName)> ExpiredPowerUp;
-        private readonly List<(int, PowerName)> NewPlayerVFX = new();
-        private readonly List<((int, int), PowerName)> NewEnvVFX = new();
-        private readonly List<(int, int)> ExpiredItem;
+        private readonly List<(int, int)> BombPosition = new(); // (x, y)
 
-        public List<(int, int)> FlushRemovedItem() => FlushList(RemovedItem);
-        public List<(int, int)> FlushRemovedBomb() => FlushList(RemovedBomb);
+        private readonly List<(int, int, BombType)> NewBomb = new(); // (x, y, bombType)
+        private readonly List<(int, int)> NewExplosion = new(); // (x, y)
+        private readonly List<(int, int)> DestroyedBlock = new(); // (x, y)
+        private readonly List<(int, int)> RemovedBomb = new(); // (x, y)
+        private readonly List<(int, int, PowerName)> NewItemDropped = new(); // (x, y, powerUpType)
+        private readonly List<(int, int)> RemovedItem = new(); // (x, y)
+        private readonly List<(int, PowerName)> ExpiredPlayerPowerUp; // (playerId, powerUpType)
+        private readonly List<(int, PowerName)> NewPlayerVFX = new(); // (playerId, powerUpType)
+        private readonly List<(int, int, PowerName)> NewEnvVFX = new(); // (x, y, powerUpType)
+        private readonly List<int> DeadPlayers = new(); // playerId
+        private readonly List<(int, int, int, Direction)> MovedPlayers = new(); // playerId, x, y, direction
+        private readonly List<int> RemovedPlayers = new(); // playerId
+
         public List<(int, int, BombType)> FlushNewBomb() => FlushList(NewBomb);
         public List<(int, int)> FlushNewExplosion() => FlushList(NewExplosion);
         public List<(int, int)> FlushDestroyedBlock() => FlushList(DestroyedBlock);
+        public List<(int, int)> FlushRemovedBomb() => FlushList(RemovedBomb);
         public List<(int, int, PowerName)> FlushNewItemDropped() => FlushList(NewItemDropped);
-        public List<(int, PowerName)> FlushExpiredPowerUp() => FlushList(ExpiredPowerUp);
-        public List<(int, PowerName)> FlushActivePowerUp() => FlushList(ActivePowerUp);
-        public List<(int, int)> FlushExpiredItem() => FlushList(ExpiredItem);
+        public List<(int, int)> FlushRemovedItem() => FlushList(RemovedItem);
+        public List<(int, PowerName)> FlushExpiredPlayerPowerUp() => FlushList(ExpiredPlayerPowerUp);
+        public List<(int, PowerName)> FlushNewPlayerVFX() => FlushList(NewPlayerVFX);
+        public List<(int, int, PowerName)> FlushNewEnvVFX() => FlushList(NewEnvVFX);
+        public List<int> FlushDeadPlayers() => FlushList(DeadPlayers);
+        public List<(int, int, int, Direction)> FlushMovedPlayers() => FlushList(MovedPlayers);
+        public List<int> FlushRemovedPlayers() => FlushList(RemovedPlayers);
 
         internal List<T> FlushList<T>(List<T> list) {
             lock (_lock) {
@@ -67,6 +77,41 @@ namespace Client {
 
         public int Width { get; }
         public int Height { get; }
+
+        public bool HasActivePowerUp(PowerName powerType) {
+            lock (_lock) {
+                return ActivePowerUps.Contains(powerType);
+            }
+        }
+
+        public Position GetMyPosition() {
+            return PlayerInfos[NetworkManager.Instance.ClientId].Position;
+        }
+
+        public Vector2 GetMySpritePosition() {
+            return MyNode.Position;
+        }
+
+        public Position GetNearestCell() {
+            var currentPos = GetMySpritePosition();
+            var currentIdx = GetMyPosition();
+            Position nearestCell = null;
+            float minDistance = float.MaxValue;
+
+            for (int i = currentIdx.X - 2; i <= currentIdx.X + 2; i++) {
+                for (int j = currentIdx.Y - 2; j <= currentIdx.Y + 2; j++) {
+                    if (IsInBounds(i, j) && GetTile(i, j) == TileType.Empty && !HasBombAt(i, j)) {
+                        float distance = Math.Abs(currentPos.Y - (i * GameValues.TILE_SIZE)) + Math.Abs(currentPos.X - (j * GameValues.TILE_SIZE));
+                        if (distance < GameValues.TILE_SIZE / 3 && distance < minDistance) {
+                            minDistance = distance;
+                            nearestCell = new Position(i, j);
+                        }
+                    }
+                }
+            }
+
+            return nearestCell;
+        }
 
         public void ItemSpawned(int x, int y, PowerName powerUpType) {
             lock (_lock) {
@@ -86,6 +131,35 @@ namespace Client {
             }
         }
 
+        public void RemovePlayer(int playerId) {
+            lock (_lock) {
+                PlayerInfos.Remove(playerId);
+            }
+        }
+
+        public void KillPlayer(int playerId) {
+            lock (_lock) {
+                DeadPlayers.Add(playerId);
+            }
+        }
+
+        public void MovePlayer(int playerId, int x, int y, Direction direction) {
+            lock (_lock) {
+                if (PlayerInfos[playerId].Position.X == x && PlayerInfos[playerId].Position.Y == y) {
+                    return;
+                }
+
+                PlayerInfos[playerId].Position = new Position(x, y);
+                MovedPlayers.Add((playerId, x, y, direction));
+            }
+        }
+
+        public void TeleportPlayer(int playerId, int x, int y) {
+            lock (_lock) {
+                PlayerInfos[playerId].Position = new Position(x, y);
+            }
+        }
+
         internal void SetPlayerPosition(int playerId, int x, int y) {
             lock (_lock) {
                 PlayerInfos[playerId].Position = new Position(x, y);
@@ -98,6 +172,10 @@ namespace Client {
             }
 
             return Tiles[x, y];
+        }
+
+        public bool HasBombAt(int x, int y) {
+            return BombPosition.Contains((x, y));
         }
 
         public bool IsInBounds(int x, int y) {
@@ -137,13 +215,59 @@ namespace Client {
 
         public void PowerUpExpired(int playerId, PowerName powerUpType) {
             lock (_lock) {
-                ExpiredPowerUp.Add((playerId, powerUpType));
+                if (playerId == NetworkManager.Instance.ClientId) {
+                    ActivePowerUps.Remove(powerUpType);
+                }
+                ExpiredPlayerPowerUp.Add((playerId, powerUpType));
+            }
+        }
+
+        public void PowerUpUsed(int slotNum) {
+            lock (_lock) {
+                powerUpLocked[slotNum] = false;
+
+                PowerUps[slotNum].Item2--;
+                if (PowerUps[slotNum].Item2 == 0) {
+                    PowerUps[slotNum] = (PowerName.None, 0);
+                }
+            }
+        }
+
+        public void AddActivePowerUp(PowerName powerType) {
+            lock (_lock) {
+                ActivePowerUps.Add(powerType);
+            }
+        }
+
+        public void AddEnvVFX(int x, int y, PowerName powerType) {
+            lock (_lock) {
+                NewEnvVFX.Add((x, y, powerType));
+            }
+        }
+
+        public void AddPlayerVFX(int playerId, PowerName powerType) {
+            lock (_lock) {
+                NewPlayerVFX.Add((playerId, powerType));
             }
         }
 
         public void ItemExpired(int x, int y) {
             lock (_lock) {
-                ExpiredItem.Add((x, y));
+                RemovedItem.Add((x, y));
+            }
+        }
+
+        public void ItemPickedUp(int playerId, int x, int y, PowerName powerType) {
+            lock (_lock) {
+                RemovedItem.Add((x, y));
+                if (playerId == NetworkManager.Instance.ClientId) {
+                    for (int i = 0; i < PowerUps.Length; i++) {
+                        if (PowerUps[i].Item1 == PowerName.None) {
+                            PowerUps[i] = (powerType, GameplayConfig.PowerUpQuantity[powerType]);
+                            break;
+                        }
+                    }
+                }
             }
         }
 
@@ -167,6 +291,12 @@ namespace Client {
             }
         }
 
+        public bool IsSlotLocked(int slotNum) {
+            lock (_lock) {
+                return powerUpLocked[slotNum];
+            }
+        }
+
         public void UnlockPowerSlot(int slotNum) {
             lock (_lock) {
                 powerUpLocked[slotNum] = false;
@@ -176,6 +306,22 @@ namespace Client {
         public void IncreaseScore(int playerId, int score) {
             lock (_lock) {
                 PlayerInfos[playerId].Score += score;
+            }
+        }
+
+        public bool LockTile(int x, int y) {
+            lock (_lock) {
+                if (TileLocked[x, y]) {
+                    return false;
+                }
+                TileLocked[x, y] = true;
+                return true;
+            }
+        }
+
+        public void UnlockTile(int x, int y) {
+            lock (_lock) {
+                TileLocked[x, y] = false;
             }
         }
 

@@ -3,10 +3,6 @@ using Shared;
 namespace Server.PowerHandler {
     public class NukeHandler : PowerUpHandler {
         public override Dictionary<string, object>? Apply(Map map, int playerId) {
-            if (!map.UsePowerUp(playerId, PowerName.Nuke)) {
-                return null;
-            }
-
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
                 Console.WriteLine($"Active power: {activePowerUp.PowerType}");
                 if (activePowerUp.PowerType == PowerName.Nuke) {

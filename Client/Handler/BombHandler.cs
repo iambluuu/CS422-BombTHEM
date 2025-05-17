@@ -22,17 +22,24 @@ namespace Client.Handler {
             }
         }
 
-        internal void BombPlaced(NetworkMessage message) {
+        private void BombPlaced(NetworkMessage message) {
             int x = int.Parse(message.Data["x"]);
             int y = int.Parse(message.Data["y"]);
             int byPlayerId = int.Parse(message.Data["byPlayerId"]);
+            map.UnlockTile(x, y);
+            if (message.Data.TryGetValue("invalid", out string invalid)) {
+                if (bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                    return;
+                }
+            }
+
             BombType type = Enum.Parse<BombType>(message.Data["type"]);
             bool isCounted = bool.Parse(message.Data["isCounted"]);
 
             map.BombPlaced(x, y, type, byPlayerId, isCounted);
         }
 
-        internal void BombExploded(NetworkMessage message) {
+        private void BombExploded(NetworkMessage message) {
             int x = int.Parse(message.Data["x"]);
             int y = int.Parse(message.Data["y"]);
             string[] positions = message.Data["positions"].Split(';');

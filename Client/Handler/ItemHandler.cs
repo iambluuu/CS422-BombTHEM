@@ -17,22 +17,33 @@ namespace Client.Handler {
                 case ServerMessageType.ItemExpired:
                     ItemExpired(message);
                     break;
+                case ServerMessageType.ItemPickedUp:
+                    ItemPickedUp(message);
+                    break;
                 default:
                     throw new Exception("Cannot handle item message: {type}");
             }
         }
 
-        internal void ItemSpawned(NetworkMessage message) {
+        private void ItemSpawned(NetworkMessage message) {
             PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
             int x = int.Parse(message.Data["x"]);
             int y = int.Parse(message.Data["y"]);
             map.ItemSpawned(x, y, powerUpType);
         }
 
-        internal void ItemExpired(NetworkMessage message) {
+        private void ItemExpired(NetworkMessage message) {
             int x = int.Parse(message.Data["x"]);
             int y = int.Parse(message.Data["y"]);
             map.ItemExpired(x, y);
+        }
+
+        private void ItemPickedUp(NetworkMessage message) {
+            int playerId = int.Parse(message.Data["playerId"]);
+            int x = int.Parse(message.Data["x"]);
+            int y = int.Parse(message.Data["y"]);
+            PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+            map.ItemPickedUp(playerId, x, y, powerType);
         }
     }
 }

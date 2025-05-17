@@ -32,15 +32,13 @@ namespace Server {
             return ActivePowerUps.Exists(p => p.PowerType == powerUp);
         }
 
-        public bool UsePowerUp(PowerName powerUp) {
-            for (int i = 0; i < _powerUps.Length; i++) {
-                if (_powerUps[i].Item1 == powerUp && _powerUps[i].Item2 > 0) {
-                    _powerUps[i].Item2--;
-                    if (_powerUps[i].Item2 == 0) {
-                        _powerUps[i] = (PowerName.None, 0);
-                    }
-                    return true;
+        public bool UsePowerUp(PowerName powerUp, int slotNum) {
+            if (_powerUps[slotNum].Item1 == powerUp && _powerUps[slotNum].Item2 > 0) {
+                _powerUps[slotNum].Item2--;
+                if (_powerUps[slotNum].Item2 == 0) {
+                    _powerUps[slotNum] = (PowerName.None, 0);
                 }
+                return true;
             }
 
             return false;

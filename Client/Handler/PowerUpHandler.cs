@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text.Json;
 using Client.Component;
 using Client.PowerUps;
@@ -22,15 +23,21 @@ namespace Client.Handler {
             }
         }
 
-        internal void PowerUpUsed(NetworkMessage message) {
+        private void PowerUpUsed(NetworkMessage message) {
+            int slotNum = int.Parse(message.Data["slotNum"]);
+            map.UnlockPowerSlot(slotNum);
+            if (message.Data.TryGetValue("invalid", out var invalid) && bool.Parse(invalid.ToString())) {
+                return;
+            }
             string powerUpType = message.Data["powerUpType"];
             Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
+            PowerUp powerUp = PowerUpFactory.CreatePowerUp(Enum.Parse<PowerName>(powerUpType), map);
 
-            PowerUp powerUp = PowerUpFactory.GetPowerUp(Enum.Parse<PowerName>(powerUpType));
+            map.PowerUpUsed(slotNum);
             powerUp.Apply(parameters);
         }
 
-        internal void PowerUpExpired(NetworkMessage message) {
+        private void PowerUpExpired(NetworkMessage message) {
             int playerId = int.Parse(message.Data["playerId"]);
             PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
             map.PowerUpExpired(playerId, powerType);

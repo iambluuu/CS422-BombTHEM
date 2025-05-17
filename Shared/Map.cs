@@ -463,12 +463,12 @@ namespace Shared {
             Items.RemoveAt(itemId);
         }
 
-        public bool UsePowerUp(int playerId, PowerName power) {
+        public bool UsePowerUp(int playerId, PowerName power, int slotNum) {
             if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
             }
 
-            return PlayerInfos[playerId].UsePowerUp(power);
+            return PlayerInfos[playerId].UsePowerUp(power, slotNum);
         }
 
         public override string ToString() {

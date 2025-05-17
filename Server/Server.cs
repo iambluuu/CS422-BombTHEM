@@ -719,7 +719,7 @@ namespace Server {
 
                             PowerName pickedItem = room.Map.PickUpItem(playerId, playerPos.X, playerPos.Y);
                             if (pickedItem != PowerName.None) {
-                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpPickedUp, new() {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.ItemPickedUp, new() {
                                     { "playerId", playerId.ToString() },
                                     { "x", playerPos.X.ToString() },
                                     { "y", playerPos.Y.ToString() },
@@ -749,6 +749,9 @@ namespace Server {
                                 }));
                             } else {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombExploded, new() {
+                                    { "x", x.ToString() },
+                                    { "y", y.ToString() },
+                                    { "byPlayerId", playerId.ToString() },
                                     { "invalid", "True" }
                                 }));
                             }
@@ -773,8 +776,17 @@ namespace Server {
 
                 case ClientMessageType.UsePowerUp: {
                         PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        int slotNum = int.Parse(message.Data["slotNum"]);
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room)) return;
+                            if (!room.Map.UsePowerUp(playerId, PowerName.MoreBombs, slotNum)) {
+                                BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                    { "slotNum", slotNum.ToString() },
+                                    { "invalid", "True" }
+                                }));
+                                return;
+                            }
+
                             var powerUpHandler = PowerUpHandlerFactory.CreatePowerUpHandler(powerUpType);
                             var responseParams = powerUpHandler?.Apply(room.Map, playerId);
                             if (responseParams != null) {
@@ -783,9 +795,11 @@ namespace Server {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "powerUpType", powerUpType.ToString() },
                                     { "parameters", JsonSerializer.Serialize(responseParams) },
+                                    { "slotNum", slotNum.ToString() },
                                 }));
                             } else {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                    { "slotNum", slotNum.ToString() },
                                     { "invalid", "True" }
                                 }));
                             }

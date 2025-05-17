@@ -54,7 +54,7 @@ namespace Shared {
         Error,
         ItemExpired,
         ItemSpawned,
-        PowerUpPickedUp,
+        ItemPickedUp,
         PowerUpUsed,
         PowerUpExpired,
     }
