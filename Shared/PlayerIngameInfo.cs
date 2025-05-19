@@ -32,16 +32,20 @@ namespace Server {
             return ActivePowerUps.Exists(p => p.PowerType == powerUp);
         }
 
-        public bool UsePowerUp(PowerName powerUp, int slotNum) {
+        public bool CanUsePowerUp(PowerName powerUp, int slotNum) {
             if (_powerUps[slotNum].Item1 == powerUp && _powerUps[slotNum].Item2 > 0) {
+                return true;
+            }
+            return false;
+        }
+
+        public void UsePowerUp(PowerName powerUp, int slotNum) {
+            if (CanUsePowerUp(powerUp, slotNum)) {
                 _powerUps[slotNum].Item2--;
                 if (_powerUps[slotNum].Item2 == 0) {
                     _powerUps[slotNum] = (PowerName.None, 0);
                 }
-                return true;
             }
-
-            return false;
         }
 
         public void DecreaseBombCount() {

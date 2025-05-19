@@ -2,7 +2,7 @@ using Shared;
 
 namespace Server.PowerHandler {
     public class MoreBombsHandler : PowerUpHandler {
-        public override Dictionary<string, object>? Apply(Map map, int playerId) {
+        public override Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null) {
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
                 if (activePowerUp.PowerType == PowerName.MoreBombs) {
                     activePowerUp.StartTime = DateTime.Now;

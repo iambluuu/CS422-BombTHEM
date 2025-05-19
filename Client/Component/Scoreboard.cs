@@ -69,26 +69,32 @@ namespace Client.Component {
             _lastElapsed = 0;
         }
 
-        // public void SetPlayerData(List<(string, string, int)> playerData) {
-        //     lock (_lock) {
-        //         _entries.Clear();
-        //         for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
-        //             _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
-        //         }
-        //     }
+        public void SetPlayerData() {
+            lock (_lock) {
+                _entries.Clear();
+                var playerInfos = map.PlayerInfos;
+                if (playerInfos == null || playerInfos.Count > MaxEntryNum) {
+                    return;
+                }
 
-        //     UpdateRanks();
-        // }
+                foreach (var playerInfo in playerInfos) {
+                    var entry = new ScoreboardEntry(playerInfo.Key, playerInfo.Value.Name, (int)playerInfo.Value.SkinId, playerInfo.Value.Score);
+                    _entries.Add(entry);
+                }
+            }
 
-        // public void IncreaseScore(int playerId) {
-        //     for (int i = 0; i < _entries.Count; i++) {
-        //         if (_entries[i].PlayerName == playerId.ToString()) {
-        //             _entries[i].Score++;
-        //             break;
-        //         }
-        //     }
-        //     UpdateRanks();
-        // }
+            UpdateRanks();
+        }
+
+        public void IncreaseScore(int playerId) {
+            for (int i = 0; i < _entries.Count; i++) {
+                if (_entries[i].PlayerId == playerId) {
+                    _entries[i].Score++;
+                    break;
+                }
+            }
+            UpdateRanks();
+        }
 
         private void UpdateRanks() {
             lock (_lock) {

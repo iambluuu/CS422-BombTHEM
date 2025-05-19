@@ -36,10 +36,10 @@ namespace Client.PowerUps {
             }
         }
 
-        public virtual void Use() { }
-
-        // public virtual void Remove(SceneNode target) {
-        //     // Default implementation does nothing
-        // }
+        public virtual Dictionary<string, object> Use() {
+            return new Dictionary<string, object>();
+            // public virtual void Remove(SceneNode target) {
+            //     // Default implementation does nothing
+        }
     }
 }

@@ -295,6 +295,9 @@ namespace Shared {
             }
 
             int bombId = Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
+            if (Bombs[bombId].Type == BombType.Nuke) {
+                Console.WriteLine($"Map.ExplodeBomb: Nuke bomb at ({x}, {y}) exploded");
+            }
             if (bombId < 0) {
                 throw new KeyNotFoundException($"Map.ExplodeBomb: No bomb found at ({x}, {y})");
             }
@@ -463,12 +466,20 @@ namespace Shared {
             Items.RemoveAt(itemId);
         }
 
-        public bool UsePowerUp(int playerId, PowerName power, int slotNum) {
+        public bool CanUsePowerUp(int playerId, PowerName power, int slotNum) {
             if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
             }
 
-            return PlayerInfos[playerId].UsePowerUp(power, slotNum);
+            return PlayerInfos[playerId].CanUsePowerUp(power, slotNum);
+        }
+
+        public void UsePowerUp(int playerId, PowerName power, int slotNum) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
+                throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
+            }
+
+            PlayerInfos[playerId].UsePowerUp(power, slotNum);
         }
 
         public override string ToString() {

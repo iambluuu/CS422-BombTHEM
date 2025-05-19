@@ -2,7 +2,7 @@ using Shared;
 
 namespace Server.PowerHandler {
     public class ShieldHandler : PowerUpHandler {
-        public override Dictionary<string, object>? Apply(Map map, int playerId) {
+        public override Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null) {
             // if already active, renew time and signal the client not to change anything
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
                 Console.WriteLine($"Active power: {activePowerUp.PowerType}");

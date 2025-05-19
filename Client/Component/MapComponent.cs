@@ -1,7 +1,9 @@
+using System;
 using System.Collections.Generic;
 using System.Net.Http.Headers;
 using Client.PowerUps;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 using Shared;
 
 namespace Client.Component {
@@ -30,11 +32,10 @@ namespace Client.Component {
             _ItemLayer = new SceneNode();
             _vfxLayer = new SceneNode();
             _sceneGraph.AttachChild(_mapLayer);
+            _sceneGraph.AttachChild(_ItemLayer);
             _sceneGraph.AttachChild(_bombLayer);
             _sceneGraph.AttachChild(_playerLayer);
-            _sceneGraph.AttachChild(_ItemLayer);
             _sceneGraph.AttachChild(_vfxLayer);
-            _sceneGraph.AttachChild(_pingText);
             _sceneGraph.Position = Position;
 
             map = mapRenderInfo;
@@ -42,6 +43,7 @@ namespace Client.Component {
                 Position = new Vector2(10 * GameValues.TILE_SIZE, 14 * GameValues.TILE_SIZE + 10),
                 Color = Color.White,
             };
+            _sceneGraph.AttachChild(_pingText);
             _sceneGraph.Position = Position;
         }
 
@@ -50,6 +52,11 @@ namespace Client.Component {
                 return playerNode.Position;
             }
             return Vector2.Zero;
+        }
+
+        public override void Draw(SpriteBatch spriteBatch) {
+            base.Draw(spriteBatch);
+            _sceneGraph.DrawTree(spriteBatch, Matrix.Identity);
         }
 
         public override void Update(GameTime gameTime) {
@@ -74,7 +81,7 @@ namespace Client.Component {
                 foreach (var (x, y, bombType) in newBombs) {
                     if (!_bombNodes.ContainsKey((x, y))) {
                         var bombNode = BombNodeFactory.CreateNode(bombType);
-                        bombNode.Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE);
+                        bombNode.Position = new Vector2(y * GameValues.TILE_SIZE, x * GameValues.TILE_SIZE);
 
                         _bombNodes.Add((x, y), bombNode);
                         _bombLayer.AttachChild(bombNode);
@@ -89,6 +96,15 @@ namespace Client.Component {
                         _bombLayer.DetachChild(bombNode);
                         _bombNodes.Remove((x, y));
                     }
+                }
+            }
+
+            lock (_lock) {
+                var explodedBombs = map.FlushNewExplosion();
+                foreach (var (x, y) in explodedBombs) {
+                    _bombLayer.AttachChild(new ExplosionNode(TextureHolder.Get("Effect/Explosion"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
+                        Position = new Vector2(y * GameValues.TILE_SIZE, x * GameValues.TILE_SIZE)
+                    });
                 }
             }
         }
@@ -173,11 +189,11 @@ namespace Client.Component {
                 foreach (var (x, y, powerUpType) in newItems) {
                     if (!_itemNodes.ContainsKey((x, y))) {
                         var itemNode = new ItemNode(powerUpType) {
-                            Position = new Vector2(x * GameValues.TILE_SIZE, y * GameValues.TILE_SIZE),
+                            Position = new Vector2(y * GameValues.TILE_SIZE, x * GameValues.TILE_SIZE),
                         };
 
                         _itemNodes.Add((x, y), itemNode);
-                        _sceneGraph.AttachChild(itemNode);
+                        _ItemLayer.AttachChild(itemNode);
                     }
                 }
             }
@@ -186,8 +202,8 @@ namespace Client.Component {
                 var removedItems = map.FlushRemovedItem();
                 foreach (var (x, y) in removedItems) {
                     if (_itemNodes.TryGetValue((x, y), out var itemNode)) {
-                        _sceneGraph.DetachChild(itemNode);
                         _itemNodes.Remove((x, y));
+                        _ItemLayer.DetachChild(itemNode);
                     }
                 }
             }
@@ -196,6 +212,8 @@ namespace Client.Component {
         public void ProcessMap() {
             // Map
             lock (_lock) {
+                Console.WriteLine("Processing map");
+
                 for (int i = 0; i < map.Height; i++) {
                     for (int j = 0; j < map.Width; j++) {
                         SpriteNode cellSprite = new(TextureHolder.Get("Tileset/TilesetField", new Rectangle(16, 16, 16, 16)), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
@@ -249,6 +267,29 @@ namespace Client.Component {
                 }
 
                 map.MyNode = _playerNodes[NetworkManager.Instance.ClientId];
+            }
+        }
+
+        public bool IsPlayerMoving(int playerId) {
+            lock (_lock) {
+                if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                    return playerNode.Moving;
+                }
+                return false;
+            }
+        }
+
+        public bool ContainsPlayer(int playerId) {
+            lock (_lock) {
+                return _playerNodes.ContainsKey(playerId);
+            }
+        }
+
+        public void SetDirection(int playerId, Direction direction) {
+            lock (_lock) {
+                if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                    playerNode.SetDirection(direction);
+                }
             }
         }
     }

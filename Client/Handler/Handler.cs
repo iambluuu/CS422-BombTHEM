@@ -4,7 +4,7 @@ using Shared;
 
 namespace Client.Handler {
     public static class HandlerFactory {
-        private static Dictionary<ServerMessageType, Handler> _handlers;
+        private static Dictionary<ServerMessageType, Handler> _handlers = new();
         public static Handler CreateHandler(MapRenderInfo mapRenderInfo, ServerMessageType type) {
             if (_handlers.ContainsKey(type)) {
                 return _handlers[type];
@@ -40,8 +40,6 @@ namespace Client.Handler {
                         handler = new PowerUpHandler(mapRenderInfo);
                         break;
                     }
-                default:
-                    throw new Exception($"No handler available for {type}");
             }
             return _handlers[type] = handler;
         }

@@ -6,6 +6,7 @@ using System.Linq;
 using Client.PowerUps;
 using Microsoft.Xna.Framework;
 using Shared;
+using SharpDX.Direct2D1.Effects;
 
 namespace Client {
     public class PlayerInfo {
@@ -14,8 +15,8 @@ namespace Client {
         public readonly PlayerSkin SkinId;
         public readonly string Name;
 
-        public PlayerInfo(int skinId, string name, Position position) {
-            SkinId = (PlayerSkin)skinId;
+        public PlayerInfo(PlayerSkin skinId, string name, Position position) {
+            SkinId = skinId;
             Name = name;
             Position = position;
         }
@@ -30,7 +31,6 @@ namespace Client {
 
         private TileType[,] Tiles;
         private bool[,] TileLocked;
-        public Dictionary<int, int> SkinMapping = [];
         public Dictionary<int, PlayerInfo> PlayerInfos { get; private set; } = [];
         // PowerUps: Power-up slots, 0: left, 1: right, (PowerType, quantity)
         public (PowerName, int)[] PowerUps { get; private set; } = [(PowerName.None, 0), (PowerName.None, 0)];
@@ -40,14 +40,13 @@ namespace Client {
         public int BombCount { get; private set; } = 0;
 
         private readonly List<(int, int)> BombPosition = new(); // (x, y)
-
         private readonly List<(int, int, BombType)> NewBomb = new(); // (x, y, bombType)
         private readonly List<(int, int)> NewExplosion = new(); // (x, y)
         private readonly List<(int, int)> DestroyedBlock = new(); // (x, y)
         private readonly List<(int, int)> RemovedBomb = new(); // (x, y)
         private readonly List<(int, int, PowerName)> NewItemDropped = new(); // (x, y, powerUpType)
         private readonly List<(int, int)> RemovedItem = new(); // (x, y)
-        private readonly List<(int, PowerName)> ExpiredPlayerPowerUp; // (playerId, powerUpType)
+        private readonly List<(int, PowerName)> ExpiredPlayerPowerUp = new(); // (playerId, powerUpType)
         private readonly List<(int, PowerName)> NewPlayerVFX = new(); // (playerId, powerUpType)
         private readonly List<(int, int, PowerName)> NewEnvVFX = new(); // (x, y, powerUpType)
         private readonly List<int> DeadPlayers = new(); // playerId
@@ -75,8 +74,8 @@ namespace Client {
             }
         }
 
-        public int Width { get; }
-        public int Height { get; }
+        public int Width { get; private set; }
+        public int Height { get; private set; }
 
         public bool HasActivePowerUp(PowerName powerType) {
             lock (_lock) {
@@ -90,6 +89,39 @@ namespace Client {
 
         public Vector2 GetMySpritePosition() {
             return MyNode.Position;
+        }
+
+        public void MovePlayer(int playerId, Direction direction) {
+            lock (_lock) {
+                if (!PlayerInfos.ContainsKey(playerId)) {
+                    throw new KeyNotFoundException($"Map.MovePlayer: Player ID {playerId} not found");
+                }
+
+                Position newPosition = PlayerInfos[playerId].Position.Move(direction);
+                if (!IsInBounds(newPosition.X, newPosition.Y)) {
+                    return;
+                }
+
+                if (GetTile(newPosition.X, newPosition.Y) != TileType.Empty) {
+                    return;
+                }
+
+                if (PlayerInfos.ContainsKey(playerId)) {
+                    PlayerInfos[playerId].Position = newPosition;
+                    MovedPlayers.Add((playerId, newPosition.X, newPosition.Y, direction));
+                }
+            }
+        }
+
+        public bool IsPlayerMovable(int playerId, Direction direction) {
+            lock (_lock) {
+                if (!PlayerInfos.ContainsKey(playerId)) {
+                    throw new KeyNotFoundException($"Map.IsPlayerMovable: Player ID {playerId} not found");
+                }
+
+                Position newPosition = PlayerInfos[playerId].Position.Move(direction);
+                return IsInBounds(newPosition.X, newPosition.Y) && GetTile(newPosition.X, newPosition.Y) == TileType.Empty;
+            }
         }
 
         public Position GetNearestCell() {
@@ -200,10 +232,9 @@ namespace Client {
                     int ex = Position.FromString(pos).X;
                     int ey = Position.FromString(pos).Y;
                     NewExplosion.Add((ex, ey));
-
-                    if (Tiles[x, y] == TileType.Grass) {
-                        Tiles[x, y] = TileType.Empty;
-                        DestroyedBlock.Add((x, y));
+                    if (Tiles[ex, ey] == TileType.Grass) {
+                        Tiles[ex, ey] = TileType.Empty;
+                        DestroyedBlock.Add((ex, ey));
                     }
                 }
 
@@ -225,8 +256,8 @@ namespace Client {
         public void PowerUpUsed(int slotNum) {
             lock (_lock) {
                 powerUpLocked[slotNum] = false;
-
                 PowerUps[slotNum].Item2--;
+                Console.WriteLine($"PowerUpUsed: {PowerUps[slotNum].Item1} {PowerUps[slotNum].Item2}");
                 if (PowerUps[slotNum].Item2 == 0) {
                     PowerUps[slotNum] = (PowerName.None, 0);
                 }
@@ -334,9 +365,16 @@ namespace Client {
                 string[] rows = mapString.Split(';');
                 int height = rows.Length;
                 int width = rows[0].Length;
+                Width = width;
+                Height = height;
                 Tiles = new TileType[height, width];
+                TileLocked = new bool[height, width];
+                PlayerInfos = new Dictionary<int, PlayerInfo>(playerIds.Length);
+                // Reset();
+
                 for (int i = 0; i < height; i++) {
                     for (int j = 0; j < width; j++) {
+                        TileLocked[i, j] = false;
                         Tiles[i, j] = Enum.Parse<TileType>(rows[i][j].ToString());
                     }
                 }
@@ -345,13 +383,41 @@ namespace Client {
                     int playerId = playerIds[i];
                     Position position = playerPositions[i];
                     string name = playerNames[i];
-                    PlayerInfos[playerId] = new PlayerInfo(playerId, name, position);
+                    PlayerInfos[playerId] = new PlayerInfo((PlayerSkin)i, name, position);
                 }
 
                 Duration = duration;
 
                 IsInitialized = true;
-                OnMapInitialized?.Invoke();
+            }
+            OnMapInitialized?.Invoke();
+        }
+
+        private void Reset() {
+            IsInitialized = false;
+            PowerUps = [(PowerName.None, 0), (PowerName.None, 0)];
+            ActivePowerUps = [];
+            BombCount = 0;
+
+            BombPosition.Clear();
+            NewBomb.Clear();
+            NewExplosion.Clear();
+            DestroyedBlock.Clear();
+            RemovedBomb.Clear();
+            NewItemDropped.Clear();
+            RemovedItem.Clear();
+            ExpiredPlayerPowerUp.Clear();
+            NewPlayerVFX.Clear();
+            NewEnvVFX.Clear();
+            DeadPlayers.Clear();
+            MovedPlayers.Clear();
+            RemovedPlayers.Clear();
+            PlayerInfos.Clear();
+        }
+
+        public Dictionary<int, PlayerSkin> GetSkinMapping() {
+            lock (_lock) {
+                return PlayerInfos.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.SkinId);
             }
         }
     }

@@ -2,7 +2,7 @@ using Shared;
 
 namespace Server.PowerHandler {
     public class TeleportHandler : PowerUpHandler {
-        public override Dictionary<string, object>? Apply(Map map, int playerId) {
+        public override Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null) {
             Position currentPos = map.PlayerInfos[playerId].Position;
             // find safe position
             Position newPos = map.GetSafePosition(playerId);
