@@ -167,7 +167,8 @@ namespace Client {
 
         public void RemovePlayer(int playerId) {
             lock (_lock) {
-                PlayerInfos.Remove(playerId);
+                // PlayerInfos.Remove(playerId);
+                RemovedPlayers.Add(playerId);
             }
         }
 
@@ -418,9 +419,6 @@ namespace Client {
 
         public Dictionary<int, PlayerSkin> GetSkinMapping() {
             lock (_lock) {
-                foreach (var kvp in PlayerInfos) {
-                    Console.WriteLine($"Player ID: {kvp.Key}, Skin ID: {kvp.Value.SkinId}");
-                }
                 return PlayerInfos.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.SkinId);
             }
         }

@@ -90,7 +90,6 @@ namespace Client {
         private void OnResultsArrived() {
             hasResultArrived = true;
             Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3));
-            Console.WriteLine($"Game results: {string.Join(", ", _gameResults)}");
             var winner = _gameResults[0];
 
             var layout = new LinearLayout() {

@@ -4,7 +4,6 @@ using Server;
 namespace Shared {
     public enum PowerName {
         None,
-        Ghost,
         MoreBombs,
         Nuke,
         Shield,
