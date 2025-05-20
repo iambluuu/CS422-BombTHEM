@@ -27,7 +27,7 @@ namespace Client {
         public int Duration { get; private set; }
 
         public bool IsInitialized { get; private set; } = false;
-        public Action OnMapInitialized;
+        public Action OnMapInitialized = null;
 
         private TileType[,] Tiles;
         private bool[,] TileLocked;

@@ -2,7 +2,7 @@
 namespace Shared {
     public static class GameplayConfig {
         public static int MaxPlayers { get; set; } = 4;
-        public static int GameDuration { get; set; } = 300; // in seconds
+        public static int GameDuration { get; set; } = 5; // in seconds
         public static int RespawnTime { get; set; } = 5; // in seconds
         public static int MaxBombs { get; set; } = 3;
         public static float BombDuration { get; set; } = 2000f; // in milliseconds

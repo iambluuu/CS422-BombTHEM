@@ -11,6 +11,7 @@ using Client.PowerUps;
 using System.Net.NetworkInformation;
 using System.Linq;
 using Client.Handler;
+using System.Runtime.CompilerServices;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
@@ -21,7 +22,9 @@ namespace Client {
         private MapRenderInfo _map;
         private MapComponent _mapComponent;
 
-        // public MainGameScreen() { }
+        // public MainGameScreen() {
+        //     Console.WriteLine("MainGameScreen Constructor");
+        // }
 
         public override void Initialize() {
             _map = new MapRenderInfo();
@@ -41,8 +44,8 @@ namespace Client {
 
             _scoreboard = new Scoreboard(_map) {
                 Position = new Vector2(0, 0),
-                Width = 240, /// ???
-                Height = ScreenSize.Y, /// ???
+                Width = 240,
+                Height = ScreenSize.Y,
                 Weight = 6,
             };
 
@@ -63,12 +66,17 @@ namespace Client {
             _mapComponent = new MapComponent(_map) {
                 Position = new Vector2(240, 0)
             };
+            uiManager.AddComponent(_mapComponent);
+
             _map.OnMapInitialized = () => {
                 _mapComponent.ProcessMap();
                 _scoreboard.SetDuration(_map.Duration);
                 _scoreboard.SetPlayerData();
             };
-            uiManager.AddComponent(_mapComponent);
+        }
+
+        public override void Deactivate() {
+            base.Deactivate();
         }
 
         public override void Activate() {

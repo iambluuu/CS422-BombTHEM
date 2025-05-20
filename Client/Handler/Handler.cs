@@ -6,9 +6,9 @@ namespace Client.Handler {
     public static class HandlerFactory {
         private readonly static Dictionary<ServerMessageType, IHandler> _handlers = new();
         public static IHandler CreateHandler(MapRenderInfo mapRenderInfo, ServerMessageType type) {
-            if (_handlers.TryGetValue(type, out IHandler value)) {
-                return value;
-            }
+            // if (_handlers.TryGetValue(type, out IHandler value)) {
+            //     return value;
+            // }
 
             IHandler handler = null;
             switch (type) {
@@ -41,7 +41,7 @@ namespace Client.Handler {
                         break;
                     }
             }
-            _handlers[type] = handler;
+            // _handlers[type] = handler;
             return handler;
         }
     }
