@@ -4,13 +4,13 @@ using Shared;
 
 namespace Client.Handler {
     public static class HandlerFactory {
-        private static Dictionary<ServerMessageType, Handler> _handlers = new();
-        public static Handler CreateHandler(MapRenderInfo mapRenderInfo, ServerMessageType type) {
-            if (_handlers.ContainsKey(type)) {
-                return _handlers[type];
+        private readonly static Dictionary<ServerMessageType, IHandler> _handlers = new();
+        public static IHandler CreateHandler(MapRenderInfo mapRenderInfo, ServerMessageType type) {
+            if (_handlers.TryGetValue(type, out IHandler value)) {
+                return value;
             }
 
-            Handler handler = null;
+            IHandler handler = null;
             switch (type) {
                 case ServerMessageType.PlayerMoved:
                 case ServerMessageType.PlayerDied:
@@ -41,10 +41,11 @@ namespace Client.Handler {
                         break;
                     }
             }
-            return _handlers[type] = handler;
+            _handlers[type] = handler;
+            return handler;
         }
     }
-    public interface Handler {
+    public interface IHandler {
         public virtual void Handle(NetworkMessage message) { }
     }
 }

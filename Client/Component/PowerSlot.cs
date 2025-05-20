@@ -70,10 +70,6 @@ namespace Client.Component {
         }
 
         public override void Draw(SpriteBatch spriteBatch) {
-            if (map == null || !map.IsInitialized) {
-                return;
-            }
-
             DrawNineSlice(spriteBatch, _backgroundTexture);
             DrawNineSlice(spriteBatch, _borderTexture);
 

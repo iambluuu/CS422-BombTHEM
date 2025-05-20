@@ -8,7 +8,7 @@ using Shared;
 
 namespace Client.Handler {
 
-    public class BombHandler(MapRenderInfo map) : Handler {
+    public class BombHandler(MapRenderInfo map) : IHandler {
         public void Handle(NetworkMessage message) {
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.BombPlaced:

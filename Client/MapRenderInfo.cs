@@ -370,7 +370,7 @@ namespace Client {
                 Tiles = new TileType[height, width];
                 TileLocked = new bool[height, width];
                 PlayerInfos = new Dictionary<int, PlayerInfo>(playerIds.Length);
-                // Reset();
+                Reset();
 
                 for (int i = 0; i < height; i++) {
                     for (int j = 0; j < width; j++) {
@@ -387,7 +387,6 @@ namespace Client {
                 }
 
                 Duration = duration;
-
                 IsInitialized = true;
             }
             OnMapInitialized?.Invoke();

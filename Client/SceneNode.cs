@@ -35,6 +35,18 @@ namespace Client {
             }
         }
 
+        public void DetachAllChildren() {
+            _lock.EnterWriteLock();
+            try {
+                foreach (var child in _children) {
+                    child._parent = null;
+                }
+                _children.Clear();
+            } finally {
+                _lock.ExitWriteLock();
+            }
+        }
+
         public void DetachSelf() {
             if (_parent != null) {
                 _parent.DetachChild(this);

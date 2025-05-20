@@ -9,7 +9,7 @@ using Shared;
 
 namespace Client.Handler {
 
-    public class GameInfoHandler(MapRenderInfo map) : Handler {
+    public class GameInfoHandler(MapRenderInfo map) : IHandler {
         public void Handle(NetworkMessage message) {
             string mapString = message.Data["map"];
 

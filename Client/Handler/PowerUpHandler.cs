@@ -9,7 +9,7 @@ using Shared;
 
 namespace Client.Handler {
 
-    public class PowerUpHandler(MapRenderInfo map) : Handler {
+    public class PowerUpHandler(MapRenderInfo map) : IHandler {
         public void Handle(NetworkMessage message) {
             switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
                 case ServerMessageType.PowerUpUsed:

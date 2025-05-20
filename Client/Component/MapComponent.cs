@@ -212,7 +212,7 @@ namespace Client.Component {
         public void ProcessMap() {
             // Map
             lock (_lock) {
-                Console.WriteLine("Processing map");
+                Reset();
 
                 for (int i = 0; i < map.Height; i++) {
                     for (int j = 0; j < map.Width; j++) {
@@ -268,6 +268,20 @@ namespace Client.Component {
 
                 map.MyNode = _playerNodes[NetworkManager.Instance.ClientId];
             }
+        }
+
+        private void Reset() {
+            _bombNodes.Clear();
+            _grassNodes.Clear();
+            _itemNodes.Clear();
+            _playerPowerNodes.Clear();
+            _playerNodes.Clear();
+
+            _mapLayer.DetachAllChildren();
+            _bombLayer.DetachAllChildren();
+            _playerLayer.DetachAllChildren();
+            _ItemLayer.DetachAllChildren();
+            _vfxLayer.DetachAllChildren();
         }
 
         public bool IsPlayerMoving(int playerId) {

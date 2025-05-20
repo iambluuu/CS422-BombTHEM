@@ -87,7 +87,11 @@ namespace Client {
                     }
                     break;
                 default:
-                    HandlerFactory.CreateHandler(_map, Enum.Parse<ServerMessageType>(message.Type.Name)).Handle(message);
+                    try {
+                        HandlerFactory.CreateHandler(_map, Enum.Parse<ServerMessageType>(message.Type.Name)).Handle(message);
+                    } catch (Exception ex) {
+                        Console.WriteLine($"Error handling message {message.Type.Name}: {ex.Message}");
+                    }
                     break;
             }
         }
