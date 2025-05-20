@@ -151,10 +151,10 @@ namespace Client {
                 Array.Copy(bufferData, processedPosition, messageData, 0, messageSize);
                 string messageString = Encoding.UTF8.GetString(messageData);
 
-                try {
-                    // Console.WriteLine($"Received message from server: {messageString}");
+                NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                // Console.WriteLine($"Received message from server: {messageString}");
 
-                    NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                try {
 
                     if (messageObj.Type.Direction != MessageDirection.Server) {
                         Console.WriteLine("The received message must be from the server side");
@@ -169,8 +169,6 @@ namespace Client {
                         }
                     }
                 } catch (Exception ex) {
-                    NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
-
                     Console.WriteLine($"Error processing message {messageObj.Type.Name}: {ex.Message}");
                 }
                 processedPosition = delimiterIndex + 1;

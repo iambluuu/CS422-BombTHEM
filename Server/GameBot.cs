@@ -10,6 +10,7 @@ namespace Server {
         private CancellationTokenSource _cts;
         bool _isGameStarted = false;
         DateTime _startTime;
+        (PowerName, PowerName) _powers = (PowerName.None, PowerName.None);
 
         public int BotId {
             get {
@@ -63,11 +64,24 @@ namespace Server {
                     }));
                 }
 
-                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(20) == 0 || movableDirections.Count == 0)) {
+                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(10) == 0 || movableDirections.Count == 0)) {
                     SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
                         {"x", _map.PlayerInfos[BotId].Position.X.ToString() },
                         {"y", _map.PlayerInfos[BotId].Position.Y.ToString() },
                         {"type", BombType.Normal.ToString() },
+                    }));
+                }
+
+                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && Utils.RandomInt(20) == 0 && (_powers.Item1 != PowerName.None || _powers.Item2 != PowerName.None)) {
+                    PowerName power;
+                    if (_powers.Item1 != PowerName.None) {
+                        power = _powers.Item1;
+                    } else {
+                        power = _powers.Item2;
+                    }
+
+                    SendToServer(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
+                        { "powerUpType", power.ToString() },
                     }));
                 }
 
@@ -147,6 +161,20 @@ namespace Server {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         _map.SetPlayerPosition(playerId, x, y);
+                    }
+                    break;
+                case ServerMessageType.PowerUpPickedUp: {
+                        int playerId = int.Parse(message.Data["playerId"]);
+                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        int x = int.Parse(message.Data["x"]);
+                        int y = int.Parse(message.Data["y"]);
+                        if (playerId == BotId) {
+                            if (_powers.Item1 == PowerName.None) {
+                                _powers.Item1 = powerUpType;
+                            } else if (_powers.Item2 == PowerName.None) {
+                                _powers.Item2 = powerUpType;
+                            }
+                        }
                     }
                     break;
             }

@@ -16,7 +16,7 @@ namespace Client {
         private SceneNode _sceneGraph;
         private SceneNode _mapLayer, _bombLayer, _playerLayer, _itemLayer, _vfxLayer;
 
-        private readonly TextNode _pingText = new("Ping: ?ms");
+        private TextNode _pingText;
 
         private const int TILE_SIZE = 48;
         private int _bombCount = 0;
@@ -75,6 +75,8 @@ namespace Client {
             _itemLayer = new SceneNode();
             _playerLayer = new SceneNode();
             _vfxLayer = new SceneNode();
+            _pingText = new TextNode("");
+
             _sceneGraph.AttachChild(_mapLayer);
             _sceneGraph.AttachChild(_itemLayer);
             _sceneGraph.AttachChild(_bombLayer);
@@ -110,8 +112,7 @@ namespace Client {
                             int x = playerPositions[i].X;
                             int y = playerPositions[i].Y;
                             _map.SetPlayerPosition(playerId, x, y);
-
-                            PlayerNode playerNode = new(TextureHolder.Get($"Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE)) {
+                            PlayerNode playerNode = new(TextureHolder.Get($"Character/{(PlayerSkin)i}"), new Vector2(TILE_SIZE, TILE_SIZE), playerId == NetworkManager.Instance.ClientId) {
                                 Position = new Vector2(y * TILE_SIZE, x * TILE_SIZE)
                             };
 
@@ -343,11 +344,11 @@ namespace Client {
         private void HandleUpdate(GameTime gameTime) {
             _sceneGraph.UpdateTree(gameTime);
 
-            _pingText.Text = $"Ping: {NetworkManager.Instance.Ping}ms";
+            _pingText.SetText($"Ping: {NetworkManager.Instance.Ping}ms");
             if (NetworkManager.Instance.Ping > 200) {
-                _pingText.Color = Color.Red;
+                _pingText.SetTextColor(Color.Red);
             } else {
-                _pingText.Color = Color.White;
+                _pingText.SetTextColor(Color.White);
             }
 
             int playerId = NetworkManager.Instance.ClientId;
