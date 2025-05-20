@@ -8,7 +8,7 @@ namespace Client.PowerUps {
     public static class EffectNodeFactory {
         public static SceneNode CreatePlayerEffect(PowerName powerName) {
             return powerName switch {
-                PowerName.Shield => new VFXNode(TextureHolder.Get("Effect/Shield"), new Vector2(GameValues.TILE_SIZE * 1.2f, GameValues.TILE_SIZE), 6, 0.1f, isLooping: true, isInfinite: true) {
+                PowerName.Shield => new VFXNode(TextureHolder.Get("Effect/Shield"), new Vector2(GameValues.TILE_SIZE * 1.2f, GameValues.TILE_SIZE * 2), 6, 0.1f, isLooping: true, isInfinite: true) {
                     Position = new Vector2(-0.1f * GameValues.TILE_SIZE, 0),
                 },
                 PowerName.MoreBombs => new VFXNode(TextureHolder.Get("Effect/Aura"), new Vector2(GameValues.TILE_SIZE * 1.2f, GameValues.TILE_SIZE * 2), 5, 0.1f, isLooping: true, isInfinite: true) {

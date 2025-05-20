@@ -115,7 +115,6 @@ namespace Client.Component {
                 foreach (var playerId in DeadPlayers) {
                     if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
                         playerNode.Die();
-                        playerNode.TeleportTo(new Vector2(playerNode.Position.Y * GameValues.TILE_SIZE, playerNode.Position.X * GameValues.TILE_SIZE), Direction.Down);
                     }
                 }
             }
@@ -125,6 +124,15 @@ namespace Client.Component {
                 foreach (var (playerId, x, y, direction) in movedPlayers) {
                     if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
                         playerNode.MoveTo(new Vector2(y * GameValues.TILE_SIZE, x * GameValues.TILE_SIZE), direction);
+                    }
+                }
+            }
+
+            lock (_lock) {
+                var teleportedPlayers = map.FlushTeleportedPlayers();
+                foreach (var (playerId, x, y) in teleportedPlayers) {
+                    if (_playerNodes.TryGetValue(playerId, out var playerNode)) {
+                        playerNode.TeleportTo(new Vector2(y * GameValues.TILE_SIZE, x * GameValues.TILE_SIZE), Direction.Down);
                     }
                 }
             }
@@ -166,18 +174,20 @@ namespace Client.Component {
                 foreach (var (playerId, powerUpType) in newPowerUps) {
                     if (!_playerPowerNodes.ContainsKey((playerId, powerUpType))) {
                         var vfx = EffectNodeFactory.CreatePlayerEffect(powerUpType);
-                        _playerPowerNodes.Add((playerId, powerUpType), vfx);
                         _playerNodes[playerId].AttachChild(vfx);
+                        if (powerUpType != PowerName.Teleport) {
+                            _playerPowerNodes.Add((playerId, powerUpType), vfx);
+                        }
                     }
                 }
-            }
 
-            lock (_lock) {
-                var removedPowerUps = map.FlushExpiredPlayerPowerUp();
-                foreach (var (playerId, powerName) in removedPowerUps) {
-                    if (_playerPowerNodes.TryGetValue((playerId, powerName), out var vfx)) {
-                        _playerPowerNodes.Remove((playerId, powerName));
-                        _playerNodes[playerId].DetachChild(vfx);
+                lock (_lock) {
+                    var removedPowerUps = map.FlushExpiredPlayerPowerUp();
+                    foreach (var (playerId, powerName) in removedPowerUps) {
+                        if (_playerPowerNodes.TryGetValue((playerId, powerName), out var vfx)) {
+                            _playerPowerNodes.Remove((playerId, powerName));
+                            _playerNodes[playerId].DetachChild(vfx);
+                        }
                     }
                 }
             }

@@ -12,7 +12,7 @@ using Client.Animation;
 namespace Client {
     public class EndGameScreen : GameScreen {
         private (int, string, int)[] _gameResults = Array.Empty<(int, string, int)>();
-        private Dictionary<int, int> _skinMapping = [];
+        private Dictionary<int, PlayerSkin> _skinMapping = [];
         private bool hasResultArrived = false;
 
         private const float ScreenDarkenOpacity = 0.8f;
@@ -28,7 +28,7 @@ namespace Client {
 
         public override void LoadParameters(Dictionary<string, object> parameters) {
             if (parameters.ContainsKey("skinMapping")) {
-                _skinMapping = parameters["skinMapping"] as Dictionary<int, int>;
+                _skinMapping = parameters["skinMapping"] as Dictionary<int, PlayerSkin>;
                 if (_skinMapping != null) {
 
                 } else {
@@ -90,6 +90,7 @@ namespace Client {
         private void OnResultsArrived() {
             hasResultArrived = true;
             Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3));
+            Console.WriteLine($"Game results: {string.Join(", ", _gameResults)}");
             var winner = _gameResults[0];
 
             var layout = new LinearLayout() {
@@ -121,7 +122,7 @@ namespace Client {
             var winnerImage = new ImageView() {
                 WidthMode = SizeMode.MatchParent,
                 Height = 100,
-                Texture = TextureHolder.Get($"Character/{(PlayerSkin)_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)),
+                Texture = TextureHolder.Get($"Character/{_skinMapping[winner.Item1]}", new Rectangle(0, 0, 16, 13)),
                 ScaleType = ScaleType.FitCenter,
                 Gravity = Gravity.CenterHorizontal,
             };

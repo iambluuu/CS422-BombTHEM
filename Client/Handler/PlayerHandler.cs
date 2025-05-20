@@ -41,8 +41,8 @@ namespace Client.Handler {
             int x = int.Parse(message.Data["x"]);
             int y = int.Parse(message.Data["y"]);
 
-            map.SetPlayerPosition(playerId, x, y);
             map.KillPlayer(playerId);
+            map.TeleportPlayer(playerId, x, y);
             map.IncreaseScore(byPlayerId, 1);
         }
 

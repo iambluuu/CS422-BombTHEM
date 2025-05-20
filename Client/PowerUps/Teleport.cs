@@ -20,7 +20,7 @@ namespace Client.PowerUps {
 
             map.AddEnvVFX(oldX, oldY, PowerName.Teleport);
             map.AddPlayerVFX(playerId, PowerName.Teleport);
-            map.SetPlayerPosition(playerId, x, y);
+            map.TeleportPlayer(playerId, x, y);
             // var playerNodes = parameters["playerNodes"] as Dictionary<int, PlayerNode> ?? throw new ArgumentException("playerNodes must be a dictionary of PlayerNode.");
             // var vfxLayer = parameters["vfxLayer"] as SceneNode ?? throw new ArgumentException("vfxLayer must be a LayerNode.");
             // var map = parameters["map"] as Map ?? throw new ArgumentException("map must be a Map.");

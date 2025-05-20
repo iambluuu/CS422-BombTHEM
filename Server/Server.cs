@@ -862,8 +862,8 @@ namespace Server {
                         foreach (var pos in explosionPositions) {
                             room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
                             if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
-                                // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
-                                PowerName powerUpType = PowerName.Nuke;
+                                PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
+                                // PowerName powerUpType = PowerName.Shield;
                                 room.Map.AddItem(pos.X, pos.Y, powerUpType);
                                 BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.ItemSpawned, new() {
                                     { "x", pos.X.ToString() },

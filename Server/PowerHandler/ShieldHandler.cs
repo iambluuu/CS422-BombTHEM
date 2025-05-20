@@ -5,10 +5,13 @@ namespace Server.PowerHandler {
         public override Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null) {
             // if already active, renew time and signal the client not to change anything
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
-                Console.WriteLine($"Active power: {activePowerUp.PowerType}");
+                // Console.WriteLine($"Active power: {activePowerUp.PowerType}");
                 if (activePowerUp.PowerType == PowerName.Shield) {
                     activePowerUp.StartTime = DateTime.Now;
-                    return null;
+                    return new Dictionary<string, object> {
+                        { "playerId", playerId },
+                        { "needToChange", false }
+                    };
                 }
             }
 

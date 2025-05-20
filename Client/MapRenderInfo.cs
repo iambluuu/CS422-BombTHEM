@@ -51,6 +51,7 @@ namespace Client {
         private readonly List<(int, int, PowerName)> NewEnvVFX = new(); // (x, y, powerUpType)
         private readonly List<int> DeadPlayers = new(); // playerId
         private readonly List<(int, int, int, Direction)> MovedPlayers = new(); // playerId, x, y, direction
+        private readonly List<(int, int, int)> TeleportedPlayers = new(); // playerId, x, y
         private readonly List<int> RemovedPlayers = new(); // playerId
 
         public List<(int, int, BombType)> FlushNewBomb() => FlushList(NewBomb);
@@ -64,6 +65,7 @@ namespace Client {
         public List<(int, int, PowerName)> FlushNewEnvVFX() => FlushList(NewEnvVFX);
         public List<int> FlushDeadPlayers() => FlushList(DeadPlayers);
         public List<(int, int, int, Direction)> FlushMovedPlayers() => FlushList(MovedPlayers);
+        public List<(int, int, int)> FlushTeleportedPlayers() => FlushList(TeleportedPlayers);
         public List<int> FlushRemovedPlayers() => FlushList(RemovedPlayers);
 
         internal List<T> FlushList<T>(List<T> list) {
@@ -189,6 +191,7 @@ namespace Client {
         public void TeleportPlayer(int playerId, int x, int y) {
             lock (_lock) {
                 PlayerInfos[playerId].Position = new Position(x, y);
+                TeleportedPlayers.Add((playerId, x, y));
             }
         }
 
@@ -257,7 +260,6 @@ namespace Client {
             lock (_lock) {
                 powerUpLocked[slotNum] = false;
                 PowerUps[slotNum].Item2--;
-                Console.WriteLine($"PowerUpUsed: {PowerUps[slotNum].Item1} {PowerUps[slotNum].Item2}");
                 if (PowerUps[slotNum].Item2 == 0) {
                     PowerUps[slotNum] = (PowerName.None, 0);
                 }
@@ -416,6 +418,9 @@ namespace Client {
 
         public Dictionary<int, PlayerSkin> GetSkinMapping() {
             lock (_lock) {
+                foreach (var kvp in PlayerInfos) {
+                    Console.WriteLine($"Player ID: {kvp.Key}, Skin ID: {kvp.Value.SkinId}");
+                }
                 return PlayerInfos.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.SkinId);
             }
         }
