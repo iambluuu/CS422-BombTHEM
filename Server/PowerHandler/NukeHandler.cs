@@ -27,9 +27,6 @@ namespace Server.PowerHandler {
             }
 
             if (target.UsePowerUp(PowerName.Nuke, activeNuke.SlotNum)) {
-                if (!target.CanUsePowerUp(PowerName.Nuke, activeNuke.SlotNum)) {
-                    target.ExpireActivePowerUp(PowerName.Nuke, activeNuke.SlotNum);
-                }
                 return new Dictionary<string, object> {
                     { "playerId", playerId.ToString() },
                     { "needToChange", true }

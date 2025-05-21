@@ -752,6 +752,15 @@ namespace Server {
                                             { "parameters", JsonSerializer.Serialize(parameters)},
                                             { "slotNum", activeNuke.SlotNum.ToString() },
                                         }));
+                                        if (!room.Map.PlayerInfos[playerId].CanUsePowerUp(PowerName.Nuke, activeNuke.SlotNum)) {
+                                            room.Map.PlayerInfos[playerId].ExpireActivePowerUp(PowerName.Nuke, activeNuke.SlotNum);
+                                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpExpired, new() {
+                                                { "powerUpType", PowerName.Nuke.ToString()},
+                                                { "parameters", JsonSerializer.Serialize(parameters)},
+                                                { "slotNum", activeNuke.SlotNum.ToString() },
+                                                { "playerId", playerId.ToString() }
+                                            }));
+                                        }
                                     }
                                 }
 

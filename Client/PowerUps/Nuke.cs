@@ -14,16 +14,9 @@ namespace Client.PowerUps {
             int playerId = int.Parse(parameters["playerId"].ToString());
             if (playerId == NetworkManager.Instance.ClientId) {
                 if (map.HasActivePowerUp(PowerName.Nuke)) {
-                    var powers = map.PowerUps;
-                    for (int i = 0; i < powers.Length; i++) {
-                        if (powers[i].Item3) {
-                            map.PowerUpUsed(i);
-                            if (map.PowerUps[i].Item1 == PowerName.None) {
-                                map.PowerUpExpired(playerId, PowerName.Nuke);
-                            }
-                            return;
-                        }
-                    }
+                    Console.WriteLine("Nuke already activated, slotNum: " + slotNum);
+                    map.PowerUpUsed(slotNum);
+                    return;
                 }
                 if (slotNum == -1) {
                     throw new ArgumentException("Slot number cannot be -1.");
