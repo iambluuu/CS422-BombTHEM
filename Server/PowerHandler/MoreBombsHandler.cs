@@ -8,7 +8,10 @@ namespace Server.PowerHandler {
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
                 if (activePowerUp.PowerType == PowerName.MoreBombs) {
                     activePowerUp.StartTime = DateTime.Now;
-                    return null;
+                    return new Dictionary<string, object> {
+                        { "playerId", playerId },
+                        { "needToChange", false }
+                    };
                 }
             }
 

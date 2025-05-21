@@ -26,6 +26,7 @@ namespace Client.Handler {
         private void PowerUpUsed(NetworkMessage message) {
             int slotNum = int.Parse(message.Data["slotNum"]);
             map.UnlockPowerSlot(slotNum);
+            // Console.WriteLine($"PowerUpUsed: {slotNum} is unlocked");
             if (message.Data.TryGetValue("invalid", out var invalid) && bool.Parse(invalid.ToString())) {
                 return;
             }

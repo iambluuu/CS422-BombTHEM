@@ -183,7 +183,12 @@ namespace Client {
 
             if (nearestCell != null) {
                 lock (_lock) {
-                    if (_map.BombCount >= GameplayConfig.MaxBombs && !_map.HasActivePowerUp(PowerName.MoreBombs) && !_map.LockTile(nearestCell.X, nearestCell.Y)) {
+                    if ((_map.BombCount >= GameplayConfig.MaxBombs && !_map.HasActivePowerUp(PowerName.MoreBombs)) || !_map.LockTile(nearestCell.X, nearestCell.Y)) {
+                        // if (_map.BombCount >= GameplayConfig.MaxBombs && !_map.HasActivePowerUp(PowerName.MoreBombs)) {
+                        //     Console.WriteLine("Bomb limit reached");
+                        // } else {
+                        //     Console.WriteLine("Tile is locked");
+                        // }
                         return;
                     }
                 }

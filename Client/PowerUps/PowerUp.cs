@@ -26,7 +26,7 @@ namespace Client.PowerUps {
     public abstract class PowerUp(MapRenderInfo map) {
         public static PowerUp Instance { get; private set; }
         public abstract PowerName PowerName { get; }
-        public virtual void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
+        public virtual void Apply(Dictionary<string, object> parameters, int slotNum) {
             try {
                 if (parameters == null || parameters.Count == 0) {
                     throw new ArgumentException("Parameters cannot be null or empty.");
@@ -34,7 +34,6 @@ namespace Client.PowerUps {
             } catch (ArgumentException e) {
                 Console.WriteLine(e.Message);
             }
-
             if (!slotNum.Equals(-1)) {
                 map.PowerUpUsed(slotNum);
             }
@@ -42,8 +41,6 @@ namespace Client.PowerUps {
 
         public virtual Dictionary<string, object> Use() {
             return new Dictionary<string, object>();
-            // public virtual void Remove(SceneNode target) {
-            //     // Default implementation does nothing
         }
     }
 }

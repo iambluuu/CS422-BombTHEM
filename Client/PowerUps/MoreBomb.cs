@@ -9,7 +9,7 @@ namespace Client.PowerUps {
     public class MoreBombs(MapRenderInfo map) : PowerUp(map) {
         private static Dictionary<PlayerNode, (VFXNode, PlayerIngameInfo)> _activeEffects = new(); // Current Players with More Bombs
         public override PowerName PowerName => PowerName.MoreBombs;
-        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
+        public override void Apply(Dictionary<string, object> parameters, int slotNum) {
             base.Apply(parameters, slotNum);
             bool needToChange = bool.Parse(parameters["needToChange"].ToString());
             if (!needToChange) {

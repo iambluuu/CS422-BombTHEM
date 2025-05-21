@@ -760,7 +760,7 @@ namespace Server {
                                     { "y", y.ToString() },
                                     { "type", type.ToString() },
                                     { "byPlayerId", playerId.ToString() },
-                                    { "isCounted", room.Map.PlayerInfos[playerId].HasPowerUp(PowerName.MoreBombs).ToString() }
+                                    { "isCounted", (!room.Map.PlayerInfos[playerId].HasPowerUp(PowerName.MoreBombs)).ToString() }
                                 }));
                             } else {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
@@ -800,6 +800,7 @@ namespace Server {
 
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.Map.CanUsePowerUp(playerId, powerUpType, slotNum)) {
+                                Console.WriteLine($"Client {playerId} tried to use power-up {powerUpType} in slot {slotNum}, but it was invalid.");
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "slotNum", slotNum.ToString() },
                                     { "invalid", "True" }
@@ -810,7 +811,7 @@ namespace Server {
                             var powerUpHandler = PowerUpHandlerFactory.CreatePowerUpHandler(powerUpType);
                             var responseParams = powerUpHandler?.Apply(room.Map, playerId, parameters, slotNum);
                             if (responseParams != null) {
-                                // Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
+                                Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
                                 // Console.WriteLine($"Need to change: {responseParams["needToChange"]}");
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "powerUpType", powerUpType.ToString() },

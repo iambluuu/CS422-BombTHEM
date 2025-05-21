@@ -6,9 +6,8 @@ using Shared;
 
 namespace Client.PowerUps {
     public class Shield(MapRenderInfo map) : PowerUp(map) {
-        private static Dictionary<PlayerNode, VFXNode> _activeEffects = new(); // Current Players with Shield
         public override PowerName PowerName => PowerName.Shield;
-        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
+        public override void Apply(Dictionary<string, object> parameters, int slotNum) {
             base.Apply(parameters, slotNum);
             bool needToChange = bool.Parse(parameters["needToChange"].ToString());
             if (!needToChange) {

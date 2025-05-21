@@ -9,7 +9,7 @@ using Shared;
 namespace Client.PowerUps {
     public class Teleport(MapRenderInfo map) : PowerUp(map) {
         public override PowerName PowerName => PowerName.Teleport;
-        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
+        public override void Apply(Dictionary<string, object> parameters, int slotNum) {
             base.Apply(parameters, slotNum);
 
             int x = int.Parse(parameters["x"].ToString());

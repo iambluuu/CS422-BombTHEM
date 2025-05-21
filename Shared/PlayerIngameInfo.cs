@@ -42,6 +42,7 @@ namespace Server {
         }
 
         public bool CanUsePowerUp(PowerName powerUp, int slotNum) {
+            // Console.WriteLine($"Power at slotNum {slotNum}: {_powerUps[slotNum].Item1}");
             if (slotNum < 0 || slotNum >= _powerUps.Length) {
                 return false;
             }
@@ -53,18 +54,8 @@ namespace Server {
         }
 
         public bool UsePowerUp(PowerName powerUp, int slotNum) {
-            if (slotNum < 0 || slotNum >= _powerUps.Length) {
-                for (int i = 0; i < _powerUps.Length; i++) {
-                    if (_powerUps[i].Item1 == powerUp && _powerUps[i].Item2 > 0) {
-                        slotNum = i;
-                        break;
-                    }
-                }
-            }
-
             if (CanUsePowerUp(powerUp, slotNum)) {
                 _powerUps[slotNum].Item2--;
-                Console.WriteLine($"Using power-up {powerUp} from slot {slotNum}, remaining: {_powerUps[slotNum].Item2}");
                 if (_powerUps[slotNum].Item2 == 0) {
                     _powerUps[slotNum] = (PowerName.None, 0);
                 }
