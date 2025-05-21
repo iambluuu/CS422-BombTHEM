@@ -2,17 +2,12 @@ using Shared;
 
 namespace Server.PowerHandler {
     public class ShieldHandler : PowerUpHandler {
-        public override Dictionary<string, object> Apply(Map map, int playerId) {
-            if (!map.UsePowerUp(playerId, PowerName.Shield)) {
-                return new Dictionary<string, object> {
-                    { "playerId", playerId },
-                    { "needToChange", false }
-                };
-            }
-
+        public override PowerName PowerName => PowerName.Shield;
+        public override Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
+            base.Apply(map, playerId, parameters, slotNum);
             // if already active, renew time and signal the client not to change anything
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
-                Console.WriteLine($"Active power: {activePowerUp.PowerType}");
+                // Console.WriteLine($"Active power: {activePowerUp.PowerType}");
                 if (activePowerUp.PowerType == PowerName.Shield) {
                     activePowerUp.StartTime = DateTime.Now;
                     return new Dictionary<string, object> {

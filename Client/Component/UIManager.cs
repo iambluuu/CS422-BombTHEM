@@ -10,6 +10,13 @@ namespace Client.Component {
         private List<List<IComponent>> _components = new();
         private IComponent _focusedComponent = null!;
 
+        public void Clear() {
+            _focusedComponent = null!;
+            foreach (var layer in _components) {
+                layer.Clear();
+            }
+        }
+
         public void AddComponent(IComponent component, int layer = 0) {
             while (_components.Count <= layer) {
                 _components.Add(new List<IComponent>());

@@ -49,7 +49,9 @@ namespace Client.Component {
         private readonly Texture2D _backgroundTexture;
         private readonly Texture2D _borderTexture;
         private readonly SpriteFont _font;
-        public Scoreboard() {
+
+        private readonly MapRenderInfo map;
+        public Scoreboard(MapRenderInfo map) {
             _backgroundTexture = TextureHolder.Get("Theme/nine_path_bg_2");
             _borderTexture = TextureHolder.Get("Theme/scoreboard_border");
             _font = FontHolder.Get("PressStart2P");
@@ -58,6 +60,7 @@ namespace Client.Component {
             ClockHeight = _font.MeasureString("00:00").Y * clockScale;
 
             TopLeftPosition = new Vector2(Position.X + Paddings, Position.Y + Paddings + ClockHeight + Spacing);
+            this.map = map;
         }
 
         public void SetDuration(float duration) {
@@ -66,11 +69,17 @@ namespace Client.Component {
             _lastElapsed = 0;
         }
 
-        public void SetPlayerData(List<(string, string, int)> playerData) {
+        public void SetPlayerData() {
             lock (_lock) {
                 _entries.Clear();
-                for (int i = 0; i < Math.Min(playerData.Count, MaxEntryNum); i++) {
-                    _entries.Add(new ScoreboardEntry(playerData[i].Item1, playerData[i].Item2, playerData[i].Item3, rank: 0));
+                var playerInfos = map.PlayerInfos;
+                if (playerInfos == null || playerInfos.Count > MaxEntryNum) {
+                    return;
+                }
+
+                foreach (var playerInfo in playerInfos) {
+                    var entry = new ScoreboardEntry(playerInfo.Key, playerInfo.Value.Name, (int)playerInfo.Value.SkinId, playerInfo.Value.Score);
+                    _entries.Add(entry);
                 }
             }
 
@@ -79,7 +88,7 @@ namespace Client.Component {
 
         public void IncreaseScore(int playerId) {
             for (int i = 0; i < _entries.Count; i++) {
-                if (_entries[i].PlayerName == playerId.ToString()) {
+                if (_entries[i].PlayerId == playerId) {
                     _entries[i].Score++;
                     break;
                 }
@@ -89,6 +98,13 @@ namespace Client.Component {
 
         private void UpdateRanks() {
             lock (_lock) {
+                var playerInfos = map.PlayerInfos;
+                foreach (var entry in _entries) {
+                    if (playerInfos.TryGetValue(entry.PlayerId, out var playerInfo)) {
+                        entry.Score = playerInfo.Score;
+                    }
+                }
+
                 _entries.Sort((a, b) => b.Score.CompareTo(a.Score));
                 for (int i = 0; i < _entries.Count; i++) {
                     if (_entries[i].Rank != i) {
@@ -105,6 +121,8 @@ namespace Client.Component {
                 _lastElapsed = currentElapsed;
                 _timer = Math.Max(0, _timer - (float)delta);
             }
+
+            UpdateRanks();
 
             lock (_lock) {
                 foreach (var entry in _entries) {
@@ -175,7 +193,7 @@ namespace Client.Component {
         }
 
         private class ScoreboardEntry {
-            public string PlayerName { get; set; }
+            public int PlayerId { get; set; }
             public string Username { get; set; }
             public int PlayerSkin { get; set; }
             public int Score { get; set; }
@@ -229,8 +247,8 @@ namespace Client.Component {
             private Vector2 _currentPosition;
             private Vector2 _targetPosition;
 
-            public ScoreboardEntry(string playerName, string username, int playerSkin, int score = 0, int live = 3, int rank = 0) {
-                PlayerName = playerName;
+            public ScoreboardEntry(int playerId, string username, int playerSkin, int score = 0, int live = 3, int rank = 0) {
+                PlayerId = playerId;
                 Username = username;
                 PlayerSkin = playerSkin;
                 Score = score;

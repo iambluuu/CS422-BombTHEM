@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Shared;
 
 namespace Server {
@@ -122,6 +123,9 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.BombPlaced: {
+                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                            break;
+                        }
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         BombType type = Enum.Parse<BombType>(message.Data["type"]);
@@ -129,6 +133,9 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.BombExploded: {
+                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                            break;
+                        }
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         string[] positions = message.Data["positions"].Split(';');
@@ -147,6 +154,26 @@ namespace Server {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         _map.SetPlayerPosition(playerId, x, y);
+                    }
+                    break;
+                case ServerMessageType.PowerUpUsed: {
+                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                            break;
+                        }
+
+                        PowerName powerName = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+                        Dictionary<string, object>? parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
+
+                        if (powerName == PowerName.Nuke && parameters != null) {
+                            if (!parameters.TryGetValue("x", out var xObj) || !parameters.TryGetValue("y", out var yObj) || !parameters.TryGetValue("byPlayerId", out var byPlayerIdObj)) {
+                                break;
+                            }
+                            if (!int.TryParse(xObj.ToString(), out int x) || !int.TryParse(yObj.ToString(), out int y) || !int.TryParse(byPlayerIdObj.ToString(), out int byPlayerId)) {
+                                break;
+                            }
+
+                            _map.AddBomb(x, y, BombType.Nuke);
+                        }
                     }
                     break;
             }
