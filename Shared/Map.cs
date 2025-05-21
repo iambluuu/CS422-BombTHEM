@@ -508,10 +508,11 @@ namespace Shared {
 
         public Position GetSafePosition(int playerId) {
             Position newPos = new Position(0, 0);
+            Position playerPos = PlayerInfos[playerId].Position;
             while (true) {
                 newPos.X = Utils.RandomInt(Height);
                 newPos.Y = Utils.RandomInt(Width);
-                if (IsInBounds(newPos.X, newPos.Y) && GetTile(newPos.X, newPos.Y) == TileType.Empty) {
+                if (IsInBounds(newPos.X, newPos.Y) && Utils.ManhattanDistance(playerPos.X, playerPos.Y, newPos.X, newPos.Y) >= 10 && GetTile(newPos.X, newPos.Y) == TileType.Empty) {
                     return newPos;
                 }
             }
