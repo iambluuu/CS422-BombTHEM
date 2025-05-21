@@ -39,7 +39,6 @@ namespace Client.Handler {
         private void PowerUpExpired(NetworkMessage message) {
             int playerId = int.Parse(message.Data["playerId"]);
             PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
-            Console.WriteLine($"PowerUpExpired: {playerId} {powerType}");
             map.PowerUpExpired(playerId, powerType);
         }
     }

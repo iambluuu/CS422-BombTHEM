@@ -720,7 +720,6 @@ namespace Server {
 
                             PowerName pickedItem = room.Map.PickUpItem(playerId, playerPos.X, playerPos.Y);
                             if (pickedItem != PowerName.None) {
-                                Console.WriteLine($"Client {playerId} picked up item: {pickedItem}");
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.ItemPickedUp, new() {
                                     { "playerId", playerId.ToString() },
                                     { "x", playerPos.X.ToString() },
@@ -820,7 +819,7 @@ namespace Server {
                             var powerUpHandler = PowerUpHandlerFactory.CreatePowerUpHandler(powerUpType);
                             var responseParams = powerUpHandler?.Apply(room.Map, playerId, parameters, slotNum);
                             if (responseParams != null) {
-                                Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
+                                // Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
                                 // Console.WriteLine($"Need to change: {responseParams["needToChange"]}");
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "powerUpType", powerUpType.ToString() },
@@ -885,8 +884,8 @@ namespace Server {
                         foreach (var pos in explosionPositions) {
                             room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
                             if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
-                                // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
-                                PowerName powerUpType = rand.Next(0, 2) == 0 ? PowerName.Nuke : PowerName.MoreBombs;
+                                PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
+                                // PowerName powerUpType = rand.Next(0, 2) == 0 ? PowerName.Nuke : PowerName.MoreBombs;
                                 room.Map.AddItem(pos.X, pos.Y, powerUpType);
                                 BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.ItemSpawned, new() {
                                     { "x", pos.X.ToString() },

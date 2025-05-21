@@ -14,7 +14,7 @@ namespace Client.PowerUps {
             int playerId = int.Parse(parameters["playerId"].ToString());
             if (playerId == NetworkManager.Instance.ClientId) {
                 if (map.HasActivePowerUp(PowerName.Nuke)) {
-                    Console.WriteLine("Nuke already activated, slotNum: " + slotNum);
+                    // Console.WriteLine("Nuke already activated, slotNum: " + slotNum);
                     map.PowerUpUsed(slotNum);
                     return;
                 }
