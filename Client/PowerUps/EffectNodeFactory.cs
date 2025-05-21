@@ -17,6 +17,9 @@ namespace Client.PowerUps {
                 PowerName.Teleport => new VFXNode(TextureHolder.Get("Effect/SmokeCircular"), new Vector2(GameValues.TILE_SIZE * 1.2f, GameValues.TILE_SIZE), 8, 0.1f) {
                     Position = new Vector2(-0.1f * GameValues.TILE_SIZE, 0.8f * GameValues.TILE_SIZE),
                 },
+                PowerName.Nuke => new VFXNode(TextureHolder.Get("Effect/Circle"), new Vector2(GameValues.TILE_SIZE * 1.2f, GameValues.TILE_SIZE * 2), 4, 0.1f, isLooping: true, isInfinite: true) {
+                    Position = new Vector2(-0.1f * GameValues.TILE_SIZE, -0.1f * GameValues.TILE_SIZE),
+                },
                 _ => throw new ArgumentOutOfRangeException(nameof(powerName), powerName, null)
             };
         }

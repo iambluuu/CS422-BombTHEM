@@ -12,7 +12,7 @@ namespace Shared {
         public static readonly Dictionary<PowerName, float> PowerUpDurations = new Dictionary<PowerName, float> {
             { PowerName.MoreBombs, 5000f },
             { PowerName.Shield, 5000f },
-            { PowerName.Nuke, 5000f},
+            { PowerName.Nuke, -1},
         };
 
         public static readonly Dictionary<PowerName, int> PowerUpQuantity = new Dictionary<PowerName, int> {

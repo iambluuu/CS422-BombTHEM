@@ -734,13 +734,27 @@ namespace Server {
                 case ClientMessageType.PlaceBomb: {
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
-                        BombType type = Enum.Parse<BombType>(message.Data["type"]);
 
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || room.Closed) return;
 
                             if (!room.Map.HasBomb(x, y) && room.Map.GetTile(x, y) == TileType.Empty) {
+                                var activeNuke = room.Map.PlayerInfos[playerId].TryGetActivePowerUp(PowerName.Nuke);
+                                BombType type = activeNuke != null ? BombType.Nuke : Enum.Parse<BombType>(message.Data["type"]);
+
                                 if (!room.Map.AddBomb(x, y, type, playerId)) return;
+
+                                if (activeNuke != null) {
+                                    var parameters = PowerUpHandlerFactory.CreatePowerUpHandler(PowerName.Nuke)?.Use(room.Map, playerId, null);
+                                    if (parameters != null) {
+                                        BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                            { "powerUpType", PowerName.Nuke.ToString()},
+                                            { "parameters", JsonSerializer.Serialize(parameters)},
+                                            { "slotNum", activeNuke.SlotNum.ToString() },
+                                        }));
+                                    }
+                                }
+
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.BombPlaced, new() {
                                     { "x", x.ToString() },
                                     { "y", y.ToString() },
@@ -794,11 +808,10 @@ namespace Server {
                             }
 
                             var powerUpHandler = PowerUpHandlerFactory.CreatePowerUpHandler(powerUpType);
-                            var responseParams = powerUpHandler?.Apply(room.Map, playerId, parameters);
+                            var responseParams = powerUpHandler?.Apply(room.Map, playerId, parameters, slotNum);
                             if (responseParams != null) {
                                 // Console.WriteLine($"Client {playerId} used power-up: {powerUpType}");
                                 // Console.WriteLine($"Need to change: {responseParams["needToChange"]}");
-                                room.Map.UsePowerUp(playerId, powerUpType, slotNum);
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
                                     { "powerUpType", powerUpType.ToString() },
                                     { "parameters", JsonSerializer.Serialize(responseParams) },
@@ -862,8 +875,8 @@ namespace Server {
                         foreach (var pos in explosionPositions) {
                             room.Map.SetTile(pos.X, pos.Y, TileType.Empty);
                             if (rand.NextDouble() < GameplayConfig.PowerUpSpawnChance) {
-                                PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
-                                // PowerName powerUpType = PowerName.Shield;
+                                // PowerName powerUpType = (PowerName)rand.Next(1, Enum.GetValues(typeof(PowerName)).Length);
+                                PowerName powerUpType = rand.Next(0, 2) == 0 ? PowerName.Nuke : PowerName.MoreBombs;
                                 room.Map.AddItem(pos.X, pos.Y, powerUpType);
                                 BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.ItemSpawned, new() {
                                     { "x", pos.X.ToString() },
@@ -926,15 +939,20 @@ namespace Server {
             while (room.GameStarted && !room.Closed && !room.PowerUpCts!.Token.IsCancellationRequested) {
                 try {
                     lock (_roomLocks[roomId]) {
-                        List<(int playerId, PowerName powerType)> expiredPowerUps = [];
+                        List<(int playerId, PowerName powerType, int slotNum)> expiredPowerUps = [];
                         foreach (var player in room.Map.PlayerInfos) {
                             int playerId = player.Key;
                             PlayerIngameInfo playerInfo = player.Value;
                             foreach (var powerUp in playerInfo.ActivePowerUps) {
+                                if (!GameplayConfig.PowerUpDurations.TryGetValue(powerUp.PowerType, out float value) || value < 0) {
+                                    continue;
+                                }
+
                                 if ((DateTime.Now - powerUp.StartTime).TotalMilliseconds >= GameplayConfig.PowerUpDurations[powerUp.PowerType]) {
-                                    expiredPowerUps.Add((playerId, powerUp.PowerType));
+                                    expiredPowerUps.Add((playerId, powerUp.PowerType, powerUp.SlotNum));
                                     BroadcastToRoom(roomId, NetworkMessage.From(ServerMessageType.PowerUpExpired, new() {
                                         { "playerId", playerId.ToString() },
+                                        { "slotNum", powerUp.SlotNum.ToString()},
                                         { "powerUpType", powerUp.PowerType.ToString() }
                                     }));
                                 }

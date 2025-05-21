@@ -33,7 +33,7 @@ namespace Client {
         private bool[,] TileLocked;
         public Dictionary<int, PlayerInfo> PlayerInfos { get; private set; } = [];
         // PowerUps: Power-up slots, 0: left, 1: right, (PowerType, quantity)
-        public (PowerName, int)[] PowerUps { get; private set; } = [(PowerName.None, 0), (PowerName.None, 0)];
+        public (PowerName, int, bool)[] PowerUps { get; private set; } = [(PowerName.None, 0, false), (PowerName.None, 0, false)]; // Name, quantity, isActivated
         public List<PowerName> ActivePowerUps { get; private set; } = new(); // Currently active power-ups of THIS CLIENT
         private bool[] powerUpLocked = [false, false];
         public PlayerNode MyNode { private get; set; } = null;
@@ -262,8 +262,14 @@ namespace Client {
                 powerUpLocked[slotNum] = false;
                 PowerUps[slotNum].Item2--;
                 if (PowerUps[slotNum].Item2 == 0) {
-                    PowerUps[slotNum] = (PowerName.None, 0);
+                    PowerUps[slotNum] = (PowerName.None, 0, false);
                 }
+            }
+        }
+
+        public void ActivatePowerUp(int slotNum) {
+            lock (_lock) {
+                PowerUps[slotNum].Item3 = true;
             }
         }
 
@@ -297,7 +303,7 @@ namespace Client {
                 if (playerId == NetworkManager.Instance.ClientId) {
                     for (int i = 0; i < PowerUps.Length; i++) {
                         if (PowerUps[i].Item1 == PowerName.None) {
-                            PowerUps[i] = (powerType, GameplayConfig.PowerUpQuantity[powerType]);
+                            PowerUps[i] = (powerType, GameplayConfig.PowerUpQuantity[powerType], false);
                             break;
                         }
                     }
@@ -332,6 +338,9 @@ namespace Client {
         }
 
         public void UnlockPowerSlot(int slotNum) {
+            if (slotNum < 0 || slotNum >= powerUpLocked.Length) {
+                return;
+            }
             lock (_lock) {
                 powerUpLocked[slotNum] = false;
             }
@@ -397,7 +406,7 @@ namespace Client {
 
         private void Reset() {
             IsInitialized = false;
-            PowerUps = [(PowerName.None, 0), (PowerName.None, 0)];
+            PowerUps = [(PowerName.None, 0, false), (PowerName.None, 0, false)];
             ActivePowerUps = [];
             BombCount = 0;
 

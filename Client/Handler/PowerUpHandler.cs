@@ -32,9 +32,7 @@ namespace Client.Handler {
             string powerUpType = message.Data["powerUpType"];
             Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
             PowerUp powerUp = PowerUpFactory.CreatePowerUp(Enum.Parse<PowerName>(powerUpType), map);
-
-            map.PowerUpUsed(slotNum);
-            powerUp.Apply(parameters);
+            powerUp.Apply(parameters, slotNum);
         }
 
         private void PowerUpExpired(NetworkMessage message) {

@@ -1,49 +1,55 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Server;
 using Shared;
 
 namespace Client.PowerUps {
-    public class Nuke(MapRenderInfo map) : PowerUp {
+    public class Nuke(MapRenderInfo map) : PowerUp(map) {
         public override PowerName PowerName => PowerName.Nuke;
 
-        public override void Apply(Dictionary<string, object> parameters) {
-            if (!parameters.TryGetValue("x", out var xObj) || !parameters.TryGetValue("y", out var yObj) || !parameters.TryGetValue("byPlayerId", out var byPlayerIdObj)) {
-                return;
-            }
-
-            if (!int.TryParse(xObj.ToString(), out int x) || !int.TryParse(yObj.ToString(), out int y) || !int.TryParse(byPlayerIdObj.ToString(), out int byPlayerId)) {
-                return;
-            }
-
-            map.UnlockTile(x, y);
-            if (parameters.TryGetValue("invalid", out var invalid)) {
-                if (bool.TryParse(invalid.ToString(), out bool isInvalid) && isInvalid) {
-                    return;
+        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
+            int playerId = int.Parse(parameters["playerId"].ToString());
+            if (playerId == NetworkManager.Instance.ClientId) {
+                if (map.HasActivePowerUp(PowerName.Nuke)) {
+                    var powers = map.PowerUps;
+                    for (int i = 0; i < powers.Length; i++) {
+                        if (powers[i].Item3) {
+                            map.PowerUpUsed(i);
+                            if (map.PowerUps[i].Item1 == PowerName.None) {
+                                map.PowerUpExpired(playerId, PowerName.Nuke);
+                            }
+                            return;
+                        }
+                    }
                 }
+                if (slotNum == -1) {
+                    throw new ArgumentException("Slot number cannot be -1.");
+                }
+                map.ActivatePowerUp(slotNum);
+                map.AddActivePowerUp(PowerName.Nuke);
             }
-
-            BombType type = Enum.Parse<BombType>(parameters["type"].ToString());
-            bool isCounted = bool.Parse(parameters["isCounted"].ToString());
-            map.BombPlaced(x, y, type, byPlayerId, isCounted);
+            map.AddPlayerVFX(int.Parse(playerId.ToString()), PowerName.Nuke);
         }
 
         public override Dictionary<string, object> Use() {
-            Position nearestCell = map.GetNearestCell();
-            if (nearestCell != null) {
-                if (map.BombCount >= GameplayConfig.MaxBombs && !map.HasActivePowerUp(PowerName.MoreBombs) && !map.LockTile(nearestCell.X, nearestCell.Y)) {
-                    return null;
-                }
+            // Position nearestCell = map.GetNearestCell();
+            // if (nearestCell != null) {
+            //     if (map.BombCount >= GameplayConfig.MaxBombs && !map.HasActivePowerUp(PowerName.MoreBombs) && !map.LockTile(nearestCell.X, nearestCell.Y)) {
+            //         return null;
+            //     }
 
-                return new() {
-                    { "x", nearestCell.X.ToString() },
-                    { "y", nearestCell.Y.ToString() },
-                };
+            //     return new() {
+            //         { "x", nearestCell.X.ToString() },
+            //         { "y", nearestCell.Y.ToString() },
+            //     };
+            // }
+            if (map.HasActivePowerUp(PowerName.Nuke)) {
+                return null;
             }
-
-            return null;
+            return new Dictionary<string, object>();
         }
     }
 }

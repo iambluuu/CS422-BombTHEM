@@ -7,10 +7,10 @@ using Microsoft.Xna.Framework.Graphics;
 using Shared;
 
 namespace Client.PowerUps {
-    public class Teleport(MapRenderInfo map) : PowerUp {
+    public class Teleport(MapRenderInfo map) : PowerUp(map) {
         public override PowerName PowerName => PowerName.Teleport;
-        public override void Apply(Dictionary<string, object> parameters) {
-            base.Apply(parameters);
+        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
+            base.Apply(parameters, slotNum);
 
             int x = int.Parse(parameters["x"].ToString());
             int y = int.Parse(parameters["y"].ToString());

@@ -128,10 +128,12 @@ namespace Shared {
     public class ActivePowerUp {
         public PowerName PowerType { get; set; }
         public DateTime StartTime { get; set; }
+        public int SlotNum { get; set; } = -1;
 
-        public ActivePowerUp(PowerName name, DateTime startTime) {
+        public ActivePowerUp(PowerName name, DateTime startTime, int slotNum = -1) {
             PowerType = name;
             StartTime = startTime;
+            SlotNum = slotNum;
         }
     }
 
@@ -294,9 +296,6 @@ namespace Shared {
             }
 
             int bombId = Bombs.FindIndex(b => b.Position.X == x && b.Position.Y == y);
-            if (Bombs[bombId].Type == BombType.Nuke) {
-                Console.WriteLine($"Map.ExplodeBomb: Nuke bomb at ({x}, {y}) exploded");
-            }
             if (bombId < 0) {
                 throw new KeyNotFoundException($"Map.ExplodeBomb: No bomb found at ({x}, {y})");
             }
