@@ -53,8 +53,8 @@ namespace Shared {
         GameResults,
         Error,
         ItemExpired,
-        PowerUpSpawned,
-        PowerUpPickedUp,
+        ItemSpawned,
+        ItemPickedUp,
         PowerUpUsed,
         PowerUpExpired,
     }

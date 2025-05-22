@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Shared;
 
 namespace Server {
@@ -10,7 +11,6 @@ namespace Server {
         private CancellationTokenSource _cts;
         bool _isGameStarted = false;
         DateTime _startTime;
-        (PowerName, PowerName) _powers = (PowerName.None, PowerName.None);
 
         public int BotId {
             get {
@@ -72,17 +72,8 @@ namespace Server {
                     }));
                 }
 
-                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && Utils.RandomInt(20) == 0 && (_powers.Item1 != PowerName.None || _powers.Item2 != PowerName.None)) {
-                    PowerName power;
-                    if (_powers.Item1 != PowerName.None) {
-                        power = _powers.Item1;
-                    } else {
-                        power = _powers.Item2;
-                    }
-
-                    SendToServer(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
-                        { "powerUpType", power.ToString() },
-                    }));
+                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && Utils.RandomInt(20) == 0) {
+                    // Try to use power up here
                 }
 
                 Thread.Sleep(200);
@@ -136,6 +127,9 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.BombPlaced: {
+                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                            break;
+                        }
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         BombType type = Enum.Parse<BombType>(message.Data["type"]);
@@ -143,6 +137,9 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.BombExploded: {
+                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                            break;
+                        }
                         int x = int.Parse(message.Data["x"]);
                         int y = int.Parse(message.Data["y"]);
                         string[] positions = message.Data["positions"].Split(';');
@@ -163,18 +160,16 @@ namespace Server {
                         _map.SetPlayerPosition(playerId, x, y);
                     }
                     break;
-                case ServerMessageType.PowerUpPickedUp: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        PowerName powerUpType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        if (playerId == BotId) {
-                            if (_powers.Item1 == PowerName.None) {
-                                _powers.Item1 = powerUpType;
-                            } else if (_powers.Item2 == PowerName.None) {
-                                _powers.Item2 = powerUpType;
-                            }
+                case ServerMessageType.ItemPickedUp: {
+                        // Handle item pickup
+                    }
+                    break;
+                case ServerMessageType.PowerUpUsed: {
+                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                            break;
                         }
+
+                        // Handle power-up usage
                     }
                     break;
             }

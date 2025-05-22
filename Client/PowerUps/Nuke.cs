@@ -1,47 +1,50 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Server;
 using Shared;
 
 namespace Client.PowerUps {
-    public class Nuke : PowerUp {
-        private static Dictionary<PlayerNode, (VFXNode, PlayerIngameInfo)> _activeEffects = new(); // Current Players with Nuke
+    public class Nuke(MapRenderInfo map) : PowerUp(map) {
+        private readonly MapRenderInfo map = map;
 
-        public override void Apply(Dictionary<string, object> parameters) {
-            base.Apply(parameters);
-            bool needToChange = Boolean.Parse(parameters["needToChange"].ToString());
-            if (!needToChange) {
-                return;
-            }
+        public override PowerName PowerName => PowerName.Nuke;
 
+        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
             int playerId = int.Parse(parameters["playerId"].ToString());
-            var playerNodes = parameters["playerNodes"] as Dictionary<int, PlayerNode> ?? throw new ArgumentException("playerNodes must be a dictionary of PlayerNode.");
-            var map = parameters["map"] as Map ?? throw new ArgumentException("map must be a Map object.");
-            var playerInfo = map.PlayerInfos[playerId] as PlayerIngameInfo ?? throw new ArgumentException("PlayerIngameInfo must be a PlayerIngameInfo object.");
-
-            playerInfo.ActivePowerUps.Add(new ActivePowerUp(PowerName.Nuke, DateTime.Now));
-
-            PlayerNode target = playerNodes[playerId];
-            VFXNode vfx = new(TextureHolder.Get("Effect/Circle"), new Vector2(GameValues.TILE_SIZE * 1.5f, GameValues.TILE_SIZE * 2), 4, 0.1f, isLooping: true, isInfinite: true) {
-                Position = new Vector2(-0.25f * GameValues.TILE_SIZE, -0.25f * GameValues.TILE_SIZE),
-            };
-            target.AttachChild(vfx);
-            _activeEffects.Add(target, (vfx, playerInfo));
+            if (playerId == NetworkManager.Instance.ClientId) {
+                if (map.HasActivePowerUp(PowerName.Nuke)) {
+                    // Console.WriteLine("Nuke already activated, slotNum: " + slotNum);
+                    map.PowerUpUsed(slotNum);
+                    return;
+                }
+                if (slotNum == -1) {
+                    throw new ArgumentException("Slot number cannot be -1.");
+                }
+                map.ActivatePowerUp(slotNum);
+                map.AddActivePowerUp(PowerName.Nuke);
+            }
+            map.AddPlayerVFX(int.Parse(playerId.ToString()), PowerName.Nuke);
         }
 
-        public override void Remove(SceneNode target) {
-            if (target is not PlayerNode) {
-                throw new ArgumentException("Target must be a PlayerNode.");
-            }
+        public override Dictionary<string, object> Use() {
+            // Position nearestCell = map.GetNearestCell();
+            // if (nearestCell != null) {
+            //     if (map.BombCount >= GameplayConfig.MaxBombs && !map.HasActivePowerUp(PowerName.MoreBombs) && !map.LockTile(nearestCell.X, nearestCell.Y)) {
+            //         return null;
+            //     }
 
-            if (_activeEffects.TryGetValue((PlayerNode)target, out var mappedValue)) {
-                target.DetachChild(mappedValue.Item1);
-                var playerInfo = mappedValue.Item2;
-                playerInfo.ExpireActivePowerUp(PowerName.Nuke);
-                _activeEffects.Remove((PlayerNode)target);
+            //     return new() {
+            //         { "x", nearestCell.X.ToString() },
+            //         { "y", nearestCell.Y.ToString() },
+            //     };
+            // }
+            if (map.HasActivePowerUp(PowerName.Nuke)) {
+                return null;
             }
+            return new Dictionary<string, object>();
         }
     }
 }

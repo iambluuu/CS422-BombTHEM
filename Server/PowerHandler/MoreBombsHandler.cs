@@ -2,16 +2,16 @@ using Shared;
 
 namespace Server.PowerHandler {
     public class MoreBombsHandler : PowerUpHandler {
-        public override Dictionary<string, object>? Apply(Map map, int playerId) {
-            if (!map.UsePowerUp(playerId, PowerName.MoreBombs)) {
-                return null;
-            }
-
+        public override PowerName PowerName => PowerName.MoreBombs;
+        public override Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
+            base.Apply(map, playerId, parameters, slotNum);
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
-                Console.WriteLine($"Active power: {activePowerUp.PowerType}");
                 if (activePowerUp.PowerType == PowerName.MoreBombs) {
                     activePowerUp.StartTime = DateTime.Now;
-                    return null;
+                    return new Dictionary<string, object> {
+                        { "playerId", playerId },
+                        { "needToChange", false }
+                    };
                 }
             }
 

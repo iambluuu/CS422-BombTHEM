@@ -5,31 +5,28 @@ using Shared;
 namespace Client.PowerUps {
     public static class PowerUpFactory {
         private static readonly Dictionary<PowerName, PowerUp> _powerUps = new();
-        public static PowerUp GetPowerUp(PowerName type) {
+
+        public static PowerUp CreatePowerUp(PowerName type, MapRenderInfo map) {
             if (_powerUps.TryGetValue(type, out var powerUp)) {
                 return powerUp;
             }
 
-            powerUp = CreatePowerUp(type);
-            _powerUps[type] = powerUp;
-            return powerUp;
-        }
-
-        public static PowerUp CreatePowerUp(PowerName type) {
-            return type switch {
+            PowerUp newPower = type switch {
                 // PowerName.Ghost => new (),
-                PowerName.Nuke => new Nuke(),
-                PowerName.MoreBombs => new MoreBombs(),
-                PowerName.Teleport => new Teleport(),
-                PowerName.Shield => new Shield(),
+                PowerName.Nuke => new Nuke(map),
+                PowerName.MoreBombs => new MoreBombs(map),
+                PowerName.Teleport => new Teleport(map),
+                PowerName.Shield => new Shield(map),
                 _ => throw new ArgumentException($"Unknown power-up type: {type}")
             };
+            return newPower;
         }
     }
 
-    public abstract class PowerUp {
+    public abstract class PowerUp(MapRenderInfo map) {
         public static PowerUp Instance { get; private set; }
-        public virtual void Apply(Dictionary<string, object> parameters) {
+        public abstract PowerName PowerName { get; }
+        public virtual void Apply(Dictionary<string, object> parameters, int slotNum) {
             try {
                 if (parameters == null || parameters.Count == 0) {
                     throw new ArgumentException("Parameters cannot be null or empty.");
@@ -37,10 +34,13 @@ namespace Client.PowerUps {
             } catch (ArgumentException e) {
                 Console.WriteLine(e.Message);
             }
+            if (!slotNum.Equals(-1)) {
+                map.PowerUpUsed(slotNum);
+            }
         }
 
-        public virtual void Remove(SceneNode target) {
-            // Default implementation does nothing
+        public virtual Dictionary<string, object> Use() {
+            return new Dictionary<string, object>();
         }
     }
 }

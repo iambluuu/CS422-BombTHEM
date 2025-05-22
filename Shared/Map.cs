@@ -4,7 +4,6 @@ using Server;
 namespace Shared {
     public enum PowerName {
         None,
-        Ghost,
         MoreBombs,
         Nuke,
         Shield,
@@ -129,10 +128,12 @@ namespace Shared {
     public class ActivePowerUp {
         public PowerName PowerType { get; set; }
         public DateTime StartTime { get; set; }
+        public int SlotNum { get; set; } = -1;
 
-        public ActivePowerUp(PowerName name, DateTime startTime) {
+        public ActivePowerUp(PowerName name, DateTime startTime, int slotNum = -1) {
             PowerType = name;
             StartTime = startTime;
+            SlotNum = slotNum;
         }
     }
 
@@ -463,12 +464,20 @@ namespace Shared {
             Items.RemoveAt(itemId);
         }
 
-        public bool UsePowerUp(int playerId, PowerName power) {
+        public bool CanUsePowerUp(int playerId, PowerName power, int slotNum) {
             if (!PlayerInfos.ContainsKey(playerId)) {
                 throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
             }
 
-            return PlayerInfos[playerId].UsePowerUp(power);
+            return PlayerInfos[playerId].CanUsePowerUp(power, slotNum);
+        }
+
+        public void UsePowerUp(int playerId, PowerName power, int slotNum) {
+            if (!PlayerInfos.ContainsKey(playerId)) {
+                throw new KeyNotFoundException($"Map.UsePowerUp: Player ID {playerId} not found");
+            }
+
+            PlayerInfos[playerId].UsePowerUp(power, slotNum);
         }
 
         public override string ToString() {
@@ -499,10 +508,11 @@ namespace Shared {
 
         public Position GetSafePosition(int playerId) {
             Position newPos = new Position(0, 0);
+            Position playerPos = PlayerInfos[playerId].Position;
             while (true) {
                 newPos.X = Utils.RandomInt(Height);
                 newPos.Y = Utils.RandomInt(Width);
-                if (IsInBounds(newPos.X, newPos.Y) && GetTile(newPos.X, newPos.Y) == TileType.Empty) {
+                if (IsInBounds(newPos.X, newPos.Y) && Utils.ManhattanDistance(playerPos.X, playerPos.Y, newPos.X, newPos.Y) >= 10 && GetTile(newPos.X, newPos.Y) == TileType.Empty) {
                     return newPos;
                 }
             }
