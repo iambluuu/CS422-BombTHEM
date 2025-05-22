@@ -304,8 +304,8 @@ namespace Client.Component {
         }
 
         public override bool HitTest(Point point) {
-            Rectangle bounds = new Rectangle((int)Position.X, (int)Position.Y, (int)Size.X, (int)Size.Y);
-            if (!bounds.Contains(point)) return false;
+            if (!base.HitTest(point)) return false;
+
             for (int i = Components.Count - 1; i >= 0; i--) {
                 if (Components[i].IsVisible && Components[i].HitTest(point)) {
                     return true;

@@ -1,8 +1,5 @@
-using Client.Component;
+using System;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Shared;
-using SharpDX.DXGI;
 
 namespace Client {
     public class Client : Game {
@@ -10,13 +7,18 @@ namespace Client {
         private ScreenManager _screenManager;
 
         public static Client Instance { get; private set; }
+        public static Vector2 VirtualScreenSize => new(960, 720);
+        public static Vector2 CurrentScreenSize => new(Instance.Window.ClientBounds.Width, Instance.Window.ClientBounds.Height);
+        public static float ScreenScaleFactor => Math.Min(CurrentScreenSize.X / VirtualScreenSize.X, CurrentScreenSize.Y / VirtualScreenSize.Y);
 
         public Client() {
-            _graphics = new GraphicsDeviceManager(this);
-            _graphics.PreferredBackBufferHeight = 720;
-            _graphics.PreferredBackBufferWidth = 960;
-            _graphics.PreferMultiSampling = false;
+            _graphics = new GraphicsDeviceManager(this) {
+                PreferredBackBufferWidth = (int)VirtualScreenSize.X,
+                PreferredBackBufferHeight = (int)VirtualScreenSize.Y,
+                PreferMultiSampling = false
+            };
             _graphics.ApplyChanges();
+            Window.AllowUserResizing = true;
             Content.RootDirectory = "Content";
             IsMouseVisible = true;
         }

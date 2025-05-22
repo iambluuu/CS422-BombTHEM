@@ -6,7 +6,6 @@ using TextCopy;
 
 using Client.Component;
 using Shared;
-using Microsoft.VisualBasic.Devices;
 
 namespace Client {
     public class LobbyScreen : GameScreen {
@@ -329,6 +328,7 @@ namespace Client {
                     }
                     break;
                 case ServerMessageType.PlayerKicked: {
+                        ScreenManager.Instance.StartLoading();
                         ScreenManager.Instance.NavigateBack();
                         ToastManager.Instance.ShowToast("You have been kicked");
                     }

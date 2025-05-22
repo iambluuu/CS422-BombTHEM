@@ -22,9 +22,10 @@ namespace Client {
 
     public class ScreenManager : DrawableGameComponent {
         private readonly Stack<GameScreen> screenStack = new Stack<GameScreen>();
-        private RenderTarget2D _snapshot;
+        private RenderTarget2D _snapshotScreen, _virtualScreen;
         private readonly SpriteBatch spriteBatch;
         private LoadingScreen _loadingScreen;
+        private ImageView _backgroundImage;
 
         public bool IsFocused { get; set; } = true;
         public bool IsLoading => _loadingScreen.IsLoading;
@@ -34,11 +35,19 @@ namespace Client {
         public ScreenManager(Game game) : base(game) {
             Instance = this;
             spriteBatch = new SpriteBatch(game.GraphicsDevice);
+
             _loadingScreen = new LoadingScreen();
             _loadingScreen.LoadContent();
             _loadingScreen.Initialize();
-            _loadingScreen.IsActive = false;
-            _snapshot = new RenderTarget2D(GraphicsDevice, GraphicsDevice.PresentationParameters.BackBufferWidth, GraphicsDevice.PresentationParameters.BackBufferHeight);
+
+            _backgroundImage = new ImageView() {
+                Texture = TextureHolder.Get("Theme/Background"),
+                Gravity = Gravity.Center,
+                ScaleType = ScaleType.CenterCrop,
+            };
+
+            _snapshotScreen = new RenderTarget2D(GraphicsDevice, (int)Client.VirtualScreenSize.X, (int)Client.VirtualScreenSize.Y);
+            _virtualScreen = new RenderTarget2D(GraphicsDevice, (int)Client.VirtualScreenSize.X, (int)Client.VirtualScreenSize.Y);
         }
 
         public override void Update(GameTime gameTime) {
@@ -63,11 +72,15 @@ namespace Client {
             ToastManager.Instance.Update(gameTime);
 
             _loadingScreen.Update(gameTime);
+
+            _backgroundImage.Width = Client.CurrentScreenSize.X;
+            _backgroundImage.Height = Client.CurrentScreenSize.Y;
+            _backgroundImage.Update(gameTime);
         }
 
         public override void Draw(GameTime gameTime) {
             if (!IsLoading) {
-                GraphicsDevice.SetRenderTarget(_snapshot);
+                GraphicsDevice.SetRenderTarget(_snapshotScreen);
                 GraphicsDevice.Clear(new Color(255, 173, 93, 255));
 
                 spriteBatch.Begin(samplerState: SamplerState.PointClamp);
@@ -92,14 +105,26 @@ namespace Client {
                 ToastManager.Instance.Draw(spriteBatch);
 
                 spriteBatch.End();
-
-                GraphicsDevice.SetRenderTarget(null);
             }
 
+            GraphicsDevice.SetRenderTarget(_virtualScreen);
             GraphicsDevice.Clear(new Color(255, 173, 93, 255));
             spriteBatch.Begin(samplerState: SamplerState.PointClamp);
-            spriteBatch.Draw(_snapshot, Vector2.Zero, Color.White);
+            spriteBatch.Draw(_snapshotScreen, Vector2.Zero, Color.White);
             _loadingScreen.Draw(gameTime, spriteBatch);
+            spriteBatch.End();
+
+            int scaledWidth = (int)(Client.VirtualScreenSize.X * Client.ScreenScaleFactor);
+            int scaledHeight = (int)(Client.VirtualScreenSize.Y * Client.ScreenScaleFactor);
+
+            int xOffset = ((int)Client.CurrentScreenSize.X - scaledWidth) / 2;
+            int yOffset = ((int)Client.CurrentScreenSize.Y - scaledHeight) / 2;
+
+            GraphicsDevice.SetRenderTarget(null);
+            GraphicsDevice.Clear(new Color(255, 173, 93, 255));
+            spriteBatch.Begin(samplerState: SamplerState.PointClamp);
+            _backgroundImage.Draw(spriteBatch);
+            spriteBatch.Draw(_virtualScreen, new Rectangle(xOffset, yOffset, scaledWidth, scaledHeight), Color.White);
             spriteBatch.End();
         }
 
@@ -197,7 +222,7 @@ namespace Client {
         public bool IsFocused { get; set; } = true;
         public bool IsInitialized { get; set; } = false;
 
-        public static Vector2 ScreenSize => new(Client.Instance.GraphicsDevice.Viewport.Width, Client.Instance.GraphicsDevice.Viewport.Height);
+        public static Vector2 ScreenSize => Client.VirtualScreenSize;
 
         public virtual void Initialize() { }
 

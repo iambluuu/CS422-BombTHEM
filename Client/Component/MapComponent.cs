@@ -41,8 +41,9 @@ namespace Client.Component {
             map = mapRenderInfo;
             _pingText = new TextNode("Ping: ?ms") {
                 Position = new Vector2(10 * GameValues.TILE_SIZE, 14 * GameValues.TILE_SIZE + 10),
-                Color = Color.White,
             };
+            _pingText.SetTextColor(Color.White);
+
             _sceneGraph.AttachChild(_pingText);
             _sceneGraph.Position = Position;
         }
@@ -61,11 +62,11 @@ namespace Client.Component {
 
         public override void Update(GameTime gameTime) {
             _sceneGraph.UpdateTree(gameTime);
-            _pingText.Text = $"Ping: {NetworkManager.Instance.Ping}ms";
+            _pingText.SetText($"Ping: {NetworkManager.Instance.Ping}ms");
             if (NetworkManager.Instance.Ping > 200) {
-                _pingText.Color = Color.Red;
+                _pingText.SetTextColor(Color.Red);
             } else {
-                _pingText.Color = Color.White;
+                _pingText.SetTextColor(Color.White);
             }
 
             UpdateBombNodes();

@@ -202,8 +202,18 @@ namespace Client.Component {
         }
         public virtual void Draw(SpriteBatch spriteBatch) { }
         public virtual bool HitTest(Point mousePos) {
-            return mousePos.X >= Position.X && mousePos.X <= Position.X + Size.X &&
-                   mousePos.Y >= Position.Y && mousePos.Y <= Position.Y + Size.Y;
+            float scaleFactor = Client.ScreenScaleFactor;
+            int scaledWidth = (int)(Client.VirtualScreenSize.X * scaleFactor);
+            int scaledHeight = (int)(Client.VirtualScreenSize.Y * scaleFactor);
+            int xOffset = (int)(Client.CurrentScreenSize.X - scaledWidth) / 2;
+            int yOffset = (int)(Client.CurrentScreenSize.Y - scaledHeight) / 2;
+            mousePos.X -= xOffset;
+            mousePos.Y -= yOffset;
+            Vector2 scaledSize = new(Size.X * scaleFactor, Size.Y * scaleFactor);
+            Vector2 scaledPosition = new(Position.X * scaleFactor, Position.Y * scaleFactor);
+
+            return mousePos.X >= scaledPosition.X && mousePos.X <= scaledPosition.X + scaledSize.X &&
+                   mousePos.Y >= scaledPosition.Y && mousePos.Y <= scaledPosition.Y + scaledSize.Y;
         }
 
         public virtual void HandleInput(UIEvent uiEvent) { }

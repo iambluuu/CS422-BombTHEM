@@ -8,6 +8,8 @@ using Shared;
 
 namespace Client.PowerUps {
     public class Nuke(MapRenderInfo map) : PowerUp(map) {
+        private readonly MapRenderInfo map = map;
+
         public override PowerName PowerName => PowerName.Nuke;
 
         public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {

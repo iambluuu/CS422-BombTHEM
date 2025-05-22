@@ -64,12 +64,16 @@ namespace Server {
                     }));
                 }
 
-                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(20) == 0 || movableDirections.Count == 0)) {
+                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(10) == 0 || movableDirections.Count == 0)) {
                     SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
                         {"x", _map.PlayerInfos[BotId].Position.X.ToString() },
                         {"y", _map.PlayerInfos[BotId].Position.Y.ToString() },
                         {"type", BombType.Normal.ToString() },
                     }));
+                }
+
+                if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && Utils.RandomInt(20) == 0) {
+                    // Try to use power up here
                 }
 
                 Thread.Sleep(200);
@@ -156,24 +160,16 @@ namespace Server {
                         _map.SetPlayerPosition(playerId, x, y);
                     }
                     break;
+                case ServerMessageType.ItemPickedUp: {
+                        // Handle item pickup
+                    }
+                    break;
                 case ServerMessageType.PowerUpUsed: {
                         if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
                             break;
                         }
 
-                        PowerName powerName = Enum.Parse<PowerName>(message.Data["powerUpType"]);
-                        Dictionary<string, object>? parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
-
-                        if (powerName == PowerName.Nuke && parameters != null) {
-                            if (!parameters.TryGetValue("x", out var xObj) || !parameters.TryGetValue("y", out var yObj) || !parameters.TryGetValue("byPlayerId", out var byPlayerIdObj)) {
-                                break;
-                            }
-                            if (!int.TryParse(xObj.ToString(), out int x) || !int.TryParse(yObj.ToString(), out int y) || !int.TryParse(byPlayerIdObj.ToString(), out int byPlayerId)) {
-                                break;
-                            }
-
-                            _map.AddBomb(x, y, BombType.Nuke);
-                        }
+                        // Handle power-up usage
                     }
                     break;
             }

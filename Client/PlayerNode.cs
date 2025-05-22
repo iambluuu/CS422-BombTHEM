@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -9,17 +11,33 @@ namespace Client {
         private readonly int _frameCount = 4;
         private int _currentFrame;
         private int _lastFrame;
-        private float _frameTime;
+        private const float _frameTime = 0.1f;
         private float _elapsedFrameTime;
         private DateTime _lastDie = DateTime.MinValue;
         private Direction _currentDirection;
 
-        public PlayerNode(Texture2D texture, Vector2 size, float frameTime = 0.1f) : base(texture, size) {
-            _frameTime = frameTime;
+        public PlayerNode(Texture2D texture, Vector2 size, bool isLocalPlayer = false) : base(texture, size) {
             _elapsedFrameTime = 0f;
             _currentFrame = 0;
             _lastFrame = -1;
             _currentDirection = Direction.Down;
+
+            PlayerSkin skin = Enum.Parse<PlayerSkin>(texture.Name.Split('/').Last());
+
+            if (isLocalPlayer) {
+                VFXNode flagNode = new(
+                    TextureHolder.Get($"Item/FlagRed"),
+                    new Vector2(size.X / 3 * 2, size.Y / 3 * 2),
+                    4,
+                    0.1f,
+                    1f,
+                    true,
+                    true
+                ) {
+                    Position = new Vector2(16, -24),
+                };
+                AttachChild(flagNode);
+            }
         }
 
         public void Die() {

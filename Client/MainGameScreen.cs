@@ -8,10 +8,7 @@ using Microsoft.Xna.Framework.Input;
 using Shared;
 using Client.Component;
 using Client.PowerUps;
-using System.Net.NetworkInformation;
-using System.Linq;
 using Client.Handler;
-using System.Runtime.CompilerServices;
 
 namespace Client {
     public class MainGameScreen : GameScreen {
