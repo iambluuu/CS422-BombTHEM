@@ -1,13 +1,14 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using TextCopy;
 
-using Client.Component;
 using Shared;
+using Client.Component;
+using Client.ContentHolder;
+using Client.Network;
+using Client.Audio;
 
-namespace Client {
+namespace Client.Screen {
     public class LobbyScreen : GameScreen {
         private bool _isHost = false;
         private string _currentName = string.Empty;
@@ -197,6 +198,8 @@ namespace Client {
 
         public override void Activate() {
             base.Activate();
+
+            MusicPlayer.Play("Adventure");
 
             for (int i = 0; i < 4; i++) {
                 _playerIds[i] = -1;

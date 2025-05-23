@@ -1,8 +1,7 @@
-using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+namespace Client.Scene {
     public class ExplosionNode : SpriteNode {
         private readonly int _frameCount = 9;
         private int _currentFrame;

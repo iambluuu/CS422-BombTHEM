@@ -1,7 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+namespace Client.Scene {
     public class MoveableSpriteNode : SpriteNode {
         private Vector2 _startPosition;
         private Vector2 _targetPosition;

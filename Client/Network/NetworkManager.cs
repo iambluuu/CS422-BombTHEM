@@ -7,7 +7,7 @@ using System.Threading;
 
 using Shared;
 
-namespace Client {
+namespace Client.Network {
     public class NetworkManager {
         private static NetworkManager _instance;
         public static NetworkManager Instance => _instance ??= new NetworkManager();

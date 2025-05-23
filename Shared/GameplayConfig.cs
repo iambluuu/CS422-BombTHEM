@@ -1,4 +1,3 @@
-
 namespace Shared {
     public static class GameplayConfig {
         public static int MaxPlayers { get; set; } = 4;
@@ -22,5 +21,4 @@ namespace Shared {
             { PowerName.Nuke, 3 },
         };
     }
-
 };

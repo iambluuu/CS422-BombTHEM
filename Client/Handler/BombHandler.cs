@@ -1,10 +1,7 @@
 using System;
-using System.Collections.Generic;
-using System.Text.Json;
-using Client.Component;
-using Client.PowerUps;
-using Microsoft.Xna.Framework;
+
 using Shared;
+using Client.Scene;
 
 namespace Client.Handler {
 

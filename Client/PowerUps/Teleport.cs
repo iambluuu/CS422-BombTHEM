@@ -1,10 +1,7 @@
-using System;
 using System.Collections.Generic;
 
-using Client.Animation;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
 using Shared;
+using Client.Scene;
 
 namespace Client.PowerUps {
     public class Teleport(MapRenderInfo map) : PowerUp(map) {

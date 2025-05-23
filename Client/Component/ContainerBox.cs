@@ -2,6 +2,8 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using Client.ContentHolder;
+
 namespace Client.Component {
     public class ContainerBox : LinearLayout {
         private readonly Vector2 CornerSize = new(6, 6);

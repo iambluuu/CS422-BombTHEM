@@ -1,13 +1,13 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
-using Client.Component;
 using Shared;
+using Client.Component;
+using Client.ContentHolder;
+using Client.Network;
+using Client.Audio;
 
-namespace Client {
+namespace Client.Screen {
     public class MainMenuScreen : GameScreen {
         private LinearLayout _connectLayout, _mainLayout;
         private TextBox _addressBox, _portBox;
@@ -142,6 +142,8 @@ namespace Client {
 
         public override void Activate() {
             base.Activate();
+
+            MusicPlayer.Play("Adventure");
 
             if (NetworkManager.Instance.IsConnected) {
                 _connectLayout.IsVisible = false;

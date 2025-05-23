@@ -1,12 +1,12 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using System.Collections.Generic;
-using Client.Component;
 using System;
-using Shared;
-using Client.Animation;
 
-namespace Client {
+using Client.Animation;
+using Client.Component;
+using Client.ContentHolder;
+
+namespace Client.Screen {
     class LoadingScreen : GameScreen {
         private enum DoorState {
             None,

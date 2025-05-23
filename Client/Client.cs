@@ -1,6 +1,11 @@
 using System;
 using Microsoft.Xna.Framework;
 
+using Client.Screen;
+using Client.ContentHolder;
+using Client.Audio;
+using Client.Network;
+
 namespace Client {
     public class Client : Game {
         private GraphicsDeviceManager _graphics;
@@ -25,7 +30,10 @@ namespace Client {
 
         protected override void Initialize() {
             base.Initialize();
+
             Instance = this;
+
+            MusicPlayer.Initialize();
             _screenManager = new ScreenManager(this);
             _screenManager.NavigateTo(ScreenName.MainMenu);
         }
@@ -44,11 +52,13 @@ namespace Client {
         protected override void LoadContent() {
             TextureHolder.SetContentManager(Content);
             FontHolder.SetContentManager(Content);
+            AudioHolder.SetContentManager(Content);
         }
 
         protected override void UnloadContent() {
             TextureHolder.UnloadAll();
             FontHolder.UnloadAll();
+            AudioHolder.UnloadAll();
             NetworkManager.Instance.Disconnect();
         }
     }

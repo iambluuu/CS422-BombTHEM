@@ -1,9 +1,9 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+namespace Client.Scene {
     public class SpriteNode : SceneNode {
-        
+
         protected Texture2D _texture;
         protected Vector2 _origin;
         protected Vector2 _size;

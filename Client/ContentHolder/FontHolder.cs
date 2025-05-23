@@ -2,9 +2,9 @@ using System.Collections.Generic;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+namespace Client.ContentHolder {
     public static class FontHolder {
-        private static readonly Dictionary<string, SpriteFont> _fonts = new();
+        private static readonly Dictionary<string, SpriteFont> _fonts = [];
         private static ContentManager _content;
 
         public static void SetContentManager(ContentManager content) {
@@ -12,8 +12,8 @@ namespace Client {
         }
 
         public static SpriteFont Get(string name) {
-            if (_fonts.ContainsKey(name)) {
-                return _fonts[name];
+            if (_fonts.TryGetValue(name, out SpriteFont value)) {
+                return value;
             } else {
                 if (_content == null)
                     throw new System.Exception("ContentManager not set in FontHolder");

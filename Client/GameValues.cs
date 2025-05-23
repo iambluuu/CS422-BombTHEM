@@ -1,4 +1,3 @@
-
 namespace Client {
     public static class GameValues {
         public const int TILE_SIZE = 48;

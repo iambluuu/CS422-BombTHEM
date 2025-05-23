@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Client.Component;
 using Client.Animation;
 
-namespace Client {
+namespace Client.Screen {
     public class ToastManager {
         private static ToastManager _instance;
         public static ToastManager Instance => _instance ??= new ToastManager();

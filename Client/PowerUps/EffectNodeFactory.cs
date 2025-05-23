@@ -1,8 +1,10 @@
 using System;
-using Client.Animation;
-using Client.Component;
 using Microsoft.Xna.Framework;
+
 using Shared;
+using Client.Animation;
+using Client.ContentHolder;
+using Client.Scene;
 
 namespace Client.PowerUps {
     public static class EffectNodeFactory {

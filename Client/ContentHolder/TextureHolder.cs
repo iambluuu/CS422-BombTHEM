@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+namespace Client.ContentHolder {
     public static class TextureHolder {
         private static readonly Dictionary<string, Texture2D> _textures = [];
         private static ContentManager _content;
@@ -13,8 +13,8 @@ namespace Client {
         }
 
         public static Texture2D Get(string name) {
-            if (_textures.ContainsKey(name)) {
-                return _textures[name];
+            if (_textures.TryGetValue(name, out Texture2D value)) {
+                return value;
             } else {
                 if (_content == null)
                     throw new System.Exception("ContentManager not set in TextureHolder");

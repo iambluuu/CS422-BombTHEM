@@ -1,15 +1,16 @@
 using System;
-using Client.Component;
+using System.Linq;
 using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System.Linq;
 
 using Shared;
+using Client.Component;
+using Client.ContentHolder;
+using Client.Network;
 
-namespace Client {
+namespace Client.Screen {
     public enum ScreenName {
         MainMenu,
         LobbyScreen,
