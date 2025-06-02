@@ -1,6 +1,7 @@
-using System;
 using System.Collections.Generic;
+
 using Shared;
+using Client.Scene;
 
 namespace Client.Handler {
     public static class HandlerFactory {

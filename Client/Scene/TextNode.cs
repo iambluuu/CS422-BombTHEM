@@ -1,7 +1,9 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+using Client.ContentHolder;
+
+namespace Client.Scene {
     public class TextNode : SceneNode {
         private bool _centerOrigin;
         private string _text = string.Empty;

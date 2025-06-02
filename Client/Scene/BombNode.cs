@@ -1,9 +1,11 @@
 using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Shared;
 
-namespace Client {
+using Shared;
+using Client.ContentHolder;
+
+namespace Client.Scene {
     public static class BombNodeFactory {
         public static BombNode CreateNode(BombType type) {
             switch (type) {

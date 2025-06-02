@@ -2,7 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-namespace Client {
+namespace Client.Scene {
     public class VFXNode : SpriteNode {
         private readonly int _frameCount;
         private readonly bool _isLooping;

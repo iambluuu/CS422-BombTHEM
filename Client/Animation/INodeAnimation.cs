@@ -4,6 +4,8 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using Client.Scene;
+
 namespace Client.Animation {
     // Base interface for all animations
     public interface INodeAnimation {

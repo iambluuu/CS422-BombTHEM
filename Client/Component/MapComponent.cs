@@ -1,10 +1,12 @@
-using System;
 using System.Collections.Generic;
-using System.Net.Http.Headers;
-using Client.PowerUps;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+
 using Shared;
+using Client.PowerUps;
+using Client.ContentHolder;
+using Client.Scene;
+using Client.Network;
 
 namespace Client.Component {
     public class MapComponent : IComponent {

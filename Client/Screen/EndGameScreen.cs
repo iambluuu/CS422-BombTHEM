@@ -1,15 +1,16 @@
 using System;
 using System.Collections.Generic;
-
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
-using Client.Component;
 using Shared;
+using Client.ContentHolder;
+using Client.Component;
 using Client.Animation;
+using Client.Network;
+using Client.Audio;
 
-namespace Client {
+namespace Client.Screen {
     public class EndGameScreen : GameScreen {
         private (int, string, int)[] _gameResults = Array.Empty<(int, string, int)>();
         private Dictionary<int, PlayerSkin> _skinMapping = [];
@@ -91,6 +92,12 @@ namespace Client {
             hasResultArrived = true;
             Array.Sort(_gameResults, (x, y) => y.Item3.CompareTo(x.Item3));
             var winner = _gameResults[0];
+
+            if (winner.Item1 == NetworkManager.Instance.ClientId) {
+                MusicPlayer.Play("Sunny");
+            } else {
+                MusicPlayer.Play("SadTheme");
+            }
 
             var layout = new LinearLayout() {
                 LayoutOrientation = Orientation.Vertical,

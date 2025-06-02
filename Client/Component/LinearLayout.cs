@@ -4,6 +4,8 @@ using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
+using Client.ContentHolder;
+
 namespace Client.Component {
     public enum Orientation {
         Horizontal,

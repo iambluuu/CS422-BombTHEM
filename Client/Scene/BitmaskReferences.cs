@@ -1,6 +1,6 @@
 using System;
 
-namespace Client {
+namespace Client.Scene {
     public class BitmaskReferences {
         private static readonly int[,] grid = new int[,]{
             {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0},

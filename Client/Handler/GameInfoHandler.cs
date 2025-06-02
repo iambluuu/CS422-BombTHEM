@@ -1,11 +1,9 @@
-
 using System;
-using System.Collections.Generic;
-using System.Text.Json;
-using Client.Component;
-using Client.PowerUps;
-using Microsoft.Xna.Framework;
+
 using Shared;
+using Client.Scene;
+using Client.Screen;
+using Client.Audio;
 
 namespace Client.Handler {
 
@@ -19,6 +17,7 @@ namespace Client.Handler {
             Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
 
             map.InitMap(mapString, playerIds, playerPositions, usernames, duration);
+            MusicPlayer.Play("Fight");
             ScreenManager.Instance.StopLoading();
         }
     }

@@ -1,6 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using Server;
-
 namespace Shared {
     public enum PowerName {
         None,

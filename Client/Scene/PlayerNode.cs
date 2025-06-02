@@ -1,12 +1,12 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
 using Shared;
+using Client.ContentHolder;
 
-namespace Client {
+namespace Client.Scene {
     public class PlayerNode : MoveableSpriteNode {
         private readonly int _frameCount = 4;
         private int _currentFrame;

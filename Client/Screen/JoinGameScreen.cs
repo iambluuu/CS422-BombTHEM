@@ -1,13 +1,12 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 
-using Client.Component;
 using Shared;
+using Client.Component;
+using Client.Network;
+using Client.Audio;
 
-namespace Client {
+namespace Client.Screen {
     public class JoinGameScreen : GameScreen {
         private TextBox _roomIdBox;
 
@@ -72,6 +71,7 @@ namespace Client {
 
         public override void Activate() {
             base.Activate();
+            MusicPlayer.Play("Adventure");
             ScreenManager.Instance.StopLoading();
         }
 

@@ -1,8 +1,4 @@
-
-
-using Shared;
-
-namespace Server {
+namespace Shared {
     public class PlayerIngameInfo {
         public string Name { get; set; }
         public int Score { get; set; }

@@ -1,14 +1,12 @@
-
-
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Client.PowerUps;
 using Microsoft.Xna.Framework;
-using Shared;
-using SharpDX.Direct2D1.Effects;
 
-namespace Client {
+using Shared;
+using Client.Network;
+
+namespace Client.Scene {
     public class PlayerInfo {
         public Position Position;
         public int Score;

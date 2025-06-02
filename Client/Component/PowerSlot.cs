@@ -1,7 +1,10 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Shared;
 using System;
+
+using Shared;
+using Client.Scene;
+using Client.ContentHolder;
 
 namespace Client.Component {
     public class PowerSlot : IComponent {

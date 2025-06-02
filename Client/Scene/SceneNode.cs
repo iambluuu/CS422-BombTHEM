@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace Client {
+namespace Client.Scene {
     public class SceneNode {
         private readonly ReaderWriterLockSlim _lock = new();
         private readonly List<SceneNode> _children = [];

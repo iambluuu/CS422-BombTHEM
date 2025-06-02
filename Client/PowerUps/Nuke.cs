@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Server;
+
 using Shared;
+using Client.Scene;
+using Client.Network;
 
 namespace Client.PowerUps {
     public class Nuke(MapRenderInfo map) : PowerUp(map) {

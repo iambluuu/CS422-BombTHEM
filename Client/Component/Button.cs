@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 
+using Client.ContentHolder;
+
 namespace Client.Component {
     public enum StateOfButton {
         Normal,

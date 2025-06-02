@@ -1,8 +1,6 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 
-using Shared;
 using Client.Component;
 
 namespace Client.Animation {

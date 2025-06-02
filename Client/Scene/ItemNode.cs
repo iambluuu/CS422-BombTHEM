@@ -1,10 +1,11 @@
 using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Shared;
 
-namespace Client.PowerUps {
+using Shared;
+using Client.ContentHolder;
+
+namespace Client.Scene {
     public class ItemNode : SceneNode {
         private Texture2D _texture;
         private Vector2 _floatingOffset = new Vector2(0, 0);

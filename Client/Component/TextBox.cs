@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using TextCopy;
 
+using Client.ContentHolder;
+
 namespace Client.Component {
     [Flags]
     public enum CharacterSet {

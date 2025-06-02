@@ -1,9 +1,11 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Shared;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+
+using Client.ContentHolder;
+using Client.Scene;
 
 namespace Client.Component {
     public class Scoreboard : IComponent {

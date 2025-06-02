@@ -9,8 +9,11 @@ using Shared;
 using Client.Component;
 using Client.PowerUps;
 using Client.Handler;
+using Client.Scene;
+using Client.Audio;
+using Client.Network;
 
-namespace Client {
+namespace Client.Screen {
     public class MainGameScreen : GameScreen {
         private readonly object _lock = new();
         private LinearLayout _sidebar;
@@ -70,10 +73,6 @@ namespace Client {
                 _scoreboard.SetDuration(_map.Duration);
                 _scoreboard.SetPlayerData();
             };
-        }
-
-        public override void Deactivate() {
-            base.Deactivate();
         }
 
         public override void Activate() {
