@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -11,6 +12,10 @@ namespace Client.Network {
     public class NetworkManager {
         private static NetworkManager _instance;
         public static NetworkManager Instance => _instance ??= new NetworkManager();
+        private static readonly object _sendlock = new object();
+        private static readonly object _receiveLock = new object();
+        private static Dictionary<string, (int, float)> _sentMessageAverageSize = new Dictionary<string, (int, float)>();
+        private static Dictionary<string, (int, float)> _receivedMessageAverageSize = new Dictionary<string, (int, float)>();
 
         private int _clientId = -1;
         private TcpClient _client;
@@ -152,6 +157,13 @@ namespace Client.Network {
                 string messageString = Encoding.UTF8.GetString(messageData);
 
                 NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                lock (_receiveLock) {
+                    if (_receivedMessageAverageSize.TryGetValue(messageObj.Type.Name, out var sizeInfo)) {
+                        _receivedMessageAverageSize[messageObj.Type.Name] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + messageSize);
+                    } else {
+                        _receivedMessageAverageSize[messageObj.Type.Name] = (1, messageSize);
+                    }
+                }
                 // Console.WriteLine($"Received message from server: {messageString}");
 
                 try {
@@ -208,7 +220,17 @@ namespace Client.Network {
             if (_connected) {
                 try {
                     byte[] data = Encoding.UTF8.GetBytes(message.ToJson() + "|");
+                    // Console.WriteLine($"Message to send: {message.ToJson()}");
+                    lock (_sendlock) {
+                        if (_sentMessageAverageSize.TryGetValue(message.Type.Name, out var sizeInfo)) {
+                            _sentMessageAverageSize[message.Type.Name] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + data.Length);
+                        } else {
+                            _sentMessageAverageSize[message.Type.Name] = (1, data.Length);
+                        }
+                    }
+
                     _stream.Write(data, 0, data.Length);
+                    // Console.WriteLine($"Total packet size: {data.Length}");
                     _stream.Flush();
                 } catch (Exception ex) {
                     Console.WriteLine($"Error sending message: {ex.Message}");
@@ -217,6 +239,17 @@ namespace Client.Network {
             } else {
                 Handlers?.Invoke(NetworkMessage.From(ServerMessageType.NotConnected));
                 Console.WriteLine("Not connected to server");
+            }
+        }
+
+        public static void PrintMessageSize() {
+            Console.WriteLine("Sent message average sizes:");
+            foreach (var kvp in _sentMessageAverageSize) {
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value.Item2 / kvp.Value.Item1} bytes (count: {kvp.Value.Item1})");
+            }
+            Console.WriteLine("Received message average sizes:");
+            foreach (var kvp in _receivedMessageAverageSize) {
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value.Item2 / kvp.Value.Item1} bytes (count: {kvp.Value.Item1})");
             }
         }
 

@@ -8,6 +8,8 @@ using Shared;
 
 namespace Server {
     public class Server {
+        private static int _byteSent = 0;
+        private static int _byteReceived = 0;
         private TcpListener? _server;
         private readonly List<PlayerHandler> _players = [];
         private static readonly Dictionary<int, PlayerHandler> _idToPlayer = [];
@@ -348,6 +350,7 @@ namespace Server {
                 if (delimiterIndex == -1) break;
 
                 int messageSize = delimiterIndex - (int)processedPosition;
+                _byteReceived += messageSize;
 
                 const int MaxMessageSize = 1024 * 1024;
                 if (messageSize > MaxMessageSize) {
@@ -1059,7 +1062,9 @@ namespace Server {
                 } else {
                     ClientHandler client = (ClientHandler)_idToPlayer[playerId];
                     try {
+                        Console.WriteLine($"Message to send: {message.ToJson()}");
                         byte[] data = Encoding.UTF8.GetBytes(message.ToJson() + "|");
+                        _byteSent += data.Length;
                         client.Stream.Write(data, 0, data.Length);
                     } catch (Exception ex) {
                         Console.WriteLine($"Error sending to client {client.PlayerId}: {ex.Message}");
@@ -1146,6 +1151,10 @@ namespace Server {
             Console.WriteLine($"Player {handler.PlayerId} left room {handler.RoomId}");
 
             handler.RoomId = null;
+        }
+        public void PrintNetworkStats() {
+            Console.WriteLine($"Bytes sent:{_byteSent}");
+            Console.WriteLine($"Bytes received:{_byteReceived}");
         }
     }
 }
