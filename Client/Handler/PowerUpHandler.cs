@@ -5,12 +5,13 @@ using System.Text.Json;
 using Shared;
 using Client.PowerUps;
 using Client.Scene;
+using Shared.PacketWriter;
 
 namespace Client.Handler {
 
     public class PowerUpHandler(MapRenderInfo map) : IHandler {
         public void Handle(NetworkMessage message) {
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.PowerUpUsed:
                     PowerUpUsed(message);
                     break;
@@ -23,21 +24,26 @@ namespace Client.Handler {
         }
 
         private void PowerUpUsed(NetworkMessage message) {
-            int slotNum = int.Parse(message.Data["slotNum"]);
+            int slotNum = message.Data[(byte)ServerParams.SlotNum] as byte? ?? -1;
             map.UnlockPowerSlot(slotNum);
-            // Console.WriteLine($"PowerUpUsed: {slotNum} is unlocked");
-            if (message.Data.TryGetValue("invalid", out var invalid) && bool.Parse(invalid.ToString())) {
+
+            if (message.Data.TryGetValue((byte)ServerParams.Invalid, out var invalid) && invalid is bool isInvalid && isInvalid) {
                 return;
             }
-            string powerUpType = message.Data["powerUpType"];
-            Dictionary<string, object> parameters = message.Data["parameters"] != null ? JsonSerializer.Deserialize<Dictionary<string, object>>(message.Data["parameters"]) : new Dictionary<string, object>();
-            PowerUp powerUp = PowerUpFactory.CreatePowerUp(Enum.Parse<PowerName>(powerUpType), map);
-            powerUp.Apply(parameters, slotNum);
+            PowerName powerUpType = message.Data[(byte)ServerParams.PowerUpType] is byte b ? (PowerName)b : PowerName.None;
+
+            PowerUp powerUp = PowerUpFactory.CreatePowerUp(powerUpType, map);
+            powerUp.Apply(message.Data, slotNum);
         }
 
         private void PowerUpExpired(NetworkMessage message) {
-            int playerId = int.Parse(message.Data["playerId"]);
-            PowerName powerType = Enum.Parse<PowerName>(message.Data["powerUpType"]);
+            int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+            PowerName powerType = message.Data[(byte)ServerParams.PowerUpType] is byte b ? (PowerName)b : PowerName.None;
+
+            if (playerId == -1 || powerType == PowerName.None) {
+                throw new Exception("Invalid power-up expiration data received.");
+            }
+
             map.PowerUpExpired(playerId, powerType);
         }
     }

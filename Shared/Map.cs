@@ -1,5 +1,5 @@
 namespace Shared {
-    public enum PowerName {
+    public enum PowerName : byte {
         None,
         MoreBombs,
         Nuke,
@@ -7,26 +7,26 @@ namespace Shared {
         Teleport,
     }
 
-    public enum TileType {
+    public enum TileType : byte {
         Empty,
         Wall,
         Grass,
     }
 
-    public enum BombType {
+    public enum BombType : byte {
         Normal,
         Special,
         Nuke
     }
 
-    public enum PlayerSkin {
+    public enum PlayerSkin : byte {
         NinjaBlue,
         NinjaGreen,
         NinjaRed,
         NinjaYellow,
     }
 
-    public enum Direction {
+    public enum Direction : byte {
         Down,
         Up,
         Left,

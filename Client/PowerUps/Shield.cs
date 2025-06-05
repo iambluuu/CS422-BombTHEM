@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Shared;
 using Client.Scene;
 using Client.Network;
+using Shared.PacketWriter;
+using System;
 
 namespace Client.PowerUps {
     public class Shield(MapRenderInfo map) : PowerUp(map) {
@@ -10,29 +12,18 @@ namespace Client.PowerUps {
 
         public override PowerName PowerName => PowerName.Shield;
 
-        public override void Apply(Dictionary<string, object> parameters, int slotNum) {
+        public override void Apply(Dictionary<byte, object> parameters, int slotNum) {
             base.Apply(parameters, slotNum);
-            bool needToChange = bool.Parse(parameters["needToChange"].ToString());
+            bool needToChange = parameters[(byte)ServerParams.NeedToChange] is bool change ? change : throw new ArgumentException("needToChange must be a boolean.");
             if (!needToChange) {
                 return;
             }
 
-            int playerId = int.Parse(parameters["playerId"].ToString());
+            int playerId = parameters[(byte)ServerParams.PlayerId] is int id ? id : throw new ArgumentException("PlayerId must be an integer.");
             if (playerId == NetworkManager.Instance.ClientId) {
                 map.AddActivePowerUp(PowerName.Shield);
             }
-            map.AddPlayerVFX(int.Parse(playerId.ToString()), PowerName.Shield);
+            map.AddPlayerVFX(playerId, PowerName.Shield);
         }
-
-        // public override void Remove(SceneNode target) {
-        //     if (target is not PlayerNode) {
-        //         throw new ArgumentException("Target must be a PlayerNode.");
-        //     }
-
-        //     if (_activeEffects.TryGetValue((PlayerNode)target, out VFXNode vfx)) {
-        //         target.DetachChild(vfx);
-        //         _activeEffects.Remove((PlayerNode)target);
-        //     }
-        // }
     }
 }

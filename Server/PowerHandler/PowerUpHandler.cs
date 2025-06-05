@@ -1,5 +1,6 @@
 
 using Shared;
+using Shared.PacketWriter;
 
 namespace Server.PowerHandler {
     public static class PowerUpHandlerFactory {
@@ -18,11 +19,11 @@ namespace Server.PowerHandler {
     public abstract class PowerUpHandler {
         public abstract PowerName PowerName { get; }
         public static PowerUpHandler? Instance { get; private set; }
-        public virtual Dictionary<string, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters, int slotNum) {
+        public virtual Dictionary<byte, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
             map.UsePowerUp(playerId, PowerName, slotNum);
             return null;
         }
 
-        public virtual Dictionary<string, object>? Use(Map map, int playerId, Dictionary<string, object>? parameters = null) { return null; }
+        public virtual Dictionary<byte, object>? Use(Map map, int playerId, Dictionary<string, object>? parameters = null) { return null; }
     }
 }

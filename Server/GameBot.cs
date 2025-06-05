@@ -1,11 +1,13 @@
+using System.Text.Json;
 using Shared;
+using Shared.PacketWriter;
 
 namespace Server {
     public class GameBot {
         private int _botId;
         private string _roomId;
         private Map _map = null!;
-        private Action<int, NetworkMessage>? _sendToSerer;
+        private Action<int, NetworkMessage>? _sendToServer;
         private Thread _thread;
         private CancellationTokenSource _cts;
         bool _isGameStarted = false;
@@ -25,7 +27,7 @@ namespace Server {
         public GameBot(int botId, string roomId, Action<int, NetworkMessage> sendToServer) {
             _botId = botId;
             _roomId = roomId;
-            _sendToSerer = sendToServer;
+            _sendToServer = sendToServer;
 
             _cts = new CancellationTokenSource();
             _thread = new Thread(Run) {
@@ -59,15 +61,15 @@ namespace Server {
 
                 if (movableDirections.Count != 0) {
                     SendToServer(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
-                        { "direction", ((Direction)Utils.randomList(movableDirections)).ToString() },
+                        { (byte)ClientParams.Direction, (byte)Utils.randomList(movableDirections)},
                     }));
                 }
 
                 if ((DateTime.Now - _startTime).TotalMilliseconds > 1000 && (Utils.RandomInt(10) == 0 || movableDirections.Count == 0)) {
                     SendToServer(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
-                        {"x", _map.PlayerInfos[BotId].Position.X.ToString() },
-                        {"y", _map.PlayerInfos[BotId].Position.Y.ToString() },
-                        {"type", BombType.Normal.ToString() },
+                        { (byte)ClientParams.X, (ushort)_map.PlayerInfos[BotId].Position.X },
+                        { (byte)ClientParams.Y, (ushort)_map.PlayerInfos[BotId].Position.Y },
+                        { (byte)ClientParams.BombType, BombType.Normal },
                     }));
                 }
 
@@ -80,7 +82,7 @@ namespace Server {
         }
 
         private void SendToServer(NetworkMessage message) {
-            _sendToSerer?.Invoke(_botId, message);
+            _sendToServer?.Invoke(_botId, message);
         }
 
         public void HandleResponse(NetworkMessage message) {
@@ -88,16 +90,16 @@ namespace Server {
                 return;
             }
 
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.GameStarted: {
                         SendToServer(NetworkMessage.From(ClientMessageType.GetGameInfo));
                     }
                     break;
                 case ServerMessageType.GameInfo: {
-                        _map = Map.FromString(message.Data["map"]);
-                        int playerCount = int.Parse(message.Data["playerCount"]);
-                        int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
-                        Position[] playerPositions = Array.ConvertAll(message.Data["playerPositions"].Split(';'), Position.FromString);
+                        _map = Map.FromString(message.Data[(byte)ServerParams.Map] as string ?? string.Empty);
+                        int playerCount = message.Data[(byte)ServerParams.PlayerCount] as int? ?? 0;
+                        int[] playerIds = message.Data[(byte)ServerParams.PlayerIds] as int[] ?? Array.Empty<int>();
+                        Position[] playerPositions = message.Data[(byte)ServerParams.Positions] as Position[] ?? Array.Empty<Position>();
 
                         for (int i = 0; i < playerCount; i++) {
                             int playerId = playerIds[i];
@@ -111,41 +113,60 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.PlayerMoved: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        Direction direction = Enum.Parse<Direction>(message.Data["d"]);
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+                        int x = message.Data[(byte)ServerParams.X] as int? ?? -1;
+                        int y = message.Data[(byte)ServerParams.Y] as int? ?? -1;
+
+                        if (playerId == -1 || x < 0 || y < 0) {
+                            Console.WriteLine($"[Bot]Invalid player move data: {x} {y} {JsonSerializer.Serialize(message.Data)}");
+                            break;
+                        }
+
                         _map.SetPlayerPosition(playerId, x, y);
                     }
                     break;
                 case ServerMessageType.PlayerLeft: {
-                        int playerId = int.Parse(message.Data["playerId"]);
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+                        if (playerId == -1) {
+                            Console.WriteLine($"[Bot]Invalid player left data: {playerId} {JsonSerializer.Serialize(message.Data)}");
+                            break;
+                        }
+
                         if (_isGameStarted) {
                             _map.PlayerInfos.Remove(playerId);
                         }
                     }
                     break;
                 case ServerMessageType.BombPlaced: {
-                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                        if (message.Data.TryGetValue((byte)ServerParams.Invalid, out var invalid) && invalid is bool isInvalid && isInvalid) {
                             break;
                         }
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        BombType type = Enum.Parse<BombType>(message.Data["type"]);
+                        int x = message.Data[(byte)ServerParams.X] as int? ?? -1;
+                        int y = message.Data[(byte)ServerParams.Y] as int? ?? -1;
+                        BombType type = message.Data.TryGetValue((byte)ServerParams.BombType, out var bombType) ? (BombType)bombType : BombType.Normal;
+                        if (x < 0 || y < 0) {
+                            Console.WriteLine($"[Bot]Invalid bomb placement data: {x}, {y}, {JsonSerializer.Serialize(message.Data)}");
+                            break;
+                        }
+
                         _map.AddBomb(x, y, type);
                     }
                     break;
                 case ServerMessageType.BombExploded: {
-                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                        if (message.Data.TryGetValue((byte)ServerParams.Invalid, out var invalid) && invalid is bool isInvalid && isInvalid) {
                             break;
                         }
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
-                        string[] positions = message.Data["positions"].Split(';');
+                        int x = message.Data[(byte)ServerParams.X] as int? ?? -1;
+                        int y = message.Data[(byte)ServerParams.Y] as int? ?? -1;
+                        if (x < 0 || y < 0) {
+                            Console.WriteLine($"[Bot]Invalid bomb explosion data: {x}, {y}, {JsonSerializer.Serialize(message.Data)}");
+                            break;
+                        }
+                        Position[] positions = message.Data[(byte)ServerParams.Positions] as Position[] ?? Array.Empty<Position>();
 
                         foreach (var pos in positions) {
-                            int ex = Position.FromString(pos).X;
-                            int ey = Position.FromString(pos).Y;
+                            int ex = pos.X;
+                            int ey = pos.Y;
                             _map.SetTile(ex, ey, TileType.Empty);
                         }
 
@@ -153,9 +174,15 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.PlayerDied: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        int x = int.Parse(message.Data["x"]);
-                        int y = int.Parse(message.Data["y"]);
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+                        int x = message.Data[(byte)ServerParams.X] as int? ?? -1;
+                        int y = message.Data[(byte)ServerParams.Y] as int? ?? -1;
+
+                        if (x < 0 || y < 0 || playerId < 0) {
+                            Console.WriteLine($"[Bot]Invalid player death data: {message.Data}");
+                            break;
+                        }
+
                         _map.SetPlayerPosition(playerId, x, y);
                     }
                     break;
@@ -164,7 +191,7 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.PowerUpUsed: {
-                        if (message.Data.TryGetValue("invalid", out var invalid) && bool.TryParse(invalid, out bool isInvalid) && isInvalid) {
+                        if (message.Data.TryGetValue((byte)ServerParams.Invalid, out var invalid) && invalid is bool isInvalid && isInvalid) {
                             break;
                         }
 

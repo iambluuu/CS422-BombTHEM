@@ -7,6 +7,7 @@ using Client.PowerUps;
 using Client.ContentHolder;
 using Client.Scene;
 using Client.Network;
+using System;
 
 namespace Client.Component {
     public class MapComponent : IComponent {
@@ -275,6 +276,7 @@ namespace Client.Component {
                     PlayerNode playerNode = new(TextureHolder.Get($"Character/{playerInfo.SkinId}"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
                         Position = new Vector2(playerInfo.Position.Y * GameValues.TILE_SIZE, playerInfo.Position.X * GameValues.TILE_SIZE)
                     };
+                    Console.WriteLine($"Player {playerId} at {playerInfo.Position.X}, {playerInfo.Position.Y}, skin: {playerInfo.SkinId}");
                     _playerNodes[playerId] = playerNode;
                     _playerLayer.AttachChild(playerNode);
                 }

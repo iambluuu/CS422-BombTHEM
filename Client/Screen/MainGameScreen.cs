@@ -12,6 +12,7 @@ using Client.Handler;
 using Client.Scene;
 using Client.Audio;
 using Client.Network;
+using Shared.PacketWriter;
 
 namespace Client.Screen {
     public class MainGameScreen : GameScreen {
@@ -83,7 +84,7 @@ namespace Client.Screen {
         public override void HandleResponse(NetworkMessage message) {
             base.HandleResponse(message);
 
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.GameStopped: {
                         ScreenManager.Instance.NavigateTo(ScreenName.EndGameScreen, isOverlay: true, new(){
                             { "skinMapping", _map.GetSkinMapping() },
@@ -92,7 +93,7 @@ namespace Client.Screen {
                     break;
                 default:
                     try {
-                        HandlerFactory.CreateHandler(_map, Enum.Parse<ServerMessageType>(message.Type.Name)).Handle(message);
+                        HandlerFactory.CreateHandler(_map, (ServerMessageType)message.Type.Name).Handle(message);
                     } catch (Exception ex) {
                         Console.WriteLine($"Error handling message {message.Type.Name}: {ex.Message}");
                     }
@@ -153,7 +154,7 @@ namespace Client.Screen {
             if (direction != Direction.None) {
                 _map.MovePlayer(playerId, direction);
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.MovePlayer, new() {
-                    { "direction", direction.ToString() }
+                    { (byte)ClientParams.Direction, direction }
                 }));
             }
         }
@@ -190,9 +191,9 @@ namespace Client.Screen {
                 }
 
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.PlaceBomb, new() {
-                    { "x", nearestCell.X.ToString() },
-                    { "y", nearestCell.Y.ToString() },
-                    { "type", type.ToString() },
+                    { (byte)ClientParams.X, nearestCell.X },
+                    { (byte)ClientParams.Y, nearestCell.Y },
+                    { (byte)ClientParams.BombType, type },
                 }));
             }
         }
@@ -205,15 +206,13 @@ namespace Client.Screen {
             var power = powerSlots[slotNum];
             if (power.Item1 != PowerName.None && power.Item2 > 0 && _map.LockPowerSlot(slotNum)) {
                 PowerUp powerUp = PowerUpFactory.CreatePowerUp(power.Item1, _map);
-                Dictionary<string, object> parameters = powerUp.Use();
-                if (parameters == null) {
+                if (!powerUp.CanUse()) {
                     _map.UnlockPowerSlot(slotNum);
                     return;
                 }
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
-                    { "powerUpType", power.Item1.ToString() },
-                    { "slotNum", slotNum.ToString() },
-                    { "parameters", JsonSerializer.Serialize(parameters) },
+                    { (byte)ClientParams.PowerUpType, power.Item1 },
+                    { (byte)ClientParams.SlotNum, slotNum }
                 }));
             }
         }

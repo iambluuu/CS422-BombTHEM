@@ -5,6 +5,7 @@ using Shared;
 using Client.Component;
 using Client.Network;
 using Client.Audio;
+using Shared.PacketWriter;
 
 namespace Client.Screen {
     public class JoinGameScreen : GameScreen {
@@ -79,7 +80,7 @@ namespace Client.Screen {
             string roomId = _roomIdBox.Text.ToUpperInvariant();
             if (ValidateRoomCode(roomId)) {
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.JoinRoom, new() {
-                    {"roomId", roomId }
+                    { (byte)ClientParams.RoomId, roomId }
                 }));
             } else {
                 ToastManager.Instance.ShowToast("Code length must be 6");
@@ -93,7 +94,7 @@ namespace Client.Screen {
         public override void HandleResponse(NetworkMessage message) {
             base.HandleResponse(message);
 
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.RoomJoined: {
                         ScreenManager.Instance.StartLoading();
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen);
@@ -101,7 +102,7 @@ namespace Client.Screen {
                     break;
                 case ServerMessageType.Error: {
                         ScreenManager.Instance.StopLoading();
-                        ToastManager.Instance.ShowToast(message.Data["message"]);
+                        ToastManager.Instance.ShowToast($"Error: {message.Data[(byte)ServerParams.Message] as string ?? "Unknown error"}");
                     }
                     break;
             }

@@ -156,12 +156,14 @@ namespace Client.Network {
                 Array.Copy(bufferData, processedPosition, messageData, 0, messageSize);
                 string messageString = Encoding.UTF8.GetString(messageData);
 
-                NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                // NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                NetworkMessage messageObj = NetworkMessage.FromBytes(messageData);
                 lock (_receiveLock) {
-                    if (_receivedMessageAverageSize.TryGetValue(messageObj.Type.Name, out var sizeInfo)) {
-                        _receivedMessageAverageSize[messageObj.Type.Name] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + messageSize);
+                    string messageType = ((ServerMessageType)messageObj.Type.Name).ToString();
+                    if (_receivedMessageAverageSize.TryGetValue(messageType, out var sizeInfo)) {
+                        _receivedMessageAverageSize[messageType] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + messageSize);
                     } else {
-                        _receivedMessageAverageSize[messageObj.Type.Name] = (1, messageSize);
+                        _receivedMessageAverageSize[messageType] = (1, messageSize);
                     }
                 }
                 // Console.WriteLine($"Received message from server: {messageString}");
@@ -171,7 +173,7 @@ namespace Client.Network {
                     if (messageObj.Type.Direction != MessageDirection.Server) {
                         Console.WriteLine("The received message must be from the server side");
                     } else {
-                        if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
+                        if (messageObj.Type.Name == (byte)ServerMessageType.Pong) {
                             _pingReceived = true;
                             DateTime now = DateTime.Now;
                             Ping = (int)(now - _lastPing).TotalMilliseconds;
@@ -219,13 +221,13 @@ namespace Client.Network {
 
             if (_connected) {
                 try {
-                    byte[] data = Encoding.UTF8.GetBytes(message.ToJson() + "|");
-                    // Console.WriteLine($"Message to send: {message.ToJson()}");
+                    byte[] data = message.ToBytes();
                     lock (_sendlock) {
-                        if (_sentMessageAverageSize.TryGetValue(message.Type.Name, out var sizeInfo)) {
-                            _sentMessageAverageSize[message.Type.Name] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + data.Length);
+                        string messageType = ((ClientMessageType)message.Type.Name).ToString();
+                        if (_sentMessageAverageSize.TryGetValue(messageType, out var sizeInfo)) {
+                            _sentMessageAverageSize[messageType] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + data.Length);
                         } else {
-                            _sentMessageAverageSize[message.Type.Name] = (1, data.Length);
+                            _sentMessageAverageSize[messageType] = (1, data.Length);
                         }
                     }
 
