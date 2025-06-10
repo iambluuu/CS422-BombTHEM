@@ -9,6 +9,7 @@ using Client.Component;
 using Client.Animation;
 using Client.Network;
 using Client.Audio;
+using Shared.PacketWriter;
 
 namespace Client.Screen {
     public class EndGameScreen : GameScreen {
@@ -64,25 +65,25 @@ namespace Client.Screen {
         public override void HandleResponse(NetworkMessage message) {
             base.HandleResponse(message);
 
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.RoomJoined: {
                         ScreenManager.Instance.NavigateTo(ScreenName.LobbyScreen, isOverlay: false);
                     }
                     break;
                 case ServerMessageType.GameResults: {
-                        string[] playerIds = message.Data["playerIds"].Split(';');
-                        string[] playerNames = message.Data["usernames"].Split(';');
-                        int[] playerScores = Array.ConvertAll(message.Data["scores"].Split(';'), int.Parse);
+                        int[] playerIds = message.Data[(byte)ServerParams.PlayerIds] as int[] ?? Array.Empty<int>();
+                        ushort[] playerScores = message.Data[(byte)ServerParams.Scores] as ushort[] ?? Array.Empty<ushort>();
+                        string[] playerNames = message.Data[(byte)ServerParams.Usernames] as string[] ?? Array.Empty<string>();
                         _gameResults = new (int, string, int)[playerIds.Length];
                         for (int i = 0; i < playerIds.Length; i++) {
-                            _gameResults[i] = (int.Parse(playerIds[i]), playerNames[i], playerScores[i]);
+                            _gameResults[i] = (playerIds[i], playerNames[i], playerScores[i]);
                         }
 
                         OnResultsArrived();
                     }
                     break;
                 case ServerMessageType.Error: {
-                        Console.WriteLine($"Error: {message.Data["message"]}");
+                        Console.WriteLine($"Error: {message.Data[(byte)ServerParams.Message] as string ?? "Unknown error"}");
                     }
                     break;
             }

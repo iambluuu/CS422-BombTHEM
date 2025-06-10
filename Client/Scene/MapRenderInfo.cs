@@ -226,13 +226,13 @@ namespace Client.Scene {
             }
         }
 
-        public void BombExploded(int x, int y, string[] positions, int byPlayerId, bool isCounted) {
+        public void BombExploded(int x, int y, Position[] positions, int byPlayerId, bool isCounted) {
             lock (_lock) {
                 RemovedBomb.Add((x, y));
                 BombPosition.Remove((x, y));
                 foreach (var pos in positions) {
-                    int ex = Position.FromString(pos).X;
-                    int ey = Position.FromString(pos).Y;
+                    int ex = pos.X;
+                    int ey = pos.Y;
                     NewExplosion.Add((ex, ey));
                     if (Tiles[ex, ey] == TileType.Grass) {
                         Tiles[ex, ey] = TileType.Empty;

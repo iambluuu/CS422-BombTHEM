@@ -2,12 +2,14 @@ using System;
 
 using Shared;
 using Client.Scene;
+using Shared.PacketWriter;
+using Client.Network;
 
 namespace Client.Handler {
 
     public class PlayerHandler(MapRenderInfo map) : IHandler {
         public void Handle(NetworkMessage message) {
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.PlayerMoved:
                     PlayerMoved(message);
                     break;
@@ -24,19 +26,28 @@ namespace Client.Handler {
         }
 
         private void PlayerMoved(NetworkMessage message) {
-            int playerId = int.Parse(message.Data["playerId"]);
-            int x = int.Parse(message.Data["x"]);
-            int y = int.Parse(message.Data["y"]);
-            Direction direction = Enum.Parse<Direction>(message.Data["d"]);
+            int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+            int x = message.Data[(byte)ServerParams.X] as ushort? ?? -1;
+            int y = message.Data[(byte)ServerParams.Y] as ushort? ?? -1;
+            Direction direction = message.Data[(byte)ServerParams.Direction] is byte b ? (Direction)b : Direction.None;
+
+            // if (playerId != NetworkManager.Instance.ClientId) {
+            //     Console.WriteLine($"[PlayerHandler] Player {playerId} moved to ({x}, {y}) in direction {direction}");
+            // }
+
+            if (playerId == -1 || x < 0 || y < 0 || direction == Direction.None) {
+                Console.WriteLine($"Invalid player move data: {message.Data}");
+                return;
+            }
 
             map.MovePlayer(playerId, x, y, direction);
         }
 
         private void PlayerDied(NetworkMessage message) {
-            int playerId = int.Parse(message.Data["playerId"]);
-            int byPlayerId = int.Parse(message.Data["byPlayerId"]);
-            int x = int.Parse(message.Data["x"]);
-            int y = int.Parse(message.Data["y"]);
+            int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+            int byPlayerId = message.Data[(byte)ServerParams.ByPlayerId] as int? ?? -1;
+            int x = message.Data[(byte)ServerParams.X] as ushort? ?? -1;
+            int y = message.Data[(byte)ServerParams.Y] as ushort? ?? -1;
 
             map.KillPlayer(playerId);
             map.TeleportPlayer(playerId, x, y);
@@ -44,7 +55,7 @@ namespace Client.Handler {
         }
 
         private void PlayerLeft(NetworkMessage message) {
-            int playerId = int.Parse(message.Data["playerId"]);
+            int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
             map.RemovePlayer(playerId);
         }
     }

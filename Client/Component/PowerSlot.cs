@@ -81,39 +81,6 @@ namespace Client.Component {
             _leftMargin = (Size.X - _slotSize * 2 - Spacing) / 2;
         }
 
-        // public void UsePower(char key) {
-        //     int index = key switch {
-        //         'Q' => 0,
-        //         'E' => 1,
-        //         _ => -1,
-        //     };
-
-        //     if (index < 0 || index >= _powers.Length) {
-        //         throw new ArgumentOutOfRangeException(nameof(index), "Index is out of range.");
-        //     }
-
-        //     // Console.WriteLine($"Using power: {_powers[index]}");
-
-        //     if (_powers[index].Item1 != PowerName.None) {
-        //         NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.UsePowerUp, new() {
-        //             { "powerUpType", _powers[index].ToString() },
-        //         }));
-        //     }
-        // }
-
-        // public void PowerUpUsed(PowerName power) {
-        //     for (int i = 0; i < _powers.Length; i++) {
-        //         if (_powers[i].Item1 == power) {
-        //             _powers[i].Item2--;
-        //             if (_powers[i].Item2 == 0) {
-        //                 _powers[i] = (PowerName.None, 0);
-        //             }
-        //             break;
-        //         }
-        //     }
-        // }
-
-
         public override void Update(GameTime gameTime) {
             if (map == null || !map.IsInitialized) {
                 return;

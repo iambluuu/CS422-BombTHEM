@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Shared;
 using Client.Scene;
 using Client.Network;
+using Shared.PacketWriter;
 
 namespace Client.PowerUps {
     public class Nuke(MapRenderInfo map) : PowerUp(map) {
@@ -11,8 +12,8 @@ namespace Client.PowerUps {
 
         public override PowerName PowerName => PowerName.Nuke;
 
-        public override void Apply(Dictionary<string, object> parameters, int slotNum = -1) {
-            int playerId = int.Parse(parameters["playerId"].ToString());
+        public override void Apply(Dictionary<byte, object> parameters, int slotNum = -1) {
+            int playerId = parameters[(byte)ServerParams.PlayerId] is int id ? id : throw new ArgumentException("PlayerId must be an integer.");
             if (playerId == NetworkManager.Instance.ClientId) {
                 if (map.HasActivePowerUp(PowerName.Nuke)) {
                     // Console.WriteLine("Nuke already activated, slotNum: " + slotNum);
@@ -25,25 +26,11 @@ namespace Client.PowerUps {
                 map.ActivatePowerUp(slotNum);
                 map.AddActivePowerUp(PowerName.Nuke);
             }
-            map.AddPlayerVFX(int.Parse(playerId.ToString()), PowerName.Nuke);
+            map.AddPlayerVFX(playerId, PowerName.Nuke);
         }
 
-        public override Dictionary<string, object> Use() {
-            // Position nearestCell = map.GetNearestCell();
-            // if (nearestCell != null) {
-            //     if (map.BombCount >= GameplayConfig.MaxBombs && !map.HasActivePowerUp(PowerName.MoreBombs) && !map.LockTile(nearestCell.X, nearestCell.Y)) {
-            //         return null;
-            //     }
-
-            //     return new() {
-            //         { "x", nearestCell.X.ToString() },
-            //         { "y", nearestCell.Y.ToString() },
-            //     };
-            // }
-            if (map.HasActivePowerUp(PowerName.Nuke)) {
-                return null;
-            }
-            return new Dictionary<string, object>();
+        public override bool CanUse() {
+            return !map.HasActivePowerUp(PowerName.Nuke);
         }
     }
 }

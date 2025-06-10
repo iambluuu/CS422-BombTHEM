@@ -7,6 +7,7 @@ using Client.Component;
 using Client.ContentHolder;
 using Client.Network;
 using Client.Audio;
+using Shared.PacketWriter;
 
 namespace Client.Screen {
     public class LobbyScreen : GameScreen {
@@ -229,7 +230,7 @@ namespace Client.Screen {
             }
 
             NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.KickPlayer, new() {
-                { "playerId", _playerIds[index].ToString() },
+                { (byte)ClientParams.PlayerId, _playerIds[index] },
             }));
         }
 
@@ -280,14 +281,14 @@ namespace Client.Screen {
         public override void HandleResponse(NetworkMessage message) {
             base.HandleResponse(message);
 
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.RoomInfo: {
-                        _roomIdText.Text = $"Room {message.Data["roomId"]}";
-                        int[] playerIds = Array.ConvertAll(message.Data["playerIds"].Split(';'), int.Parse);
-                        string[] usernames = message.Data["usernames"].Split(';');
-                        int hostId = int.Parse(message.Data["hostId"]);
-                        _isHost = bool.Parse(message.Data["isHost"]);
-                        bool[] inGames = Array.ConvertAll(message.Data["inGames"].Split(';'), bool.Parse);
+                        _roomIdText.Text = $"Room {message.Data[(byte)ServerParams.RoomId] as string ?? "Unknown"}";
+                        int[] playerIds = message.Data[(byte)ServerParams.PlayerIds] as int[] ?? Array.Empty<int>();
+                        string[] usernames = message.Data[(byte)ServerParams.Usernames] as string[] ?? Array.Empty<string>();
+                        bool[] inGames = message.Data[(byte)ServerParams.InGames] as bool[] ?? Array.Empty<bool>();
+                        int hostId = message.Data[(byte)ServerParams.HostId] as int? ?? -1;
+                        _isHost = message.Data[(byte)ServerParams.IsHost] as bool? ?? false;
 
                         for (int i = 0; i < playerIds.Length; i++) {
                             _playerIds[i] = playerIds[i];
@@ -315,8 +316,8 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.UsernameSet: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        string username = message.Data["username"];
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+                        string username = message.Data[(byte)ServerParams.Username] as string ?? "Player";
 
                         if (playerId == NetworkManager.Instance.ClientId) {
                             return;
@@ -337,8 +338,9 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.PlayerJoined: {
-                        int playerId = int.Parse(message.Data["playerId"]);
-                        string username = message.Data["username"];
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+                        string username = message.Data[(byte)ServerParams.Username] as string ?? "Player";
+
                         for (int i = 0; i < 4; i++) {
                             if (_playerIds[i] == -1) {
                                 _playerIds[i] = playerId;
@@ -352,7 +354,7 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.PlayerLeft: {
-                        int playerId = int.Parse(message.Data["playerId"]);
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
                         for (int i = 0; i < 4; i++) {
                             if (playerId == _playerIds[i]) {
                                 _playerIds[i] = -1;
@@ -381,7 +383,7 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.GameLeft: {
-                        int playerId = int.Parse(message.Data["playerId"]);
+                        int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
 
                         for (int i = 0; i < 4; i++) {
                             if (playerId == _playerIds[i]) {
@@ -394,7 +396,7 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.NewHost: {
-                        int newHostId = int.Parse(message.Data["hostId"]);
+                        int newHostId = message.Data[(byte)ServerParams.HostId] as int? ?? -1;
                         if (newHostId == NetworkManager.Instance.ClientId) {
                             _isHost = true;
                         } else {
@@ -422,7 +424,7 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.Error: {
-                        ToastManager.Instance.ShowToast(message.Data["message"]);
+                        ToastManager.Instance.ShowToast(message.Data[(byte)ServerParams.Message] as string ?? "Unknown error");
                     }
                     break;
             }
@@ -448,7 +450,7 @@ namespace Client.Screen {
             if (!myUsernameBox.IsFocused && _currentName != myUsernameBox.Text) {
                 _currentName = myUsernameBox.Text;
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.SetUsername, new() {
-                    { "username", _currentName }
+                    { (byte)ClientParams.Username, _currentName }
                 }));
             }
         }

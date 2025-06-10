@@ -6,6 +6,7 @@ using Client.Component;
 using Client.ContentHolder;
 using Client.Network;
 using Client.Audio;
+using Shared.PacketWriter;
 
 namespace Client.Screen {
     public class MainMenuScreen : GameScreen {
@@ -183,8 +184,9 @@ namespace Client.Screen {
         }
 
         public override void HandleResponse(NetworkMessage message) {
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.Connected: {
+                        Console.WriteLine("Getting ClientId");
                         NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetClientId));
                     }
                     break;
@@ -198,15 +200,16 @@ namespace Client.Screen {
                     }
                     break;
                 case ServerMessageType.ClientId: {
+                        Console.WriteLine($"Connected with ClientId: {message.Data[(byte)ServerParams.PlayerId] as int? ?? 0}");
                         _connectLayout.IsVisible = false;
                         _connectButton.IsEnabled = false;
                         _mainLayout.IsVisible = true;
-                        NetworkManager.Instance.ClientId = int.Parse(message.Data["clientId"]);
+                        NetworkManager.Instance.ClientId = message.Data[(byte)ServerParams.PlayerId] as int? ?? 0;
                         ToastManager.Instance.ShowToast($"Connected to server");
                     }
                     break;
                 case ServerMessageType.UsernameSet: {
-                        _usernameBox.Text = message.Data["username"];
+                        _usernameBox.Text = message.Data[(byte)ServerParams.Username] as string ?? "Player";
                         _currentName = _usernameBox.Text;
                     }
                     break;
@@ -233,7 +236,7 @@ namespace Client.Screen {
             if (NetworkManager.Instance.IsConnected && !_usernameBox.IsFocused && _currentName != _usernameBox.Text) {
                 _currentName = _usernameBox.Text;
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.SetUsername, new() {
-                    { "username", _currentName }
+                    { (byte)ClientParams.Username, _currentName }
                 }));
             }
         }

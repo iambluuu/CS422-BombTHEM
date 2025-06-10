@@ -243,7 +243,7 @@ namespace Client.Screen {
         public virtual void LoadParameters(Dictionary<string, object> parameters) { }
 
         public virtual void HandleResponse(NetworkMessage message) {
-            switch (Enum.Parse<ServerMessageType>(message.Type.Name)) {
+            switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.NotConnected: {
                         ScreenManager.Instance.NavigateToRoot();
                     }

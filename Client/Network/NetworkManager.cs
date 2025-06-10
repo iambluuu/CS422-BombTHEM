@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -11,6 +12,10 @@ namespace Client.Network {
     public class NetworkManager {
         private static NetworkManager _instance;
         public static NetworkManager Instance => _instance ??= new NetworkManager();
+        private static readonly object _sendlock = new object();
+        private static readonly object _receiveLock = new object();
+        private static Dictionary<string, (int, float)> _sentMessageAverageSize = new Dictionary<string, (int, float)>();
+        private static Dictionary<string, (int, float)> _receivedMessageAverageSize = new Dictionary<string, (int, float)>();
 
         private int _clientId = -1;
         private TcpClient _client;
@@ -151,7 +156,16 @@ namespace Client.Network {
                 Array.Copy(bufferData, processedPosition, messageData, 0, messageSize);
                 string messageString = Encoding.UTF8.GetString(messageData);
 
-                NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                // NetworkMessage messageObj = NetworkMessage.FromJson(messageString);
+                NetworkMessage messageObj = NetworkMessage.FromBytes(messageData);
+                lock (_receiveLock) {
+                    string messageType = ((ServerMessageType)messageObj.Type.Name).ToString();
+                    if (_receivedMessageAverageSize.TryGetValue(messageType, out var sizeInfo)) {
+                        _receivedMessageAverageSize[messageType] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + messageSize);
+                    } else {
+                        _receivedMessageAverageSize[messageType] = (1, messageSize);
+                    }
+                }
                 // Console.WriteLine($"Received message from server: {messageString}");
 
                 try {
@@ -159,7 +173,7 @@ namespace Client.Network {
                     if (messageObj.Type.Direction != MessageDirection.Server) {
                         Console.WriteLine("The received message must be from the server side");
                     } else {
-                        if (messageObj.Type.Name == ServerMessageType.Pong.ToString()) {
+                        if (messageObj.Type.Name == (byte)ServerMessageType.Pong) {
                             _pingReceived = true;
                             DateTime now = DateTime.Now;
                             Ping = (int)(now - _lastPing).TotalMilliseconds;
@@ -207,8 +221,18 @@ namespace Client.Network {
 
             if (_connected) {
                 try {
-                    byte[] data = Encoding.UTF8.GetBytes(message.ToJson() + "|");
+                    byte[] data = message.ToBytes();
+                    lock (_sendlock) {
+                        string messageType = ((ClientMessageType)message.Type.Name).ToString();
+                        if (_sentMessageAverageSize.TryGetValue(messageType, out var sizeInfo)) {
+                            _sentMessageAverageSize[messageType] = (sizeInfo.Item1 + 1, sizeInfo.Item2 + data.Length);
+                        } else {
+                            _sentMessageAverageSize[messageType] = (1, data.Length);
+                        }
+                    }
+
                     _stream.Write(data, 0, data.Length);
+                    // Console.WriteLine($"Total packet size: {data.Length}");
                     _stream.Flush();
                 } catch (Exception ex) {
                     Console.WriteLine($"Error sending message: {ex.Message}");
@@ -217,6 +241,17 @@ namespace Client.Network {
             } else {
                 Handlers?.Invoke(NetworkMessage.From(ServerMessageType.NotConnected));
                 Console.WriteLine("Not connected to server");
+            }
+        }
+
+        public static void PrintMessageSize() {
+            Console.WriteLine("Sent message average sizes:");
+            foreach (var kvp in _sentMessageAverageSize) {
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value.Item2 / kvp.Value.Item1} bytes (count: {kvp.Value.Item1})");
+            }
+            Console.WriteLine("Received message average sizes:");
+            foreach (var kvp in _receivedMessageAverageSize) {
+                Console.WriteLine($"  {kvp.Key}: {kvp.Value.Item2 / kvp.Value.Item1} bytes (count: {kvp.Value.Item1})");
             }
         }
 

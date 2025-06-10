@@ -59,6 +59,7 @@ namespace Client {
             TextureHolder.UnloadAll();
             FontHolder.UnloadAll();
             AudioHolder.UnloadAll();
+            NetworkManager.PrintMessageSize();
             NetworkManager.Instance.Disconnect();
         }
     }
