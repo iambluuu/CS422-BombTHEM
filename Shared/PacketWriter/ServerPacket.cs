@@ -194,10 +194,10 @@ namespace Shared.PacketWriter {
                         break;
                     // Expect ushort array
                     case ServerParams.Scores:
-                        var scores = (ushort[])item.Value;
+                        var scores = (int[])item.Value;
                         writer.Write((ushort)scores.Length);
                         foreach (var score in scores) {
-                            writer.Write(score);
+                            writer.Write((ushort)score);
                         }
                         break;
                     // Expect int array
