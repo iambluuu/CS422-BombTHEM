@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 
-using Shared;
 using Client.Scene;
+using Client.Network;
+using Shared;
+using Shared.PacketWriter;
 
 namespace Client.PowerUps {
     public static class PowerUpFactory {
@@ -37,7 +39,8 @@ namespace Client.PowerUps {
             } catch (ArgumentException e) {
                 Console.WriteLine(e.Message);
             }
-            if (!slotNum.Equals(-1)) {
+            if (!slotNum.Equals(-1) && parameters.TryGetValue((byte)ServerParams.PlayerId, out var playerIdObj) && playerIdObj is int playerId && playerId == NetworkManager.Instance.ClientId) {
+                Console.WriteLine($"Default: Applying {PowerName} power-up for player {playerId} at slot {slotNum}");
                 map.PowerUpUsed(slotNum);
             }
         }

@@ -6,6 +6,7 @@ using Shared;
 using Client.PowerUps;
 using Client.Scene;
 using Shared.PacketWriter;
+using Client.Network;
 
 namespace Client.Handler {
 
@@ -25,11 +26,16 @@ namespace Client.Handler {
 
         private void PowerUpUsed(NetworkMessage message) {
             int slotNum = message.Data[(byte)ServerParams.SlotNum] as byte? ?? -1;
-            map.UnlockPowerSlot(slotNum);
+            int playerId = message.Data[(byte)ServerParams.PlayerId] as int? ?? -1;
+
+            if (playerId == NetworkManager.Instance.ClientId) {
+                map.UnlockPowerSlot(slotNum);
+            }
 
             if (message.Data.TryGetValue((byte)ServerParams.Invalid, out var invalid) && invalid is bool isInvalid && isInvalid) {
                 return;
             }
+            
             PowerName powerUpType = message.Data[(byte)ServerParams.PowerUpType] is byte b ? (PowerName)b : PowerName.None;
 
             PowerUp powerUp = PowerUpFactory.CreatePowerUp(powerUpType, map);
