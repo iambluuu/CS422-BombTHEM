@@ -258,6 +258,10 @@ namespace Client.Scene {
         public void PowerUpUsed(int slotNum) {
             lock (_lock) {
                 powerUpLocked[slotNum] = false;
+                if (PowerUps[slotNum].Item1 == PowerName.None || PowerUps[slotNum].Item2 <= 0) {
+                    Console.WriteLine($"MapRenderInfo.PowerUpUsed: No power-up in slot {slotNum} to use.");
+                    return; // No power-up to use
+                }
                 PowerUps[slotNum].Item2--;
                 if (PowerUps[slotNum].Item2 == 0) {
                     PowerUps[slotNum] = (PowerName.None, 0, false);
