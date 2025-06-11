@@ -4,7 +4,7 @@ using Shared.PacketWriter;
 namespace Server.PowerHandler {
     public class ShieldHandler : PowerUpHandler {
         public override PowerName PowerName => PowerName.Shield;
-        public override Dictionary<byte, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
+        public override Dictionary<byte, object>? Apply(ServerMap map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
             base.Apply(map, playerId, parameters, slotNum);
             // if already active, renew time and signal the client not to change anything
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {

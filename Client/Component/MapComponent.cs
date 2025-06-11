@@ -273,7 +273,7 @@ namespace Client.Component {
                 foreach (var info in map.PlayerInfos) {
                     var playerId = info.Key;
                     var playerInfo = info.Value;
-                    PlayerNode playerNode = new(TextureHolder.Get($"Character/{playerInfo.SkinId}"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE)) {
+                    PlayerNode playerNode = new(TextureHolder.Get($"Character/{playerInfo.SkinId}"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE), playerId == NetworkManager.Instance.ClientId) {
                         Position = new Vector2(playerInfo.Position.Y * GameValues.TILE_SIZE, playerInfo.Position.X * GameValues.TILE_SIZE)
                     };
                     Console.WriteLine($"Player {playerId} at {playerInfo.Position.X}, {playerInfo.Position.Y}, skin: {playerInfo.SkinId}");

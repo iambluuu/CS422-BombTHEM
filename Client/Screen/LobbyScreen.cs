@@ -200,7 +200,7 @@ namespace Client.Screen {
         public override void Activate() {
             base.Activate();
 
-            MusicPlayer.Play("Adventure");
+            MusicPlayer.Play("Chill");
 
             for (int i = 0; i < 4; i++) {
                 _playerIds[i] = -1;
@@ -358,6 +358,7 @@ namespace Client.Screen {
                         for (int i = 0; i < 4; i++) {
                             if (playerId == _playerIds[i]) {
                                 _playerIds[i] = -1;
+                                _inGames[i] = false;
                                 _playerNames[i].Text = "";
                                 _playerNames[i].PlaceholderText = "Waiting...";
                                 _kickButtons[i].IsEnabled = false;

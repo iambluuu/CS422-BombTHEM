@@ -8,7 +8,7 @@ namespace Client.Audio {
 
         public static void Initialize() {
             MediaPlayer.IsRepeating = true;
-            MediaPlayer.Volume = 0.75f;
+            MediaPlayer.Volume = 0.5f;
         }
 
         public static void Play(string name) {

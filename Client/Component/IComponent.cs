@@ -26,18 +26,6 @@ namespace Client.Component {
         public float Vertical => Top + Bottom;
     }
 
-    public enum ContentAlignment {
-        TopLeft,
-        TopCenter,
-        TopRight,
-        MiddleLeft,
-        MiddleCenter,
-        MiddleRight,
-        BottomLeft,
-        BottomCenter,
-        BottomRight
-    }
-
     // Android-like gravity (combined vertical and horizontal alignment)
     [Flags]
     public enum Gravity {

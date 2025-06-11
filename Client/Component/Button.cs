@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 
 using Client.ContentHolder;
+using Client.Audio;
 
 namespace Client.Component {
     public enum StateOfButton {
@@ -331,6 +332,7 @@ namespace Client.Component {
             if (HitTest(Mouse.GetState().Position)) {
                 if (uiEvent.Type == UIEventType.MouseDown) {
                     OnMouseDown?.Invoke();
+                    if (_state != StateOfButton.Pressed) SoundPlayer.Play("Click");
                     _state = StateOfButton.Pressed;
                     if (EnableRippleEffect) {
                         _showRipple = true;
@@ -347,6 +349,7 @@ namespace Client.Component {
                     _state = StateOfButton.Hovered;
                 } else if (_state != StateOfButton.Pressed) {
                     OnMouseEnter?.Invoke();
+                    if (_state != StateOfButton.Hovered) SoundPlayer.Play("Hover");
                     _state = StateOfButton.Hovered;
                 }
             } else {

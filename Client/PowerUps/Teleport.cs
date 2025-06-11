@@ -1,8 +1,9 @@
+using System;
 using System.Collections.Generic;
 
 using Shared;
 using Client.Scene;
-using System;
+using Client.Audio;
 using Shared.PacketWriter;
 
 namespace Client.PowerUps {
@@ -23,6 +24,7 @@ namespace Client.PowerUps {
             map.AddEnvVFX(oldX, oldY, PowerName.Teleport);
             map.AddPlayerVFX(playerId, PowerName.Teleport);
             map.TeleportPlayer(playerId, x, y);
+            SoundPlayer.Play("Slash", 2f);
         }
     }
 }

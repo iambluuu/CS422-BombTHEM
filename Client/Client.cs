@@ -34,6 +34,8 @@ namespace Client {
             Instance = this;
 
             MusicPlayer.Initialize();
+            SoundPlayer.Initialize();
+
             _screenManager = new ScreenManager(this);
             _screenManager.NavigateTo(ScreenName.MainMenu);
         }
@@ -59,7 +61,7 @@ namespace Client {
             TextureHolder.UnloadAll();
             FontHolder.UnloadAll();
             AudioHolder.UnloadAll();
-            NetworkManager.PrintMessageSize();
+            // NetworkManager.PrintMessageSize();
             NetworkManager.Instance.Disconnect();
         }
     }

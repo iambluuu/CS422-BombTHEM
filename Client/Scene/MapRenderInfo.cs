@@ -295,18 +295,20 @@ namespace Client.Scene {
             }
         }
 
-        public void ItemPickedUp(int playerId, int x, int y, PowerName powerType) {
+        public bool ItemPickedUp(int playerId, int x, int y, PowerName powerType) {
             lock (_lock) {
                 RemovedItem.Add((x, y));
                 if (playerId == NetworkManager.Instance.ClientId) {
                     for (int i = 0; i < PowerUps.Length; i++) {
                         if (PowerUps[i].Item1 == PowerName.None) {
                             PowerUps[i] = (powerType, GameplayConfig.PowerUpQuantity[powerType], false);
-                            break;
+                            return true;
                         }
                     }
                 }
             }
+
+            return false;
         }
 
         public List<int> GetScores() {

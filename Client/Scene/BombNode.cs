@@ -4,13 +4,14 @@ using Microsoft.Xna.Framework.Graphics;
 
 using Shared;
 using Client.ContentHolder;
+using Client.Audio;
 
 namespace Client.Scene {
     public static class BombNodeFactory {
         public static BombNode CreateNode(BombType type) {
             switch (type) {
                 case BombType.Nuke:
-                    return new NukeBombNode(TextureHolder.Get("Item/Bomb"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE));
+                    return new NukeNode(TextureHolder.Get("Item/Bomb"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE));
                 case BombType.Normal:
                 default:
                     return new BombNode(TextureHolder.Get("Item/Bomb"), new Vector2(GameValues.TILE_SIZE, GameValues.TILE_SIZE));
@@ -95,9 +96,9 @@ namespace Client.Scene {
         }
     }
 
-    public class NukeBombNode : BombNode {
-        public NukeBombNode(Texture2D texture, Vector2 size) : base(texture, size) {
-            // Additional initialization for NukeBombNode if needed
+    public class NukeNode : BombNode {
+        public NukeNode(Texture2D texture, Vector2 size) : base(texture, size) {
+            // Additional initialization for NukeNode if needed
         }
 
         protected override void DrawCurrent(SpriteBatch spriteBatch, Matrix transform) {

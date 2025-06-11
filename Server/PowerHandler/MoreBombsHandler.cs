@@ -4,7 +4,7 @@ using Shared.PacketWriter;
 namespace Server.PowerHandler {
     public class MoreBombsHandler : PowerUpHandler {
         public override PowerName PowerName => PowerName.MoreBombs;
-        public override Dictionary<byte, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
+        public override Dictionary<byte, object>? Apply(ServerMap map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
             base.Apply(map, playerId, parameters, slotNum);
             foreach (var activePowerUp in map.PlayerInfos[playerId].ActivePowerUps) {
                 if (activePowerUp.PowerType == PowerName.MoreBombs) {

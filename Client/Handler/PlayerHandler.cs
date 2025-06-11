@@ -2,6 +2,7 @@ using System;
 
 using Shared;
 using Client.Scene;
+using Client.Audio;
 using Shared.PacketWriter;
 using Client.Network;
 
@@ -21,7 +22,7 @@ namespace Client.Handler {
                     PlayerLeft(message);
                     break;
                 default:
-                    throw new Exception("Cannot handle item message: {type}");
+                    throw new Exception($"Cannot handle item message: {message.Type.Name}");
             }
         }
 
@@ -52,6 +53,7 @@ namespace Client.Handler {
             map.KillPlayer(playerId);
             map.TeleportPlayer(playerId, x, y);
             map.IncreaseScore(byPlayerId, 1);
+            SoundPlayer.Play("Hit");
         }
 
         private void PlayerLeft(NetworkMessage message) {

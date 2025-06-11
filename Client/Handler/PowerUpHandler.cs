@@ -19,7 +19,7 @@ namespace Client.Handler {
                     PowerUpExpired(message);
                     break;
                 default:
-                    throw new Exception("Cannot handle power-up message: {type}");
+                    throw new Exception($"Cannot handle item message: {message.Type.Name}");
             }
         }
 

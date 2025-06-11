@@ -4,7 +4,7 @@ using Shared.PacketWriter;
 namespace Server.PowerHandler {
     public class TeleportHandler : PowerUpHandler {
         public override PowerName PowerName => PowerName.Teleport;
-        public override Dictionary<byte, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
+        public override Dictionary<byte, object>? Apply(ServerMap map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
             base.Apply(map, playerId, parameters, slotNum);
             Position currentPos = map.PlayerInfos[playerId].Position;
             // find safe position

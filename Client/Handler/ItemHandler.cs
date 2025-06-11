@@ -3,6 +3,7 @@ using System;
 using Shared;
 using Client.Scene;
 using Shared.PacketWriter;
+using Client.Audio;
 
 namespace Client.Handler {
 
@@ -19,7 +20,7 @@ namespace Client.Handler {
                     ItemPickedUp(message);
                     break;
                 default:
-                    throw new Exception("Cannot handle item message: {type}");
+                    throw new Exception($"Cannot handle item message: {message.Type.Name}");
             }
         }
 
@@ -56,7 +57,10 @@ namespace Client.Handler {
                 Console.WriteLine($"Invalid item pickup data: {message.Data}");
                 return;
             }
-            map.ItemPickedUp(playerId, x, y, powerType);
+
+            if (map.ItemPickedUp(playerId, x, y, powerType)) {
+                SoundPlayer.Play("PowerUp");
+            }
         }
     }
 }
