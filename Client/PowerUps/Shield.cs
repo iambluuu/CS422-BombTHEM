@@ -1,10 +1,10 @@
+using System;
 using System.Collections.Generic;
 
 using Shared;
 using Client.Scene;
 using Client.Network;
 using Shared.PacketWriter;
-using System;
 
 namespace Client.PowerUps {
     public class Shield(MapRenderInfo map) : PowerUp(map) {

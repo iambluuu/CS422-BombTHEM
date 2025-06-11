@@ -19,11 +19,11 @@ namespace Server.PowerHandler {
     public abstract class PowerUpHandler {
         public abstract PowerName PowerName { get; }
         public static PowerUpHandler? Instance { get; private set; }
-        public virtual Dictionary<byte, object>? Apply(Map map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
+        public virtual Dictionary<byte, object>? Apply(ServerMap map, int playerId, Dictionary<string, object>? parameters = null, int slotNum = -1) {
             map.UsePowerUp(playerId, PowerName, slotNum);
             return null;
         }
 
-        public virtual Dictionary<byte, object>? Use(Map map, int playerId, Dictionary<string, object>? parameters = null) { return null; }
+        public virtual Dictionary<byte, object>? Use(ServerMap map, int playerId, Dictionary<string, object>? parameters = null) { return null; }
     }
 }

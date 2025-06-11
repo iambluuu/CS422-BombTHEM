@@ -5,6 +5,7 @@ using System;
 using Client.Animation;
 using Client.Component;
 using Client.ContentHolder;
+using Client.Audio;
 
 namespace Client.Screen {
     class LoadingScreen : GameScreen {
@@ -23,6 +24,7 @@ namespace Client.Screen {
         private float _currentDoorTime = 0f;
         private DoorState _doorState = DoorState.None;
         private bool _requestOpen = false;
+        private int _soundPlayed = 0;
 
         public bool IsLoading => _doorState == DoorState.Closing || _doorState == DoorState.Waiting;
 
@@ -86,6 +88,7 @@ namespace Client.Screen {
 
         public void RequestClose() {
             _currentDoorTime = 0f;
+            _soundPlayed = 0;
             _doorState = DoorState.Closing;
         }
 
@@ -124,23 +127,31 @@ namespace Client.Screen {
                     float currentLeftX, currentRightX;
 
                     if (bounceNormalProgress < t_phase1_end) {
+                        if (_soundPlayed < 1) { SoundPlayer.Play("Impact", 0.5f); _soundPlayed = 1; }
+
                         float phaseProgress = bounceNormalProgress / t_phase1_end;
 
                         currentLeftX = MathHelper.Lerp(leftDoorClosedX, leftDoorClosedX - bounce1_amplitude, Easing.SineEaseOut(phaseProgress));
                         currentRightX = MathHelper.Lerp(rightDoorClosedX, rightDoorClosedX + bounce1_amplitude, Easing.SineEaseOut(phaseProgress));
 
                     } else if (bounceNormalProgress < t_phase2_end) {
+                        // if (_soundPlayed < 2) { SoundPlayer.Play("Impact", 0.1f); _soundPlayed = 2; }
+
                         float phaseProgress = (bounceNormalProgress - t_phase1_end) / (t_phase2_end - t_phase1_end);
 
                         currentLeftX = MathHelper.Lerp(leftDoorClosedX - bounce1_amplitude, leftDoorClosedX, Easing.SineEaseIn(phaseProgress));
                         currentRightX = MathHelper.Lerp(rightDoorClosedX + bounce1_amplitude, rightDoorClosedX, Easing.SineEaseIn(phaseProgress));
 
                     } else if (bounceNormalProgress < t_phase3_end) {
+                        // if (_soundPlayed < 3) { SoundPlayer.Play("Impact", 0.05f); _soundPlayed = 3; }
+
                         float phaseProgress = (bounceNormalProgress - t_phase2_end) / (t_phase3_end - t_phase2_end);
 
                         currentLeftX = MathHelper.Lerp(leftDoorClosedX, leftDoorClosedX - bounce2_amplitude, Easing.SineEaseOut(phaseProgress));
                         currentRightX = MathHelper.Lerp(rightDoorClosedX, rightDoorClosedX + bounce2_amplitude, Easing.SineEaseOut(phaseProgress));
                     } else {
+                        // if (_soundPlayed < 4) { SoundPlayer.Play("Impact", 0.01f); _soundPlayed = 4; }
+
                         float phaseProgress = (bounceNormalProgress - t_phase3_end) / (t_phase4_end - t_phase3_end);
 
                         currentLeftX = MathHelper.Lerp(leftDoorClosedX - bounce2_amplitude, leftDoorClosedX, Easing.SineEaseIn(phaseProgress));

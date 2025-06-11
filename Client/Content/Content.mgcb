@@ -19,6 +19,12 @@
 /processorParam:Quality=Best
 /build:Audio/Music/Adventure.ogg
 
+#begin Audio/Music/Chill.ogg
+/importer:OggImporter
+/processor:SongProcessor
+/processorParam:Quality=Best
+/build:Audio/Music/Chill.ogg
+
 #begin Audio/Music/Fight.ogg
 /importer:OggImporter
 /processor:SongProcessor
@@ -36,6 +42,168 @@
 /processor:SongProcessor
 /processorParam:Quality=Best
 /build:Audio/Music/Sunny.ogg
+
+#begin Audio/Sound/Accept.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Accept.wav
+
+#begin Audio/Sound/Accept.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Accept.wav
+
+#begin Audio/Sound/Alert.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Alert.wav
+
+#begin Audio/Sound/Alert.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Alert.wav
+
+#begin Audio/Sound/Cancel.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Cancel.wav
+
+#begin Audio/Sound/Cancel.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Cancel.wav
+
+#begin Audio/Sound/Click.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Click.wav
+
+#begin Audio/Sound/Click.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Click.wav
+
+#begin Audio/Sound/Explosion.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Explosion.wav
+
+#begin Audio/Sound/Explosion.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Explosion.wav
+
+#begin Audio/Sound/Fx.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Fx.wav
+
+#begin Audio/Sound/Fx.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Fx.wav
+
+#begin Audio/Sound/Grass.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Grass.wav
+
+#begin Audio/Sound/Grass.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Grass.wav
+
+#begin Audio/Sound/Hit.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Hit.wav
+
+#begin Audio/Sound/Hit.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Hit.wav
+
+#begin Audio/Sound/Hover.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Hover.wav
+
+#begin Audio/Sound/Hover.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Hover.wav
+
+#begin Audio/Sound/Impact.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Impact.wav
+
+#begin Audio/Sound/Impact.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Impact.wav
+
+#begin Audio/Sound/Launch.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Launch.wav
+
+#begin Audio/Sound/Launch.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Launch.wav
+
+#begin Audio/Sound/PowerUp.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/PowerUp.wav
+
+#begin Audio/Sound/Slash.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Slash.wav
+
+#begin Audio/Sound/Slash.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Slash.wav
+
+#begin Audio/Sound/Whoosh.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Whoosh.wav
+
+#begin Audio/Sound/Whoosh.wav
+/importer:WavImporter
+/processor:SoundEffectProcessor
+/processorParam:Quality=Best
+/build:Audio/Sound/Whoosh.wav
 
 #begin Font/PressStart2P.spritefont
 /importer:FontDescriptionImporter

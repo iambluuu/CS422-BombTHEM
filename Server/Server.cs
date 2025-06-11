@@ -71,7 +71,7 @@ namespace Server {
             public string RoomId { get; set; }
             public int HostPlayerId { get; set; }
             public List<int> PlayerIds { get; set; } = [];
-            public Map Map { get; set; } = null!;
+            public ServerMap Map { get; set; } = null!;
             public Dictionary<int, Position> InitialPositions { get; set; } = [];
             public Dictionary<int, int> PlayerScores { get; set; } = [];
             public Dictionary<int, DateTime> PlayerLastDied { get; set; } = [];
@@ -229,11 +229,11 @@ namespace Server {
             }
         }
 
-        private Map GenerateRandomMap() {
+        private ServerMap GenerateRandomMap() {
             const int height = 15;
             const int width = 15;
 
-            Map map = new Map(height, width);
+            ServerMap map = new ServerMap(height, width);
             for (int i = 0; i < height; i++) {
                 for (int j = 0; j < width; j++) {
                     if (i == 0 || i == height - 1 || j == 0 || j == width - 1 || (i % 2 == 0 && j % 2 == 0)) {
@@ -672,26 +672,7 @@ namespace Server {
                                 { (byte)ServerParams.PlayerId, playerId }
                             }));
 
-                            bool allClientsLeft = true;
-                            foreach (var pid in room.PlayerIds) {
-                                if (!IsBot(pid) && _idToPlayer[pid].InGame) {
-                                    allClientsLeft = false;
-                                    break;
-                                }
-                            }
-
-                            if (allClientsLeft) {
-                                StopGame(roomId!);
-                                foreach (var pid in room.PlayerIds) {
-                                    if (IsBot(pid)) {
-                                        BotHandler bot = (BotHandler)_idToPlayer[pid];
-                                        bot.InGame = false;
-                                        BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeft, new() {
-                                            { (byte)ServerParams.PlayerId, pid }
-                                        }));
-                                    }
-                                }
-                            }
+                            CheckAllClientsLeft(roomId!);
                         }
                     }
                     break;
@@ -1098,8 +1079,6 @@ namespace Server {
         }
 
         private void RemovePlayerFromRoom(PlayerHandler handler) {
-            Console.WriteLine($"Removing player {handler.PlayerId} from room");
-
             if (handler == null || handler.RoomId == null) {
                 return;
             }
@@ -1156,10 +1135,42 @@ namespace Server {
                 }
             }
 
+            CheckAllClientsLeft(handler.RoomId);
+
             Console.WriteLine($"Player {handler.PlayerId} left room {handler.RoomId}");
 
             handler.RoomId = null;
         }
+
+        private void CheckAllClientsLeft(string roomId) {
+            if (!_rooms.TryGetValue(roomId, out GameRoom? room)) {
+                return;
+            }
+
+            lock (_roomLocks[roomId]) {
+                bool allClientsLeft = true;
+                foreach (var pid in room!.PlayerIds) {
+                    if (!IsBot(pid) && _idToPlayer[pid].InGame) {
+                        allClientsLeft = false;
+                        break;
+                    }
+                }
+
+                if (allClientsLeft) {
+                    StopGame(roomId!);
+                    foreach (var pid in room.PlayerIds) {
+                        if (IsBot(pid)) {
+                            BotHandler bot = (BotHandler)_idToPlayer[pid];
+                            bot.InGame = false;
+                            BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.GameLeft, new() {
+                                { (byte)ServerParams.PlayerId, pid }
+                            }));
+                        }
+                    }
+                }
+            }
+        }
+
         public void PrintNetworkStats() {
             Console.WriteLine($"Bytes sent:{_byteSent}");
             Console.WriteLine($"Bytes received:{_byteReceived}");

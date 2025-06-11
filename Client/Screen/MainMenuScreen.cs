@@ -144,19 +144,20 @@ namespace Client.Screen {
         public override void Activate() {
             base.Activate();
 
-            MusicPlayer.Play("Adventure");
 
             if (NetworkManager.Instance.IsConnected) {
                 _connectLayout.IsVisible = false;
                 _connectButton.IsEnabled = false;
                 _mainLayout.IsVisible = true;
                 NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetUsername));
+                MusicPlayer.Play("Chill");
             } else {
                 _connectLayout.IsVisible = true;
                 _connectButton.Text = "Connect";
                 _connectButton.IsEnabled = true;
                 _mainLayout.IsVisible = false;
                 _currentName = string.Empty;
+                MusicPlayer.Play("Adventure");
             }
 
             ScreenManager.Instance.StopLoading();
@@ -186,7 +187,6 @@ namespace Client.Screen {
         public override void HandleResponse(NetworkMessage message) {
             switch ((ServerMessageType)message.Type.Name) {
                 case ServerMessageType.Connected: {
-                        Console.WriteLine("Getting ClientId");
                         NetworkManager.Instance.Send(NetworkMessage.From(ClientMessageType.GetClientId));
                     }
                     break;
@@ -196,6 +196,7 @@ namespace Client.Screen {
                         _connectButton.IsEnabled = true;
                         _mainLayout.IsVisible = false;
                         _currentName = string.Empty;
+                        SoundPlayer.Play("Cancel");
                         ToastManager.Instance.ShowToast("Failed to connect");
                     }
                     break;
@@ -205,6 +206,8 @@ namespace Client.Screen {
                         _connectButton.IsEnabled = false;
                         _mainLayout.IsVisible = true;
                         NetworkManager.Instance.ClientId = message.Data[(byte)ServerParams.PlayerId] as int? ?? 0;
+                        SoundPlayer.Play("Accept");
+                        MusicPlayer.Play("Chill");
                         ToastManager.Instance.ShowToast($"Connected to server");
                     }
                     break;

@@ -6,7 +6,7 @@ namespace Server {
     public class GameBot {
         private int _botId;
         private string _roomId;
-        private Map _map = null!;
+        private ServerMap _map = null!;
         private Action<int, NetworkMessage>? _sendToServer;
         private Thread _thread;
         private CancellationTokenSource _cts;
@@ -494,7 +494,7 @@ namespace Server {
                     }
                     break;
                 case ServerMessageType.GameInfo: {
-                        _map = Map.FromString(message.Data[(byte)ServerParams.Map] as string ?? string.Empty);
+                        _map = ServerMap.FromString(message.Data[(byte)ServerParams.Map] as string ?? string.Empty);
                         int playerCount = message.Data[(byte)ServerParams.PlayerCount] as int? ?? 0;
                         int[] playerIds = message.Data[(byte)ServerParams.PlayerIds] as int[] ?? Array.Empty<int>();
                         Position[] playerPositions = message.Data[(byte)ServerParams.Positions] as Position[] ?? Array.Empty<Position>();

@@ -2,6 +2,7 @@ using System;
 
 using Shared;
 using Client.Scene;
+using Client.Audio;
 using Shared.PacketWriter;
 
 namespace Client.Handler {
@@ -16,7 +17,7 @@ namespace Client.Handler {
                     BombExploded(message);
                     break;
                 default:
-                    throw new Exception("Cannot handle bomb message: {type}");
+                    throw new Exception($"Cannot handle item message: {message.Type.Name}");
             }
         }
 
@@ -37,6 +38,7 @@ namespace Client.Handler {
             bool isCounted = message.Data[(byte)ServerParams.IsCounted] as bool? ?? true;
 
             map.BombPlaced(x, y, type, byPlayerId, isCounted);
+            SoundPlayer.Play("Whoosh", 1.5f);
         }
 
         private void BombExploded(NetworkMessage message) {
@@ -57,6 +59,7 @@ namespace Client.Handler {
             }
 
             map.BombExploded(x, y, positions, byPlayerId, isCounted);
+            SoundPlayer.Play("Explosion", 1.5f);
         }
     }
 }

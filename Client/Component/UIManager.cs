@@ -7,6 +7,7 @@ namespace Client.Component {
     public class UIManager {
         private List<List<IComponent>> _components = new();
         private IComponent _focusedComponent = null!;
+        private readonly object _lock = new();
 
         public void Clear() {
             _focusedComponent = null!;
@@ -16,70 +17,80 @@ namespace Client.Component {
         }
 
         public void AddComponent(IComponent component, int layer = 0) {
-            while (_components.Count <= layer) {
-                _components.Add(new List<IComponent>());
+            lock (_lock) {
+                while (_components.Count <= layer) {
+                    _components.Add(new List<IComponent>());
+                }
+                _components[layer].Add(component);
             }
-            _components[layer].Add(component);
         }
 
         public void RemoveComponent(IComponent component) {
-            foreach (var layer in _components) {
-                if (layer.Remove(component)) {
-                    break;
+            lock (_lock) {
+                foreach (var layer in _components) {
+                    if (layer.Remove(component)) {
+                        break;
+                    }
                 }
             }
         }
 
         public void Update(GameTime gameTime) {
-            MouseState mouseState = Mouse.GetState();
-            Point mousePos = new(mouseState.X, mouseState.Y);
+            lock (_lock) {
+                MouseState mouseState = Mouse.GetState();
+                Point mousePos = new(mouseState.X, mouseState.Y);
 
-            for (int i = _components.Count - 1; i >= 0; i--) {
-                var layer = _components[i];
-                foreach (var component in layer) {
-                    if (component.IsVisible && component.IsEnabled) {
-                        component.Update(gameTime);
+                for (int i = _components.Count - 1; i >= 0; i--) {
+                    var layer = _components[i];
+                    foreach (var component in layer) {
+                        if (component.IsVisible && component.IsEnabled) {
+                            component.Update(gameTime);
+                        }
                     }
                 }
             }
         }
 
         public void Draw(SpriteBatch spriteBatch) {
-            for (int i = _components.Count - 1; i >= 0; i--) {
-                var layer = _components[i];
-                foreach (var component in layer) {
-                    if (component.IsVisible) {
-                        component.Draw(spriteBatch);
+            lock (_lock) {
+                for (int i = _components.Count - 1; i >= 0; i--) {
+                    var layer = _components[i];
+                    foreach (var component in layer) {
+                        if (component.IsVisible) {
+                            component.Draw(spriteBatch);
+                        }
                     }
                 }
             }
         }
 
         public void DispatchEvent(UIEvent uiEvent) {
-            if (uiEvent.Type == UIEventType.KeyPress || uiEvent.Type == UIEventType.TextInput) {
-                _focusedComponent?.HandleInput(uiEvent);
-                return;
-            }
+            lock (_lock) {
+                if (uiEvent.Type == UIEventType.KeyPress || uiEvent.Type == UIEventType.TextInput) {
+                    _focusedComponent?.HandleInput(uiEvent);
+                    return;
+                }
 
-            if (uiEvent.Type == UIEventType.MouseDown) {
-                for (int i = _components.Count - 1; i >= 0; i--) {
-                    foreach (var component in _components[i]) {
-                        if (component.IsVisible && component.IsEnabled && component.HitTest(uiEvent.MousePosition)) {
-                            component.HandleInput(uiEvent);
-                            SetFocus(component);
-                            return;
+                if (uiEvent.Type == UIEventType.MouseDown) {
+                    for (int i = _components.Count - 1; i >= 0; i--) {
+                        foreach (var component in _components[i]) {
+                            if (component.IsVisible && component.IsEnabled && component.HitTest(uiEvent.MousePosition)) {
+                                component.HandleInput(uiEvent);
+                                SetFocus(component);
+                                return;
+                            }
                         }
                     }
+                    ClearFocus();
+                    return;
                 }
-                ClearFocus();
-                return;
-            }
 
-            for (int i = _components.Count - 1; i >= 0; i--) {
-                var layer = _components[i];
-                foreach (var component in layer) {
-                    if (component.IsVisible && component.IsEnabled) {
-                        component.HandleInput(uiEvent);
+                for (int i = _components.Count - 1; i >= 0; i--) {
+                    var layer = _components[i];
+                    foreach (var component in layer) {
+                        if (component.IsVisible && component.IsEnabled) {
+                            component.HandleInput(uiEvent);
+                        }
                     }
                 }
             }
@@ -90,12 +101,14 @@ namespace Client.Component {
         }
 
         private void SetFocus(IComponent component) {
-            if (_focusedComponent != null && _focusedComponent != component) {
-                _focusedComponent?.OnUnfocus();
-            }
+            lock (_lock) {
+                if (_focusedComponent != null && _focusedComponent != component) {
+                    _focusedComponent?.OnUnfocus();
+                }
 
-            _focusedComponent = component;
-            _focusedComponent?.OnFocus();
+                _focusedComponent = component;
+                _focusedComponent?.OnFocus();
+            }
         }
     }
 }

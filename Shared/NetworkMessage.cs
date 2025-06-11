@@ -103,6 +103,14 @@ namespace Shared {
             return JsonSerializer.Serialize(this, options);
         }
 
+        public static NetworkMessage FromJson(string json) {
+            var options = new JsonSerializerOptions {
+                Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
+                PropertyNameCaseInsensitive = true
+            };
+            return JsonSerializer.Deserialize<NetworkMessage>(json, options)!;
+        }
+
         public byte[] ToBytes() {
             // [direction][name][data]| 
             MemoryStream ms = new();
@@ -146,14 +154,5 @@ namespace Shared {
             // Console.WriteLine($"NetworkMessage.FromBytes: {newMessage.ToJson()}");
             return newMessage;
         }
-
-        public static NetworkMessage FromJson(string json) {
-            var options = new JsonSerializerOptions {
-                Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase) },
-                PropertyNameCaseInsensitive = true
-            };
-            return JsonSerializer.Deserialize<NetworkMessage>(json, options)!;
-        }
     }
-
 }

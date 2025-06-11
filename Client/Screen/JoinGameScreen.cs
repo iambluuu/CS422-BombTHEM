@@ -72,7 +72,7 @@ namespace Client.Screen {
 
         public override void Activate() {
             base.Activate();
-            MusicPlayer.Play("Adventure");
+            MusicPlayer.Play("Chill");
             ScreenManager.Instance.StopLoading();
         }
 
