@@ -59,7 +59,7 @@ namespace Client.Handler {
             }
 
             map.BombExploded(x, y, positions, byPlayerId, isCounted);
-            SoundPlayer.Play("Explosion");
+            SoundPlayer.Play("Explosion", 1.5f);
         }
     }
 }
