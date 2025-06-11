@@ -819,6 +819,7 @@ namespace Server {
                         lock (_roomLocks[roomId!]) {
                             if (!_rooms.TryGetValue(roomId!, out GameRoom? room) || !room.Map.CanUsePowerUp(playerId, powerUpType, slotNum)) {
                                 BroadcastToRoom(roomId!, NetworkMessage.From(ServerMessageType.PowerUpUsed, new() {
+                                    { (byte)ServerParams.PlayerId, playerId },
                                     { (byte)ServerParams.SlotNum, slotNum },
                                     { (byte)ServerParams.Invalid, true }
                                 }));
